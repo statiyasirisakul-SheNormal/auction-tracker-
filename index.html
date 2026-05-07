@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="ประมูลทรัพย์">
 <meta name="theme-color" content="#1F3A5F">
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -317,23 +318,48 @@ input, select, textarea { font-size: 16px !important; }
   /* Rounds grid: 3 columns on mobile */
   .rounds-grid { grid-template-columns: repeat(3, 1fr) !important; }
 
-  /* Prop card header: allow wrap for badges */
-  .prop-header { flex-wrap: wrap; padding: 12px 14px; }
-  .prop-body  { padding: 14px; }
-  .prop-num   { width: 30px; height: 30px; font-size: 12px; }
+  /* ── Prop card: grid layout ── */
+  .prop-header {
+    display: grid;
+    grid-template-columns: 32px 1fr auto;
+    grid-template-areas:
+      "num info  actions"
+      "num badges badges";
+    column-gap: 10px;
+    row-gap: 5px;
+    padding: 12px 12px;
+    align-items: center;
+  }
+  .prop-num     { grid-area: num; width:32px; height:32px; font-size:12px; align-self:start; margin-top:2px; flex-shrink:0; }
+  .prop-info    { grid-area: info; min-width:0; }
+  .prop-name    { white-space:normal !important; font-size:14px; line-height:1.3; }
+  .prop-sub     { font-size:11px; white-space:normal; line-height:1.4; }
+  .prop-badges  { grid-area: badges; display:flex; flex-wrap:wrap; gap:4px; }
+  .prop-actions { grid-area: actions; display:flex; gap:4px; align-items:center; align-self:start; }
+  .prop-header > .chevron { display:none; }
+  .prop-body    { padding: 12px; }
+
+  /* Prop body images full-width */
+  .prop-body img[style*="height:90px"] { height:110px !important; flex:1; min-width:120px; }
 
   /* Card/button sizing */
-  .card { padding: 16px; }
-  .btn  { padding: 8px 14px; min-height: 38px; }
-  .btn-sm { padding: 7px 12px; }
-  .btn-xs { padding: 5px 10px; }
+  .card { padding: 14px; }
+  .btn  { padding: 8px 12px; min-height: 38px; font-size:13px; }
+  .btn-sm { padding: 6px 11px; font-size:12px; }
+  .btn-xs { padding: 5px 9px; font-size:11px; }
 
-  /* Summary table scroll hint */
+  /* Summary table scroll */
   .summary-table { font-size: 12px; }
-  .summary-table th, .summary-table td { padding: 8px 10px; }
+  .summary-table th, .summary-table td { padding: 7px 8px; }
 
-  /* Notif box compact */
-  .notif-box { padding: 12px; }
+  /* Notif box */
+  .notif-box { padding: 11px; }
+
+  /* Round tile target selector compact */
+  .rounds-grid + div { flex-wrap: wrap; }
+
+  /* Prop card margin */
+  .prop-card { margin-bottom: 10px; }
 }
 
 @media (max-width: 420px) {
@@ -349,7 +375,7 @@ input, select, textarea { font-size: 16px !important; }
   <div style="font-size:30px">🏛️</div>
   <div style="flex:1;min-width:0">
     <h1>ระบบจัดการทรัพย์ กรมบังคับคดี</h1>
-    <p>บริหารเอกสาร · ติดตามประมูล · บันทึกรีโนเวท · แจ้งเตือน ntfy / Telegram</p>
+    <p>บริหารเอกสาร · ติดตามประมูล · บันทึกค่าใช้จ่าย · แจ้งเตือน ntfy / Telegram</p>
   </div>
   <button onclick="pushToCloud()" title="Push รูปขึ้น Cloud ให้มือถือเห็น" style="background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.35);color:white;border-radius:9px;padding:8px 12px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0">
     ☁️
@@ -364,7 +390,7 @@ input, select, textarea { font-size: 16px !important; }
     🏠 ทรัพย์ <span class="tab-badge" id="badge-props">0</span>
   </button>
   <button class="tab-btn" onclick="switchTab('reno')">
-    🔨 รีโนเวท <span class="tab-badge" id="badge-reno">0</span>
+    🔨 ค่าใช้จ่าย <span class="tab-badge" id="badge-reno">0</span>
   </button>
   <button class="tab-btn" onclick="switchTab('summary')">
     📊 สรุปภาพรวม
@@ -401,7 +427,7 @@ input, select, textarea { font-size: 16px !important; }
   <div class="tab-panel" id="tab-reno">
     <div class="card">
       <div class="card-header">
-        <div class="card-title">🔨 บันทึกค่าใช้จ่ายรีโนเวท</div>
+        <div class="card-title">🔨 บันทึกค่าใช้จ่าย</div>
         <button class="btn btn-success btn-sm" onclick="openModal('modal-reno')">+ เพิ่มรายการ</button>
       </div>
       <div style="display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap;">
@@ -608,6 +634,12 @@ input, select, textarea { font-size: 16px !important; }
         <input class="form-input" type="text" inputmode="numeric" id="prop-target-sell" placeholder="1,690,000" oninput="fmtNumInput(this)" />
       </div>
     </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">💵 ราคาที่ขายได้จริง (บาท)</label>
+        <input class="form-input" type="text" inputmode="numeric" id="prop-actual-sell" placeholder="กรอกเมื่อขายได้แล้ว" oninput="fmtNumInput(this)" />
+      </div>
+    </div>
     <div class="form-group">
       <label class="form-label">🎯 นัดที่ต้องการเข้าซื้อ</label>
       <select class="form-select" id="prop-target-round-sel">
@@ -760,7 +792,7 @@ input, select, textarea { font-size: 16px !important; }
 <!-- Add Expense -->
 <div class="modal-overlay" id="modal-reno">
   <div class="modal modal-wide">
-    <h3>🔨 เพิ่มรายการค่าใช้จ่าย</h3>
+    <h3>🔨 บันทึกค่าใช้จ่าย</h3>
     <input type="hidden" id="reno-edit-id" />
     <div class="form-row">
       <div class="form-group">
@@ -814,6 +846,12 @@ input, select, textarea { font-size: 16px !important; }
         📎 คลิกอัปโหลดบิลหรือใบเสร็จ
       </div>
       <input type="file" id="reno-img-input" accept="image/*" multiple onchange="handleRenoImgUpload(event)" />
+    </div>
+    <div class="form-group" style="margin-top:4px">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:600;font-size:14px">
+        <input type="checkbox" id="reno-reimbursed" style="width:18px;height:18px;accent-color:var(--blue);cursor:pointer">
+        <span>เบิกเงินแล้ว <span style="font-size:12px;font-weight:400;color:var(--gray)">(จะไม่นำมาคำนวณค่าใช้จ่ายรวม)</span></span>
+      </label>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-reno');clearRenoForm()">ยกเลิก</button>
@@ -898,7 +936,7 @@ create policy "open" on auction_data for all using (true) with check (true);</pr
         <button class="btn btn-amber btn-sm" onclick="confirmClearImages()">🗑️ ลบรูปภาพทั้งหมด</button>
         <button class="btn btn-danger btn-sm" onclick="confirmClearProps()">🏠 ลบทรัพย์ทั้งหมด</button>
       </div>
-      <div style="font-size:11px;color:var(--gray);margin-top:6px">ลบรูปภาพ = ลบเฉพาะรูป ข้อมูลยังอยู่ · ลบทรัพย์ = ลบข้อมูลทรัพย์และรีโนเวทที่เกี่ยวข้องทั้งหมด</div>
+      <div style="font-size:11px;color:var(--gray);margin-top:6px">ลบรูปภาพ = ลบเฉพาะรูป ข้อมูลยังอยู่ · ลบทรัพย์ = ลบข้อมูลทรัพย์และค่าใช้จ่ายที่เกี่ยวข้องทั้งหมด</div>
     </div>
 
     <div class="modal-actions">
@@ -1171,18 +1209,18 @@ function toggleDocDone(propId, typeId) {
   d.done = !d.done; saveS(); renderProps();
 }
 
-function handleDocUpload(ev, propId, typeId) {
+async function handleDocUpload(ev, propId, typeId) {
   const p = S.props.find(x=>x.id===propId); if (!p) return;
   const d = p.docs.find(x=>x.typeId===typeId); if (!d) return;
-  const files = [...ev.target.files]; let cnt = 0;
-  files.forEach(f => {
-    const r = new FileReader();
-    r.onload = e => {
-      d.images.push({name:f.name, data:e.target.result});
-      if (++cnt===files.length) { saveS(); renderProps(); }
-    };
-    r.readAsDataURL(f);
-  });
+  const files = [...ev.target.files];
+  toast('⏳ กำลังอัปโหลดรูป...', '');
+  for (const f of files) {
+    const b64 = await fileToBase64Compressed(f);
+    const url = await uploadToStorage(b64, f.name);
+    d.images.push({name: f.name, data: url || b64});
+  }
+  saveS(); renderProps();
+  toast('✅ อัปโหลดรูปเอกสารสำเร็จ', 'success');
   ev.target.value = '';
 }
 
@@ -1268,7 +1306,7 @@ function renderProps() {
     }).join('');
 
     const renoItems = S.expenses.filter(e=>e.propId===p.id);
-    const renoTotal = renoItems.reduce((s,e)=>s+Number(e.amount||0),0);
+    const renoTotal = renoItems.filter(e=>!e.reimbursed).reduce((s,e)=>s+Number(e.amount||0),0);
 
     // Notif status
     const hasTg      = !!(p.notif && p.notif.tgToken && p.notif.tgChatId);
@@ -1286,17 +1324,17 @@ function renderProps() {
               ${p.loc?p.loc+' · ':''}${base?'ประเมิณ '+fmtNum(base)+' ฿':''}
             </div>
           </div>
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <div class="prop-badges" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
             ${dateChip}
             <span class="badge ${statusMap[p.status||'watching']}">${statusLabel[p.status||'watching']}</span>
             ${hasTg?'<span class="badge badge-tg">✈️ Telegram</span>':''}
             ${hasBrowser?'<span class="badge badge-green">🔔 Browser</span>':''}
           </div>
-          <div onclick="event.stopPropagation()" style="display:flex;gap:5px;">
+          <div class="prop-actions" onclick="event.stopPropagation()" style="display:flex;gap:5px;">
             <button class="icon-btn" onclick="editProp('${p.id}')" title="แก้ไข">✏️</button>
             <button class="icon-btn del" onclick="deleteProp('${p.id}')" title="ลบ">🗑</button>
+            <span class="chevron" style="margin-left:2px">▼</span>
           </div>
-          <span class="chevron">▼</span>
         </div>
         <div class="prop-body">
           ${(p.imgProp||p.imgDetail)?`<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
@@ -1307,6 +1345,7 @@ function renderProps() {
             ${p.code?`<span class="badge badge-blue">🔖 ${p.code}</span>`:''}
             ${p.deed?`<span class="badge badge-gray">โฉนด ${p.deed}</span>`:''}
             ${p.case?`<span class="badge badge-gray">คดี ${p.case}</span>`:''}
+            ${Number(p.actualSell)>0?`<span class="badge badge-green">💵 ขายได้ ${fmtNum(Number(p.actualSell))} ฿</span>`:''}
             ${p.mapUrl?`<a href="${p.mapUrl.startsWith('http')?p.mapUrl:'https://maps.google.com/?q='+encodeURIComponent(p.mapUrl)}" target="_blank" class="btn btn-ghost btn-xs">📍 แผนที่</a>`:''}
             <button class="btn btn-ghost btn-xs" onclick="switchTab('calc');setTimeout(()=>{const s=document.getElementById('calc-prop-sel');if(s){s.value='${p.id}';calcFillFromProp();}},100)">🧮 คำนวณ</button>
           </div>
@@ -1334,7 +1373,7 @@ function renderProps() {
           <!-- RENO SECTION -->
           <div style="margin-bottom:16px">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-              <div class="section-title" style="margin-bottom:0">🔨 ค่าใช้จ่ายรีโนเวท${renoTotal>0?` <span style="color:var(--green);font-weight:800;margin-left:6px">${fmtPrice(renoTotal)}</span>`:''}</div>
+              <div class="section-title" style="margin-bottom:0">🔨 ค่าใช้จ่าย${renoTotal>0?` <span style="color:var(--green);font-weight:800;margin-left:6px">${fmtPrice(renoTotal)}</span>`:''}</div>
               <button class="btn btn-success btn-xs" onclick="event.stopPropagation();openRenoForProp('${p.id}')">+ เพิ่ม</button>
             </div>
             ${renoItems.length ? `
@@ -1461,7 +1500,7 @@ function setPropStatus(id, status) {
 function openAddPropModal() {
   document.getElementById('prop-edit-id').value = '';
   document.getElementById('modal-prop-title').textContent = '🏠 เพิ่มทรัพย์ที่เล็งไว้';
-  ['prop-code','prop-name','prop-loc','prop-size','prop-deed','prop-case','prop-appraisal','prop-target-sell','prop-notes','prop-map'].forEach(id=>{
+  ['prop-code','prop-name','prop-loc','prop-size','prop-deed','prop-case','prop-appraisal','prop-target-sell','prop-actual-sell','prop-notes','prop-map'].forEach(id=>{
     document.getElementById(id).value='';
   });
   document.getElementById('prop-target-round-sel').value = '0';
@@ -1483,6 +1522,7 @@ function editProp(id) {
   // prop-price removed — appraisal is the single price field
   setNumInput('prop-appraisal',   p.appraisal||0);
   setNumInput('prop-target-sell', p.targetSell||0);
+  setNumInput('prop-actual-sell', p.actualSell||0);
   document.getElementById('prop-notes').value       = p.notes||'';
   document.getElementById('prop-map').value         = p.mapUrl||'';
   const st = document.getElementById('form-ntfy-status');
@@ -1512,12 +1552,13 @@ function saveProp() {
     appraisal:  parseNumInput(document.getElementById('prop-appraisal').value),
     price:      parseNumInput(document.getElementById('prop-appraisal').value),
     targetSell: parseNumInput(document.getElementById('prop-target-sell').value),
+    actualSell: parseNumInput(document.getElementById('prop-actual-sell').value),
     notes:      document.getElementById('prop-notes').value.trim(),
     mapUrl:     document.getElementById('prop-map').value.trim(),
     targetRound,
     rounds,
-    imgProp:    document.getElementById('img-prop-thumb').src.startsWith('data:') ? document.getElementById('img-prop-thumb').src : (editId ? (S.props.find(x=>x.id===editId)||{}).imgProp||'' : ''),
-    imgDetail:  document.getElementById('img-detail-thumb').src.startsWith('data:') ? document.getElementById('img-detail-thumb').src : (editId ? (S.props.find(x=>x.id===editId)||{}).imgDetail||'' : ''),
+    imgProp:   (s => (s.startsWith('http')||s.startsWith('data:')) ? s : (editId?(S.props.find(x=>x.id===editId)||{}).imgProp||'':''))(document.getElementById('img-prop-thumb').src||''),
+    imgDetail: (s => (s.startsWith('http')||s.startsWith('data:')) ? s : (editId?(S.props.find(x=>x.id===editId)||{}).imgDetail||'':''))(document.getElementById('img-detail-thumb').src||''),
   };
   if (editId) {
     const p = S.props.find(x=>x.id===editId);
@@ -1581,33 +1622,17 @@ function collectPropRounds() {
   }));
 }
 
-function handlePropImg(input, type) {
+async function handlePropImg(input, type) {
   const file = input.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    const img = new Image();
-    img.onload = () => {
-      const maxW = 800, maxH = 800;
-      let w = img.width, h = img.height;
-      if (w > maxW || h > maxH) {
-        const r = Math.min(maxW/w, maxH/h);
-        w = Math.round(w*r); h = Math.round(h*r);
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      const b64 = canvas.toDataURL('image/jpeg', 0.80);
-      if (type==='prop') {
-        document.getElementById('img-prop-thumb').src = b64;
-        document.getElementById('img-prop-preview').style.display = '';
-      } else {
-        document.getElementById('img-detail-thumb').src = b64;
-        document.getElementById('img-detail-preview').style.display = '';
-      }
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
+  const thumbEl   = document.getElementById(type==='prop' ? 'img-prop-thumb'    : 'img-detail-thumb');
+  const previewEl = document.getElementById(type==='prop' ? 'img-prop-preview'  : 'img-detail-preview');
+  const b64 = await fileToBase64Compressed(file);
+  thumbEl.src = b64;
+  previewEl.style.display = '';
+  toast('⏳ กำลังอัปโหลดรูปขึ้น Cloud...', '');
+  const url = await uploadToStorage(b64, file.name);
+  if (url) { thumbEl.src = url; toast('✅ อัปโหลดรูปสำเร็จ', 'success'); }
+  else      { toast('⚠️ บันทึกรูปชั่วคราว (ไม่มีอินเตอร์เน็ต)', ''); }
 }
 
 function clearPropImg(type) {
@@ -1680,6 +1705,49 @@ async function sendNtfyForRound(propId, roundIdx) {
 }
 
 // ── Supabase ──────────────────────────────────
+function fileToBase64Compressed(file) {
+  return new Promise(resolve => {
+    const r = new FileReader();
+    r.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const maxW = 800, maxH = 800;
+        let w = img.width, h = img.height;
+        if (w > maxW || h > maxH) { const ratio = Math.min(maxW/w, maxH/h); w = Math.round(w*ratio); h = Math.round(h*ratio); }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(c.toDataURL('image/jpeg', 0.80));
+      };
+      img.src = e.target.result;
+    };
+    r.readAsDataURL(file);
+  });
+}
+
+async function uploadToStorage(base64, filename) {
+  const cfg = S.settings;
+  if (!cfg?.supabaseUrl || !cfg?.supabaseKey) return null;
+  try {
+    const res = await fetch(base64);
+    const blob = await res.blob();
+    const ext = (filename.split('.').pop() || 'jpg').replace(/[^a-zA-Z0-9]/g,'');
+    const path = `${cfg.userKey||'default'}/${Date.now()}_${Math.random().toString(36).slice(2,6)}.${ext}`;
+    const up = await fetch(`${cfg.supabaseUrl}/storage/v1/object/auction-images/${path}`, {
+      method: 'POST',
+      headers: {
+        'apikey': cfg.supabaseKey,
+        'Authorization': 'Bearer ' + cfg.supabaseKey,
+        'Content-Type': blob.type || 'image/jpeg',
+        'x-upsert': 'true'
+      },
+      body: blob
+    });
+    if (!up.ok) return null;
+    return `${cfg.supabaseUrl}/storage/v1/object/public/auction-images/${path}`;
+  } catch(e) { return null; }
+}
+
 function compressForCloud(b64) {
   return new Promise(resolve => {
     if (!b64 || !b64.startsWith('data:')) { resolve(b64); return; }
@@ -1857,7 +1925,7 @@ function calcStorageUsage() {
 }
 
 function confirmClearProps() {
-  if (!confirm(`ลบทรัพย์ทั้งหมด ${S.props.length} รายการ?\nรวมถึงรายการรีโนเวทที่เกี่ยวข้องด้วย\n\nไม่สามารถกู้คืนได้!`)) return;
+  if (!confirm(`ลบทรัพย์ทั้งหมด ${S.props.length} รายการ?\nรวมถึงรายการค่าใช้จ่ายที่เกี่ยวข้องด้วย\n\nไม่สามารถกู้คืนได้!`)) return;
   S.props    = [];
   S.expenses = [];
   S.notifLog = {};
@@ -1867,7 +1935,7 @@ function confirmClearProps() {
 }
 
 function confirmClearImages() {
-  if (!confirm('ลบรูปภาพทั้งหมดในระบบ?\n(รูปทรัพย์ รูปเอกสาร รูปบิลรีโนเวท)\n\nข้อมูลอื่นไม่ได้รับผลกระทบ')) return;
+  if (!confirm('ลบรูปภาพทั้งหมดในระบบ?\n(รูปทรัพย์ รูปเอกสาร รูปบิลค่าใช้จ่าย)\n\nข้อมูลอื่นไม่ได้รับผลกระทบ')) return;
   S.props.forEach(p => {
     p.imgProp = ''; p.imgDetail = '';
     (p.docs||[]).forEach(d => { d.images = []; });
@@ -2091,9 +2159,11 @@ let renoCatFilter = '';
 function populateRenoProps() {
   const sel    = document.getElementById('reno-prop-sel');
   const filter = document.getElementById('reno-filter');
-  const opts   = S.props.map(p=>`<option value="${p.id}">${p.code ? p.code+' — '+p.name : p.name}</option>`).join('');
-  if (sel)    sel.innerHTML    = '<option value="">— เลือกทรัพย์ —</option>'+opts;
-  if (filter) filter.innerHTML = '<option value="">ทั้งหมด</option>'+opts;
+  const wonProps = S.props.filter(p => p.status === 'won');
+  const opts = wonProps.map(p=>`<option value="${p.id}">${p.code ? p.code+' — '+p.name : p.name}</option>`).join('');
+  const allOpts = S.props.map(p=>`<option value="${p.id}">${p.code ? p.code+' — '+p.name : p.name}</option>`).join('');
+  if (sel)    sel.innerHTML    = '<option value="">— เลือกทรัพย์ (ชนะประมูล) —</option>'+opts;
+  if (filter) filter.innerHTML = '<option value="">ทั้งหมด</option>'+allOpts;
 }
 
 function openRenoForProp(propId) {
@@ -2138,23 +2208,24 @@ function propDocsHtml(p) {
   }).join('');
 }
 
-function handleRenoImgUpload(ev) {
+async function handleRenoImgUpload(ev) {
   const files = [...ev.target.files];
   const preview = document.getElementById('reno-imgs-preview');
-  files.forEach(f => {
-    const r = new FileReader();
-    r.onload = e => {
-      const idx = renoTmpImgs.length;
-      renoTmpImgs.push({name:f.name, data:e.target.result});
-      const d = document.createElement('div');
-      d.className = 'img-thumb';
-      d.innerHTML = `<img src="${e.target.result}" onclick="showLightbox('${e.target.result}')" />
-                     <button class="img-del" onclick="renoTmpImgs.splice(${idx},1);this.parentNode.remove()">✕</button>
-                     <div class="img-label">${f.name}</div>`;
-      preview.appendChild(d);
-    };
-    r.readAsDataURL(f);
-  });
+  toast('⏳ กำลังอัปโหลดรูป...', '');
+  for (const f of files) {
+    const b64 = await fileToBase64Compressed(f);
+    const url = await uploadToStorage(b64, f.name);
+    const src = url || b64;
+    const idx = renoTmpImgs.length;
+    renoTmpImgs.push({name: f.name, data: src});
+    const d = document.createElement('div');
+    d.className = 'img-thumb';
+    d.innerHTML = `<img src="${src}" onclick="showLightbox('${src}')" />
+                   <button class="img-del" onclick="renoTmpImgs.splice(${idx},1);this.parentNode.remove()">✕</button>
+                   <div class="img-label">${f.name}</div>`;
+    preview.appendChild(d);
+  }
+  toast('✅ อัปโหลดรูปสำเร็จ', 'success');
   ev.target.value = '';
 }
 
@@ -2165,6 +2236,8 @@ function clearRenoForm() {
   ['reno-date','reno-desc','reno-vendor','reno-amount'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
+  const cb = document.getElementById('reno-reimbursed');
+  if (cb) cb.checked = false;
 }
 
 function saveReno() {
@@ -2180,10 +2253,11 @@ function saveReno() {
   const editId = document.getElementById('reno-edit-id').value;
   const data = {
     propId, date: dateISO, desc, amount,
-    cat:    document.getElementById('reno-cat').value,
-    vendor: document.getElementById('reno-vendor').value.trim(),
-    pay:    document.getElementById('reno-pay').value,
-    images: [...renoTmpImgs],
+    cat:        document.getElementById('reno-cat').value,
+    vendor:     document.getElementById('reno-vendor').value.trim(),
+    pay:        document.getElementById('reno-pay').value,
+    reimbursed: document.getElementById('reno-reimbursed').checked,
+    images:     [...renoTmpImgs],
   };
   if (editId) {
     const e = S.expenses.find(x=>x.id===editId);
@@ -2200,6 +2274,30 @@ function deleteExpense(id) {
   S.expenses = S.expenses.filter(x=>x.id!==id); saveS(); renderReno(); renderProps();
 }
 
+function editExpense(id) {
+  const e = S.expenses.find(x=>x.id===id);
+  if (!e) return;
+  openModal('modal-reno');
+  setTimeout(() => {
+    document.getElementById('reno-edit-id').value = e.id;
+    document.getElementById('reno-prop-sel').value = e.propId;
+    document.getElementById('reno-date').value = isoToBE(e.date);
+    document.getElementById('reno-desc').value = e.desc;
+    document.getElementById('reno-cat').value = e.cat || 'อื่นๆ';
+    document.getElementById('reno-amount').value = fmtNum(e.amount);
+    document.getElementById('reno-vendor').value = e.vendor || '';
+    document.getElementById('reno-pay').value = e.pay || 'เงินสด';
+    document.getElementById('reno-reimbursed').checked = !!e.reimbursed;
+    renoTmpImgs = [...(e.images||[])];
+    const prev = document.getElementById('reno-imgs-preview');
+    prev.innerHTML = renoTmpImgs.map((img,idx)=>`
+      <div class="img-item" style="position:relative;display:inline-block;">
+        <img src="${img.data}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;">
+        <button class="img-del" onclick="renoTmpImgs.splice(${idx},1);this.parentNode.remove()">✕</button>
+      </div>`).join('');
+  }, 60);
+}
+
 function renderReno() {
   const filterPropId = document.getElementById('reno-filter').value;
   let list = S.expenses;
@@ -2208,7 +2306,8 @@ function renderReno() {
   list = [...list].sort((a,b)=>b.date.localeCompare(a.date));
 
   const baseList = S.expenses.filter(e=>!filterPropId||e.propId===filterPropId);
-  const total    = baseList.reduce((s,e)=>s+Number(e.amount||0),0);
+  const total    = baseList.filter(e=>!e.reimbursed).reduce((s,e)=>s+Number(e.amount||0),0);
+  const reimTotal = baseList.filter(e=>e.reimbursed).reduce((s,e)=>s+Number(e.amount||0),0);
   const propName = filterPropId?(S.props.find(p=>p.id===filterPropId)||{}).name:'ทั้งหมด';
 
   document.getElementById('reno-summary-bar').innerHTML = `
@@ -2217,6 +2316,10 @@ function renderReno() {
         <div class="reno-stat-num">${fmtNum(total)}</div>
         <div class="reno-stat-label">ค่าใช้จ่ายรวม (฿)</div>
       </div>
+      ${reimTotal>0?`<div class="reno-stat">
+        <div class="reno-stat-num" style="color:var(--blue)">${fmtNum(reimTotal)}</div>
+        <div class="reno-stat-label">เบิกแล้ว (฿)</div>
+      </div>`:''}
       <div class="reno-stat">
         <div class="reno-stat-num">${baseList.length}</div>
         <div class="reno-stat-label">รายการ</div>
@@ -2240,15 +2343,17 @@ function renderReno() {
   let html = '';
   Object.entries(byProp).forEach(([pid,items]) => {
     const prop = S.props.find(p=>p.id===pid);
-    const sub  = items.reduce((s,e)=>s+Number(e.amount||0),0);
-    html += `<div class="section-title">🏠 ${prop?prop.name:'(ทรัพย์ถูกลบ)'} — รวม ${fmtPrice(sub)}</div>`;
+    const sub  = items.filter(e=>!e.reimbursed).reduce((s,e)=>s+Number(e.amount||0),0);
+    const subReim = items.filter(e=>e.reimbursed).reduce((s,e)=>s+Number(e.amount||0),0);
+    html += `<div class="section-title">🏠 ${prop?prop.name:'(ทรัพย์ถูกลบ)'} — รวม ${fmtPrice(sub)}${subReim>0?` <span style="color:var(--blue);font-size:12px;font-weight:400">(เบิกแล้ว ${fmtPrice(subReim)})</span>`:''}</div>`;
     html += items.map(e=>`
-      <div class="expense-row">
+      <div class="expense-row${e.reimbursed?' reimbursed-row':''}">
         <div class="expense-date">${fmtDate(e.date)}</div>
-        <div>
-          <div class="expense-title">${e.desc}</div>
+        <div style="flex:1;min-width:0">
+          <div class="expense-title" style="${e.reimbursed?'color:var(--gray);text-decoration:line-through':''}">${e.desc}</div>
           <div class="expense-sub">
             <span class="badge badge-gray" style="font-size:10px;">${e.cat||'อื่นๆ'}</span>
+            ${e.reimbursed?`<span class="badge" style="font-size:10px;background:var(--blue-lt);color:var(--blue);font-weight:700;">✓ เบิกแล้ว</span>`:''}
             ${e.vendor?' · '+e.vendor:''}${e.pay?' · '+e.pay:''}
           </div>
           ${e.images&&e.images.length?`
@@ -2257,8 +2362,11 @@ function renderReno() {
           </div>`:''}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-          <div class="expense-amount">${fmtPrice(e.amount)}</div>
-          <button class="icon-btn del btn-xs" onclick="deleteExpense('${e.id}')" title="ลบ">🗑</button>
+          <div class="expense-amount" style="${e.reimbursed?'color:var(--blue)':''}">${fmtPrice(e.amount)}</div>
+          <div style="display:flex;gap:4px;">
+            <button class="icon-btn btn-xs" onclick="editExpense('${e.id}')" title="แก้ไข">✏️</button>
+            <button class="icon-btn del btn-xs" onclick="deleteExpense('${e.id}')" title="ลบ">🗑</button>
+          </div>
         </div>
       </div>`).join('');
   });
@@ -2273,7 +2381,12 @@ function renderSummary() {
   const won  = S.props.filter(p=>p.status==='won').length;
   const lost = S.props.filter(p=>p.status==='lost').length;
   const watching = S.props.filter(p=>p.status==='watching').length;
-  const totalExp = S.expenses.reduce((s,e)=>s+Number(e.amount||0),0);
+  const totalExp = S.expenses.filter(e=>!e.reimbursed).reduce((s,e)=>s+Number(e.amount||0),0);
+  const profitProps = S.props.filter(p=>p.status==='won' && Number(p.actualSell)>0).map(p=>{
+    const allExp = S.expenses.filter(e=>e.propId===p.id).reduce((s,e)=>s+Number(e.amount||0),0);
+    const gross  = Number(p.actualSell) - allExp;
+    return { p, allExp, gross, net: gross/2 };
+  });
   const wonDocs = S.props.filter(p=>p.status==='won').map(p=>{
     syncPropDocs(p);
     return { total:p.docs.length, done:p.docs.filter(d=>d.done).length };
@@ -2293,9 +2406,41 @@ function renderSummary() {
         <div class="stat-label">เอกสาร (ชนะประมูล)</div>
         <div class="progress-bar-wrap"><div class="progress-bar" style="width:${docsTotal?Math.round(docsDone/docsTotal*100):0}%"></div></div>
       </div>
-      <div class="stat-card"><div class="stat-num" style="color:var(--navy)">${fmtNum(totalExp)}</div><div class="stat-label">ค่ารีโนเวทรวม (฿)</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--navy)">${fmtNum(totalExp)}</div><div class="stat-label">ค่าใช้จ่ายรวม (ยังไม่เบิก) (฿)</div></div>
       <div class="stat-card"><div class="stat-num" style="color:var(--tg)">${notifProps}</div><div class="stat-label">ทรัพย์มีการแจ้งเตือน</div></div>
     </div>
+
+    ${profitProps.length?`
+    <div class="card">
+      <div class="card-title" style="margin-bottom:14px;">💰 สรุปกำไรทรัพย์ที่ขายแล้ว</div>
+      <div style="overflow-x:auto;">
+        <table class="summary-table">
+          <thead><tr>
+            <th>ทรัพย์</th>
+            <th class="num">ราคาที่ขายได้</th>
+            <th class="num">ค่าใช้จ่ายรวม</th>
+            <th class="num">กำไรรวม</th>
+            <th class="num">กำไรส่วนตัว (÷2)</th>
+          </tr></thead>
+          <tbody>
+            ${profitProps.map(({p,allExp,gross,net})=>`<tr>
+              <td style="font-weight:700">${p.code?`<span style="font-size:11px;background:var(--blue-lt);color:var(--blue);padding:1px 6px;border-radius:4px;margin-right:4px">${p.code}</span>`:''}${p.name}</td>
+              <td class="num" style="color:var(--green);font-weight:800">${fmtNum(Number(p.actualSell))}</td>
+              <td class="num" style="color:var(--red)">${fmtNum(allExp)}</td>
+              <td class="num" style="font-weight:800;color:${gross>=0?'var(--green)':'var(--red)'}">${gross>=0?'+':''}${fmtNum(gross)}</td>
+              <td class="num" style="font-weight:800;color:${net>=0?'var(--navy)':'var(--red)'};font-size:15px">${net>=0?'+':''}${fmtNum(net)}</td>
+            </tr>`).join('')}
+            <tr style="background:var(--navy);">
+              <td style="color:white;font-weight:800;">รวม</td>
+              <td class="num" style="color:white;font-weight:800;">${fmtNum(profitProps.reduce((s,x)=>s+Number(x.p.actualSell),0))}</td>
+              <td class="num" style="color:#FCA5A5;font-weight:700;">${fmtNum(profitProps.reduce((s,x)=>s+x.allExp,0))}</td>
+              <td class="num" style="color:${profitProps.reduce((s,x)=>s+x.gross,0)>=0?'#86EFAC':'#FCA5A5'};font-weight:800;">${fmtNum(profitProps.reduce((s,x)=>s+x.gross,0))}</td>
+              <td class="num" style="color:#86EFAC;font-weight:800;font-size:15px;">${fmtNum(profitProps.reduce((s,x)=>s+x.net,0))}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>`:''}
 
     ${S.props.length?`
     <div class="card">
@@ -2306,7 +2451,7 @@ function renderSummary() {
             <th>#</th><th>ชื่อทรัพย์</th><th>ที่ตั้ง</th>
             <th class="num">ราคาประเมิน</th><th>นัดที่เข้าซื้อ</th>
             <th class="num">ราคาเป้า (ซื้อ)</th><th class="num">ราคาขายที่คาดหวัง</th>
-            <th class="num">ค่ารีโนเวท</th><th>วันนัดเข้าซื้อ</th><th>สถานะ</th>
+            <th class="num">ค่าใช้จ่าย</th><th>วันนัดเข้าซื้อ</th><th>สถานะ</th>
           </tr></thead>
           <tbody>
             ${S.props.map((p,i)=>{
@@ -2346,19 +2491,20 @@ function renderSummary() {
 
     ${S.expenses.length?`
     <div class="card">
-      <div class="card-title" style="margin-bottom:14px;">🔨 สรุปค่ารีโนเวทแยกตามทรัพย์</div>
+      <div class="card-title" style="margin-bottom:14px;">🔨 สรุปค่าใช้จ่ายแยกตามทรัพย์</div>
       <div style="overflow-x:auto;">
         <table class="summary-table">
-          <thead><tr><th>ทรัพย์</th><th class="num">ค่ารีโนเวท (฿)</th><th class="num">จำนวนรายการ</th><th>หมวดใช้จ่ายมากสุด</th></tr></thead>
+          <thead><tr><th>ทรัพย์</th><th class="num">ค่าใช้จ่าย (฿)</th><th class="num">จำนวนรายการ</th><th>หมวดใช้จ่ายมากสุด</th></tr></thead>
           <tbody>
             ${S.props.filter(p=>S.expenses.some(e=>e.propId===p.id)).map(p=>{
               const items = S.expenses.filter(e=>e.propId===p.id);
-              const tot   = items.reduce((s,e)=>s+Number(e.amount||0),0);
-              const bycat = {}; items.forEach(e=>{ bycat[e.cat||'อื่นๆ']=(bycat[e.cat||'อื่นๆ']||0)+Number(e.amount||0); });
+              const tot   = items.filter(e=>!e.reimbursed).reduce((s,e)=>s+Number(e.amount||0),0);
+              const reimb = items.filter(e=>e.reimbursed).reduce((s,e)=>s+Number(e.amount||0),0);
+              const bycat = {}; items.filter(e=>!e.reimbursed).forEach(e=>{ bycat[e.cat||'อื่นๆ']=(bycat[e.cat||'อื่นๆ']||0)+Number(e.amount||0); });
               const top   = Object.entries(bycat).sort((a,b)=>b[1]-a[1])[0];
               return `<tr>
                 <td style="font-weight:700">${p.name}</td>
-                <td class="num" style="color:var(--red);font-weight:800">${fmtNum(tot)}</td>
+                <td class="num" style="color:var(--red);font-weight:800">${fmtNum(tot)}${reimb>0?`<br><span style="font-size:10px;color:var(--blue);font-weight:400">(เบิกแล้ว ${fmtNum(reimb)})</span>`:''}</td>
                 <td class="num">${items.length}</td>
                 <td><span class="badge badge-amber">${top?top[0]:'—'}</span></td>
               </tr>`;
@@ -2465,7 +2611,7 @@ function calcPopulatePropSel() {
   sel.innerHTML = '<option value="">— กรอกเองด้านล่าง —</option>' +
     S.props.map(p => {
       const appr = p.appraisal || p.price;
-      return `<option value="${p.id}">${p.name}${appr ? ' — ประเมิณ ' + fmtPrice(appr) : ''}</option>`;
+      return `<option value="${p.id}">${p.code ? '['+p.code+'] ' : ''}${p.name}${appr ? ' — ประเมิณ ' + fmtPrice(appr) : ''}</option>`;
     }).join('');
   if (prev) sel.value = prev;
 }
