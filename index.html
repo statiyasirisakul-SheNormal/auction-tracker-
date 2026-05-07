@@ -445,8 +445,11 @@ input, select, textarea { font-size: 16px !important; }
   <!-- ══ SUMMARY ════════════════════════════════════════ -->
   <div class="tab-panel" id="tab-summary">
     <div class="card" style="margin-bottom:16px;">
+      <div class="card-header" style="margin-bottom:12px;">
+        <div class="card-title">📊 สรุปภาพรวม</div>
+      </div>
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-        <span style="font-size:13px;font-weight:700;color:var(--navy);white-space:nowrap;">🏠 เลือกทรัพย์:</span>
+        <span style="font-size:13px;font-weight:700;color:var(--gray);white-space:nowrap;">เลือกทรัพย์:</span>
         <select class="form-select" id="summary-prop-sel" style="flex:1;max-width:320px;" onchange="renderSummary()">
           <option value="">— ภาพรวมทั้งหมด —</option>
         </select>
