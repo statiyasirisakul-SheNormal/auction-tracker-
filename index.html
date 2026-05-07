@@ -482,24 +482,42 @@ input, select, textarea { font-size: 16px !important; }
 
         <div style="padding:18px 20px">
 
-          <!-- Input grid -->
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px">
-            <div>
-              <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:4px">ราคาขายที่คาดหวัง *</div>
-              <input class="form-input" type="text" inputmode="numeric" id="calc-sell" placeholder="2,650,000" oninput="fmtNumInput(this);calcUpdate()" style="padding:8px 10px">
+          <!-- Input grid — full form always visible -->
+          <div style="background:var(--blue-lt);border-radius:10px;padding:14px;margin-bottom:18px">
+            <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:10px">💰 ข้อมูลราคา</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px">
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:4px">ราคาขายที่คาดหวัง *</div>
+                <input class="form-input" type="text" inputmode="numeric" id="calc-sell" placeholder="2,650,000" oninput="fmtNumInput(this);calcUpdate()" style="padding:8px 10px">
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:4px">ราคาประเมิณที่ดิน *</div>
+                <input class="form-input" type="text" inputmode="numeric" id="calc-appraisal" placeholder="2,285,947" oninput="fmtNumInput(this);calcUpdate()" style="padding:8px 10px">
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:4px">ราคาขายตลาด (อ้างอิง)</div>
+                <input class="form-input" type="text" inputmode="numeric" id="calc-market" placeholder="ไม่บังคับ" oninput="fmtNumInput(this);calcUpdate()" style="padding:8px 10px">
+              </div>
             </div>
-            <div>
-              <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:4px">ราคาประเมิณที่ดิน *</div>
-              <input class="form-input" type="text" inputmode="numeric" id="calc-appraisal" placeholder="2,285,947" oninput="fmtNumInput(this);calcUpdate()" style="padding:8px 10px">
-            </div>
-            <div>
-              <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:4px">ราคาขายตลาด (อ้างอิง)</div>
-              <input class="form-input" type="text" inputmode="numeric" id="calc-market" placeholder="ไม่บังคับ" oninput="fmtNumInput(this);calcUpdate()" style="padding:8px 10px">
+            <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:10px;margin-top:4px">🔧 ค่าใช้จ่ายเพิ่มเติม</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:4px">ค่าซ่อมแซม / รีโนเวท</div>
+                <input class="form-input" type="text" inputmode="numeric" id="calc-repair-input" placeholder="0" oninput="fmtNumInput(this);document.getElementById('calc-repair').value=this.value.replace(/[^0-9.]/g,'');calcUpdate()" style="padding:8px 10px">
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:4px">ค่านายหน้า</div>
+                <input class="form-input" type="text" inputmode="numeric" id="calc-broker-input" placeholder="0" oninput="fmtNumInput(this);document.getElementById('calc-broker').value=this.value.replace(/[^0-9.]/g,'');calcUpdate()" style="padding:8px 10px">
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:4px">ยอดจำนอง (ค้างชำระ)</div>
+                <input class="form-input" type="text" inputmode="numeric" id="calc-mortgage-input" placeholder="0" oninput="fmtNumInput(this);document.getElementById('calc-mortgage').value=this.value.replace(/[^0-9.]/g,'');calcUpdate()" style="padding:8px 10px">
+              </div>
             </div>
           </div>
 
-          <!-- Fee table — like Excel -->
-          <div id="calc-result" style="display:none">
+          <!-- Fee table — always visible -->
+          <div id="calc-result">
             <div style="overflow-x:auto">
               <table style="width:100%;border-collapse:collapse;font-size:13px">
                 <colgroup>
@@ -2737,6 +2755,10 @@ function calcFillFromProp() {
   document.getElementById('calc-broker').value         = p.calcBroker   || 0;
   document.getElementById('calc-mortgage').value       = p.calcMortgage || '';
   document.getElementById('calc-custom-bid-store').value = p.calcCustomBid || '';
+  // sync visible inputs
+  setNumInput('calc-repair-input',   p.calcRepair   || 0);
+  setNumInput('calc-broker-input',   p.calcBroker   || 0);
+  setNumInput('calc-mortgage-input', p.calcMortgage || 0);
   // show header
   if (hdr) {
     hdr.style.display = '';
@@ -2771,8 +2793,11 @@ const pctColor = v => v >= 0.15 ? '#1E6B45' : v >= 0.05 ? '#B45309' : '#B91C1C';
 const pctBg    = v => v >= 0.15 ? '#E8F5EE' : v >= 0.05 ? '#FFFBEB' : '#FEF2F2';
 
 function calcClearAll() {
-  ['calc-appraisal','calc-sell','calc-market'].forEach(id => {
+  ['calc-appraisal','calc-sell','calc-market','calc-repair-input','calc-broker-input','calc-mortgage-input'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value='';
+  });
+  ['calc-repair','calc-broker','calc-mortgage'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = id==='calc-mortgage' ? '' : '0';
   });
   const sel = document.getElementById('calc-prop-sel');
   if (sel) sel.value = '';
