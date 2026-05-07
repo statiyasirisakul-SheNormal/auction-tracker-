@@ -1073,7 +1073,7 @@ function switchTab(t) {
   document.getElementById('tab-'+t).classList.add('active');
   if (t === 'summary') renderSummary();
   if (t === 'reno')    renderReno();
-  if (t === 'calc')    calcPopulatePropSel();
+  if (t === 'calc')    { calcPopulatePropSel(); calcUpdate(); }
 }
 
 function updateBadges() {
@@ -2792,16 +2792,12 @@ function calcUpdate() {
 
   const result = document.getElementById('calc-result');
   const empty  = document.getElementById('calc-empty');
+  if (empty) empty.style.display = 'none';
+  if (result) result.style.display = '';
 
   const saveBar = document.getElementById('calc-save-bar');
-  if (!appraisal || !sell) {
-    result.style.display='none'; empty.style.display='';
-    if (saveBar) saveBar.style.display='none';
-    return;
-  }
-  result.style.display=''; empty.style.display='none';
   const hasPropSel = !!document.getElementById('calc-prop-sel')?.value;
-  if (saveBar) saveBar.style.display = hasPropSel ? '' : 'none';
+  if (saveBar) saveBar.style.display = (hasPropSel && appraisal && sell) ? '' : 'none';
 
   // ── fee rows ──
   const fees = [
@@ -2823,9 +2819,10 @@ function calcUpdate() {
   const td = (txt, style='') => `<td style="padding:7px 10px;${style}">${txt}</td>`;
   document.getElementById('calc-fee-rows').innerHTML = fees.map(f => {
     const rowStyle = f.isHeader ? 'background:#F8FAFC;font-weight:700;border-bottom:1px solid var(--border)' : 'border-bottom:1px dashed #EEE';
+    const noVal = !appraisal && !sell;
     const valCell = f.editable
       ? `<input type="text" inputmode="numeric" value="${f.val ? Number(f.val).toLocaleString('th-TH') : ''}" placeholder="0" style="width:100%;border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:12px;text-align:right" oninput="fmtNumInput(this);document.getElementById('calc-${f.editable}').value=this.value.replace(/[^0-9.]/g,'');calcUpdate()">`
-      : `<span style="font-weight:${f.isHeader?'700':'600'};color:${f.isHeader?'var(--navy)':'#374151'}">${f.isHeader ? fmtN(f.val) : fmtN(Math.round(f.val*100)/100)}</span>`;
+      : `<span style="font-weight:${f.isHeader?'700':'600'};color:${f.isHeader?'var(--navy)':'#374151'}">${noVal&&!f.isHeader ? '—' : f.isHeader ? (f.val?fmtN(f.val):'—') : fmtN(Math.round(f.val*100)/100)}</span>`;
     return `<tr style="${rowStyle}">
       ${td(f.label, f.isHeader?'color:var(--navy)':'color:#374151')}
       ${td(f.rate, 'text-align:center;color:var(--blue);font-weight:700')}
@@ -2834,7 +2831,7 @@ function calcUpdate() {
     </tr>`;
   }).join('');
 
-  document.getElementById('calc-total-cost').textContent = fmtB(Math.round(totalCost));
+  document.getElementById('calc-total-cost').textContent = (appraisal||sell) ? fmtB(Math.round(totalCost)) : '—';
 
   // ── profit table ──
   const selPropId   = document.getElementById('calc-prop-sel').value;
@@ -2854,7 +2851,7 @@ function calcUpdate() {
   ];
 
   document.getElementById('calc-profit-rows').innerHTML = levels.map(lv => {
-    const buyPrice = lv.custom ? customBid : Math.round(appraisal * (1 - lv.disc));
+    const buyPrice = lv.custom ? customBid : (appraisal ? Math.round(appraisal * (1 - lv.disc)) : 0);
     const totalInvest = buyPrice + totalCost;
     const profit = sell - totalInvest;
     const profitPct = totalInvest > 0 ? profit / totalInvest : 0;
