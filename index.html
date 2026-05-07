@@ -2298,10 +2298,22 @@ function toggleExpenseReimbursed(id) {
 function editExpense(id) {
   const e = S.expenses.find(x=>x.id===id);
   if (!e) return;
+  populateRenoProps();
   openModal('modal-reno');
   setTimeout(() => {
+    const sel = document.getElementById('reno-prop-sel');
+    // ถ้า property ไม่อยู่ใน dropdown (เช่นไม่ใช่ won แล้ว) ให้เพิ่มเข้าไปชั่วคราว
+    if (sel && e.propId && ![...sel.options].some(o=>o.value===e.propId)) {
+      const prop = S.props.find(p=>p.id===e.propId);
+      if (prop) {
+        const opt = document.createElement('option');
+        opt.value = prop.id;
+        opt.textContent = (prop.code ? prop.code+' — ' : '') + prop.name;
+        sel.appendChild(opt);
+      }
+    }
     document.getElementById('reno-edit-id').value = e.id;
-    document.getElementById('reno-prop-sel').value = e.propId;
+    if (sel) sel.value = e.propId;
     document.getElementById('reno-date').value = e.date;
     document.getElementById('reno-desc').value = e.desc;
     document.getElementById('reno-cat').value = e.cat || 'อื่นๆ';
@@ -2316,7 +2328,7 @@ function editExpense(id) {
         <img src="${img.data}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;">
         <button class="img-del" onclick="renoTmpImgs.splice(${idx},1);this.parentNode.remove()">✕</button>
       </div>`).join('');
-  }, 60);
+  }, 100);
 }
 
 function renderReno() {
