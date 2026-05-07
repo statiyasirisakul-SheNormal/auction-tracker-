@@ -565,6 +565,7 @@ input, select, textarea { font-size: 16px !important; }
 
         <input type="hidden" id="calc-repair" value="0">
         <input type="hidden" id="calc-broker" value="0">
+        <input type="hidden" id="calc-broker-pct" value="">
         <input type="hidden" id="calc-mortgage" value="">
         <input type="hidden" id="calc-custom-bid-store" value="">
         <div id="calc-prop-ref" style="display:none"></div>
@@ -2736,9 +2737,10 @@ function calcFillFromProp() {
   if (appr) setNumInput('calc-appraisal', appr);
   if (p.targetSell) setNumInput('calc-sell', p.targetSell);
   // โหลดค่า repair / broker / customBid ที่บันทึกไว้
-  document.getElementById('calc-repair').value         = p.calcRepair   || 0;
-  document.getElementById('calc-broker').value         = p.calcBroker   || 0;
-  document.getElementById('calc-mortgage').value       = p.calcMortgage || '';
+  document.getElementById('calc-repair').value         = p.calcRepair    || 0;
+  document.getElementById('calc-broker').value         = p.calcBroker    || 0;
+  document.getElementById('calc-broker-pct').value     = p.calcBrokerPct || '';
+  document.getElementById('calc-mortgage').value       = p.calcMortgage  || '';
   document.getElementById('calc-custom-bid-store').value = p.calcCustomBid || '';
   // show header
   if (hdr) {
@@ -2764,6 +2766,16 @@ function fmtNumInput(el) {
 function parseNumInput(val) {
   return Number(String(val||'').replace(/[^0-9.]/g, '')) || 0;
 }
+function calcBrokerFromPct(el) {
+  const pct = parseFloat(el.value) || 0;
+  document.getElementById('calc-broker-pct').value = pct || '';
+  const sell = parseNumInput(document.getElementById('calc-sell').value);
+  const amount = pct > 0 && sell > 0 ? Math.round(sell * pct / 100) : 0;
+  document.getElementById('calc-broker').value = amount;
+  const disp = document.getElementById('calc-broker-display');
+  if (disp) disp.textContent = amount ? fmtN(amount) : '—';
+  calcUpdate(true);
+}
 function setNumInput(id, val) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -2777,8 +2789,8 @@ function calcClearAll() {
   ['calc-appraisal','calc-sell','calc-market'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value='';
   });
-  ['calc-repair','calc-broker','calc-mortgage'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.value = id==='calc-mortgage' ? '' : '0';
+  ['calc-repair','calc-broker','calc-broker-pct','calc-mortgage'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = (id==='calc-mortgage'||id==='calc-broker-pct') ? '' : '0';
   });
   const sel = document.getElementById('calc-prop-sel');
   if (sel) sel.value = '';
@@ -2791,10 +2803,14 @@ function calcUpdate(skipFeeRows) {
   const sell      = parseNumInput(document.getElementById('calc-sell').value);
   const market    = parseNumInput(document.getElementById('calc-market')?.value);
 
-  // ค่าซ่อมแซม / นายหน้า อ่านจาก hidden inputs (ถูก set โดย calcFillFromProp)
   const repair   = Number(document.getElementById('calc-repair')?.value) || 0;
-  const broker   = Number(document.getElementById('calc-broker')?.value) || 0;
   const mortgage = Number(document.getElementById('calc-mortgage')?.value) || 0;
+  // ค่านายหน้า: คำนวณจาก % × ราคาขาย ถ้ามี % อยู่
+  const brokerPct = parseFloat(document.getElementById('calc-broker-pct')?.value) || 0;
+  if (brokerPct > 0 && sell > 0) {
+    document.getElementById('calc-broker').value = Math.round(sell * brokerPct / 100);
+  }
+  const broker = Number(document.getElementById('calc-broker')?.value) || 0;
 
   const result = document.getElementById('calc-result');
   const empty  = document.getElementById('calc-empty');
@@ -2813,26 +2829,32 @@ function calcUpdate(skipFeeRows) {
     { label:'ค่าภาษีเงินได้บุคคล (เข้า)',   rate:'2%',    baseLabel:'ของราคาประเมิณ',           val: appraisal * 0.02 },
     { label:'ค่าธรรมเนียมโอนออก',           rate:'1%',    baseLabel:'ของราคาขาย',              val: sell * 0.01 },
     { label:'ภาษีเงินได้ ณ ที่จ่าย',        rate:'1%',    baseLabel:'ของราคาขาย',              val: sell * 0.01 },
-    { label:'ค่าซ่อมแซม',                   rate:'',      baseLabel:'วิเคราะห์จากพื้นที่',     val: repair,      editable:'repair' },
+    { label:'ค่าซ่อมแซม วิเคราะห์จากพื้นที่จริง', rate:'', baseLabel:'',                    val: repair,      editable:'repair' },
     { label:'ค่าอากร (กรมบังคับคดี)',        rate:'0.5%',  baseLabel:'ของราคาซื้อ',             val: appraisal * 0.005 },
     { label:'ค่าจดจำนอง',                   rate:'1%',    baseLabel:'ของราคาขาย',              val: sell * 0.01 },
     { label:'ค่าภาษีธุรกิจเฉพาะ',           rate:'3.3%',  baseLabel:'ของราคาขาย',              val: sell * 0.033 },
-    { label:'ค่านายหน้า',                   rate:'',      baseLabel:'ของราคาขาย',              val: broker,      editable:'broker' },
+    { label:'ค่านายหน้า',                   rate:'',      baseLabel:'ของราคาขาย',              val: broker,      pctEditable: true },
   ];
 
   const totalCost = fees.filter(f=>!f.isHeader).reduce((s,f)=>s+f.val, 0);
 
   const td = (txt, style='') => `<td style="padding:7px 10px;${style}">${txt}</td>`;
   if (!skipFeeRows) {
+    const brokerPctStored = document.getElementById('calc-broker-pct')?.value || '';
     document.getElementById('calc-fee-rows').innerHTML = fees.map(f => {
       const rowStyle = f.isHeader ? 'background:#F8FAFC;font-weight:700;border-bottom:1px solid var(--border)' : 'border-bottom:1px dashed #EEE';
       const noVal = !appraisal && !sell;
-      const valCell = f.editable
-        ? `<input type="text" inputmode="numeric" value="${f.val ? Number(f.val).toLocaleString('th-TH') : ''}" placeholder="0" style="width:100%;border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:12px;text-align:right" oninput="fmtNumInput(this);document.getElementById('calc-${f.editable}').value=this.value.replace(/[^0-9.]/g,'');calcUpdate(true)">`
-        : `<span style="font-weight:${f.isHeader?'700':'600'};color:${f.isHeader?'var(--navy)':'#374151'}">${noVal&&!f.isHeader ? '—' : f.isHeader ? (f.val?fmtN(f.val):'—') : fmtN(Math.round(f.val*100)/100)}</span>`;
+      const rateContent = f.pctEditable
+        ? `<span style="display:inline-flex;align-items:center;gap:2px"><input type="text" inputmode="decimal" id="calc-broker-pct-input" value="${brokerPctStored}" placeholder="?" style="width:38px;border:1px solid var(--blue);border-radius:4px;padding:2px 4px;font-size:12px;text-align:center;color:var(--blue);font-weight:700" oninput="calcBrokerFromPct(this)">%</span>`
+        : f.rate;
+      const valCell = f.pctEditable
+        ? `<span id="calc-broker-display" style="font-weight:600;color:#374151">${broker ? fmtN(Math.round(broker)) : '—'}</span>`
+        : f.editable
+          ? `<input type="text" inputmode="numeric" value="${f.val ? Number(f.val).toLocaleString('th-TH') : ''}" placeholder="0" style="width:100%;border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:12px;text-align:right" oninput="fmtNumInput(this);document.getElementById('calc-${f.editable}').value=this.value.replace(/[^0-9.]/g,'');calcUpdate(true)">`
+          : `<span style="font-weight:${f.isHeader?'700':'600'};color:${f.isHeader?'var(--navy)':'#374151'}">${noVal&&!f.isHeader ? '—' : f.isHeader ? (f.val?fmtN(f.val):'—') : fmtN(Math.round(f.val*100)/100)}</span>`;
       return `<tr style="${rowStyle}">
         ${td(f.label, f.isHeader?'color:var(--navy)':'color:#374151')}
-        ${td(f.rate, 'text-align:center;color:var(--blue);font-weight:700')}
+        ${td(rateContent, 'text-align:center;color:var(--blue);font-weight:700')}
         ${td(f.baseLabel, 'color:var(--gray);font-size:12px')}
         ${td(valCell, 'text-align:right')}
       </tr>`;
@@ -2898,9 +2920,10 @@ function calcSaveToProperty() {
   const p = S.props.find(x=>x.id===selPropId); if (!p) return;
   p.appraisal    = parseNumInput(document.getElementById('calc-appraisal').value);
   p.targetSell   = parseNumInput(document.getElementById('calc-sell').value);
-  p.calcRepair   = Number(document.getElementById('calc-repair').value)  || 0;
-  p.calcBroker   = Number(document.getElementById('calc-broker').value)  || 0;
-  p.calcMortgage = Number(document.getElementById('calc-mortgage').value) || 0;
+  p.calcRepair    = Number(document.getElementById('calc-repair').value)    || 0;
+  p.calcBroker    = Number(document.getElementById('calc-broker').value)    || 0;
+  p.calcBrokerPct = parseFloat(document.getElementById('calc-broker-pct').value) || 0;
+  p.calcMortgage  = Number(document.getElementById('calc-mortgage').value)  || 0;
   p.calcCustomBid= parseNumInput(document.getElementById('calc-custom-bid')?.value);
   saveS(); renderProps(); toast('✓ บันทึกข้อมูลการคำนวณกลับทรัพย์แล้ว');
 }
