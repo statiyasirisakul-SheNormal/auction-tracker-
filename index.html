@@ -801,7 +801,7 @@ input, select, textarea { font-size: 16px !important; }
       </div>
       <div class="form-group">
         <label class="form-label">วันที่ *</label>
-        <input class="form-input" type="text" inputmode="numeric" id="reno-date" placeholder="วว/ดด/ปปปป" oninput="validateBEInput(this)" />
+        <input class="form-input" type="date" id="reno-date" />
       </div>
     </div>
     <div class="form-row">
@@ -2242,7 +2242,7 @@ function clearRenoForm() {
 
 function saveReno() {
   const propId = document.getElementById('reno-prop-sel').value;
-  const dateISO = beToISO(document.getElementById('reno-date').value);
+  const dateISO = document.getElementById('reno-date').value;
   const desc   = document.getElementById('reno-desc').value.trim();
   const amount = parseNumInput(document.getElementById('reno-amount').value);
   if (!propId)  { alert('กรุณาเลือกทรัพย์'); return; }
@@ -2281,7 +2281,7 @@ function editExpense(id) {
   setTimeout(() => {
     document.getElementById('reno-edit-id').value = e.id;
     document.getElementById('reno-prop-sel').value = e.propId;
-    document.getElementById('reno-date').value = isoToBE(e.date);
+    document.getElementById('reno-date').value = e.date;
     document.getElementById('reno-desc').value = e.desc;
     document.getElementById('reno-cat').value = e.cat || 'อื่นๆ';
     document.getElementById('reno-amount').value = fmtNum(e.amount);
