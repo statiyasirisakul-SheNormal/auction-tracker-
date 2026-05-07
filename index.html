@@ -499,21 +499,6 @@ input, select, textarea { font-size: 16px !important; }
                 <input class="form-input" type="text" inputmode="numeric" id="calc-market" placeholder="ไม่บังคับ" oninput="fmtNumInput(this);calcUpdate()" style="padding:8px 10px">
               </div>
             </div>
-            <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:10px;margin-top:4px">🔧 ค่าใช้จ่ายเพิ่มเติม</div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
-              <div>
-                <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:4px">ค่าซ่อมแซม (วิเคราะห์จากพื้นที่)</div>
-                <input class="form-input" type="text" inputmode="numeric" id="calc-repair-input" placeholder="0" oninput="fmtNumInput(this);document.getElementById('calc-repair').value=this.value.replace(/[^0-9.]/g,'');calcUpdate()" style="padding:8px 10px">
-              </div>
-              <div>
-                <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:4px">ค่านายหน้า</div>
-                <input class="form-input" type="text" inputmode="numeric" id="calc-broker-input" placeholder="0" oninput="fmtNumInput(this);document.getElementById('calc-broker').value=this.value.replace(/[^0-9.]/g,'');calcUpdate()" style="padding:8px 10px">
-              </div>
-              <div>
-                <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:4px">ยอดจำนอง (ค้างชำระ)</div>
-                <input class="form-input" type="text" inputmode="numeric" id="calc-mortgage-input" placeholder="0" oninput="fmtNumInput(this);document.getElementById('calc-mortgage').value=this.value.replace(/[^0-9.]/g,'');calcUpdate()" style="padding:8px 10px">
-              </div>
-            </div>
           </div>
 
           <!-- Fee table — always visible -->
@@ -2755,10 +2740,6 @@ function calcFillFromProp() {
   document.getElementById('calc-broker').value         = p.calcBroker   || 0;
   document.getElementById('calc-mortgage').value       = p.calcMortgage || '';
   document.getElementById('calc-custom-bid-store').value = p.calcCustomBid || '';
-  // sync visible inputs
-  setNumInput('calc-repair-input',   p.calcRepair   || 0);
-  setNumInput('calc-broker-input',   p.calcBroker   || 0);
-  setNumInput('calc-mortgage-input', p.calcMortgage || 0);
   // show header
   if (hdr) {
     hdr.style.display = '';
@@ -2793,7 +2774,7 @@ const pctColor = v => v >= 0.15 ? '#1E6B45' : v >= 0.05 ? '#B45309' : '#B91C1C';
 const pctBg    = v => v >= 0.15 ? '#E8F5EE' : v >= 0.05 ? '#FFFBEB' : '#FEF2F2';
 
 function calcClearAll() {
-  ['calc-appraisal','calc-sell','calc-market','calc-repair-input','calc-broker-input','calc-mortgage-input'].forEach(id => {
+  ['calc-appraisal','calc-sell','calc-market'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value='';
   });
   ['calc-repair','calc-broker','calc-mortgage'].forEach(id => {
@@ -2805,7 +2786,7 @@ function calcClearAll() {
   calcUpdate();
 }
 
-function calcUpdate() {
+function calcUpdate(skipFeeRows) {
   const appraisal = parseNumInput(document.getElementById('calc-appraisal').value);
   const sell      = parseNumInput(document.getElementById('calc-sell').value);
   const market    = parseNumInput(document.getElementById('calc-market')?.value);
@@ -2842,19 +2823,21 @@ function calcUpdate() {
   const totalCost = fees.filter(f=>!f.isHeader).reduce((s,f)=>s+f.val, 0);
 
   const td = (txt, style='') => `<td style="padding:7px 10px;${style}">${txt}</td>`;
-  document.getElementById('calc-fee-rows').innerHTML = fees.map(f => {
-    const rowStyle = f.isHeader ? 'background:#F8FAFC;font-weight:700;border-bottom:1px solid var(--border)' : 'border-bottom:1px dashed #EEE';
-    const noVal = !appraisal && !sell;
-    const valCell = f.editable
-      ? `<span style="font-weight:600;color:#374151">${f.val ? fmtN(Math.round(f.val)) : '—'}</span>`
-      : `<span style="font-weight:${f.isHeader?'700':'600'};color:${f.isHeader?'var(--navy)':'#374151'}">${noVal&&!f.isHeader ? '—' : f.isHeader ? (f.val?fmtN(f.val):'—') : fmtN(Math.round(f.val*100)/100)}</span>`;
-    return `<tr style="${rowStyle}">
-      ${td(f.label, f.isHeader?'color:var(--navy)':'color:#374151')}
-      ${td(f.rate, 'text-align:center;color:var(--blue);font-weight:700')}
-      ${td(f.baseLabel, 'color:var(--gray);font-size:12px')}
-      ${td(valCell, 'text-align:right')}
-    </tr>`;
-  }).join('');
+  if (!skipFeeRows) {
+    document.getElementById('calc-fee-rows').innerHTML = fees.map(f => {
+      const rowStyle = f.isHeader ? 'background:#F8FAFC;font-weight:700;border-bottom:1px solid var(--border)' : 'border-bottom:1px dashed #EEE';
+      const noVal = !appraisal && !sell;
+      const valCell = f.editable
+        ? `<input type="text" inputmode="numeric" value="${f.val ? Number(f.val).toLocaleString('th-TH') : ''}" placeholder="0" style="width:100%;border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:12px;text-align:right" oninput="fmtNumInput(this);document.getElementById('calc-${f.editable}').value=this.value.replace(/[^0-9.]/g,'');calcUpdate(true)">`
+        : `<span style="font-weight:${f.isHeader?'700':'600'};color:${f.isHeader?'var(--navy)':'#374151'}">${noVal&&!f.isHeader ? '—' : f.isHeader ? (f.val?fmtN(f.val):'—') : fmtN(Math.round(f.val*100)/100)}</span>`;
+      return `<tr style="${rowStyle}">
+        ${td(f.label, f.isHeader?'color:var(--navy)':'color:#374151')}
+        ${td(f.rate, 'text-align:center;color:var(--blue);font-weight:700')}
+        ${td(f.baseLabel, 'color:var(--gray);font-size:12px')}
+        ${td(valCell, 'text-align:right')}
+      </tr>`;
+    }).join('');
+  }
 
   document.getElementById('calc-total-cost').textContent = (appraisal||sell) ? fmtB(Math.round(totalCost)) : '—';
 
