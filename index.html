@@ -2604,26 +2604,26 @@ updateBadges();
     if (!Array.isArray(rows)) return;
 
     const localTime  = S.lastModified ? new Date(S.lastModified).getTime() : 0;
-    const localProps = S.props?.length || 0;
+    const localItems = (S.props?.length || 0) + (S.expenses?.length || 0);
 
     if (rows.length === 0) {
-      // Cloud ว่าง → push local ขึ้น
-      if (localProps > 0) {
+      // Cloud ว่าง → push local ขึ้นเฉพาะเมื่อมีข้อมูลจริง
+      if (localItems > 0) {
         await supabaseSave();
         toast('☁️ อัปโหลดข้อมูลขึ้น Cloud สำเร็จ!', 'success');
       }
     } else {
       const cloudTime = new Date(rows[0].updated_at).getTime();
 
-      if (localProps > 0 && localTime === 0) {
+      if (localItems > 0 && localTime === 0) {
         // เครื่องเก่าไม่มี timestamp แต่มีข้อมูล → push ขึ้น cloud
         await supabaseSave();
         toast('☁️ อัปโหลดข้อมูลล่าสุดขึ้น Cloud แล้ว', 'success');
-      } else if (localTime >= cloudTime) {
-        // Local ใหม่กว่าหรือเท่ากัน → push ขึ้น cloud
+      } else if (localTime > 0 && localTime >= cloudTime) {
+        // Local ใหม่กว่า (ต้องมี timestamp จริง) → push ขึ้น cloud
         await supabaseSave();
       } else {
-        // Cloud ใหม่กว่า → pull ลงมา
+        // Cloud ใหม่กว่าหรือ local ไม่มี timestamp → pull ลงมา (ปลอดภัยกว่า)
         const ok = await supabaseLoad();
         if (ok) {
           populateRenoProps(); renderDocTypes(); renderProps(); updateBadges(); calcPopulatePropSel();
