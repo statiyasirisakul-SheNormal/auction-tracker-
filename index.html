@@ -502,7 +502,7 @@ input, select, textarea { font-size: 16px !important; }
             <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:10px;margin-top:4px">🔧 ค่าใช้จ่ายเพิ่มเติม</div>
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
               <div>
-                <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:4px">ค่าซ่อมแซม / รีโนเวท</div>
+                <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:4px">ค่าซ่อมแซม (วิเคราะห์จากพื้นที่)</div>
                 <input class="form-input" type="text" inputmode="numeric" id="calc-repair-input" placeholder="0" oninput="fmtNumInput(this);document.getElementById('calc-repair').value=this.value.replace(/[^0-9.]/g,'');calcUpdate()" style="padding:8px 10px">
               </div>
               <div>
@@ -2846,7 +2846,7 @@ function calcUpdate() {
     const rowStyle = f.isHeader ? 'background:#F8FAFC;font-weight:700;border-bottom:1px solid var(--border)' : 'border-bottom:1px dashed #EEE';
     const noVal = !appraisal && !sell;
     const valCell = f.editable
-      ? `<input type="text" inputmode="numeric" value="${f.val ? Number(f.val).toLocaleString('th-TH') : ''}" placeholder="0" style="width:100%;border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:12px;text-align:right" oninput="fmtNumInput(this);document.getElementById('calc-${f.editable}').value=this.value.replace(/[^0-9.]/g,'');calcUpdate()">`
+      ? `<span style="font-weight:600;color:#374151">${f.val ? fmtN(Math.round(f.val)) : '—'}</span>`
       : `<span style="font-weight:${f.isHeader?'700':'600'};color:${f.isHeader?'var(--navy)':'#374151'}">${noVal&&!f.isHeader ? '—' : f.isHeader ? (f.val?fmtN(f.val):'—') : fmtN(Math.round(f.val*100)/100)}</span>`;
     return `<tr style="${rowStyle}">
       ${td(f.label, f.isHeader?'color:var(--navy)':'color:#374151')}
