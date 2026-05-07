@@ -1,0 +1,2651 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ระบบจัดการทรัพย์ กรมบังคับคดี</title>
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ประมูลทรัพย์">
+<meta name="theme-color" content="#1F3A5F">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --navy:    #1F3A5F; --blue:   #2E6FAD; --blue-lt: #EBF4FF;
+  --green:   #1E6B45; --green-lt:#E8F5EE;
+  --red:     #B91C1C; --red-lt:  #FEF2F2;
+  --amber:   #B45309; --amber-lt:#FFFBEB;
+  --purple:  #6B21A8; --purple-lt:#F5F3FF;
+  --tg:      #2CA5E0; --tg-lt:    #E8F4FB;
+  --gray:    #6B7280; --border: #E5E7EB;
+  --bg:      #F1F5F9; --white:  #FFFFFF;
+  --shadow:  0 1px 4px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.04);
+}
+body { font-family:'Sarabun','Segoe UI',sans-serif; background:var(--bg); color:#1F2937; min-height:100vh; font-size:15px; }
+
+.header {
+  background:linear-gradient(135deg,#1F3A5F 0%,#2E6FAD 100%);
+  color:white; padding:0 28px; height:64px;
+  display:flex; align-items:center; gap:14px;
+  box-shadow:0 2px 12px rgba(0,0,0,.25);
+  position:sticky; top:0; z-index:100;
+}
+.header h1 { font-size:19px; font-weight:800; }
+.header p  { font-size:12px; opacity:.75; margin-top:1px; }
+
+.tabs {
+  background:white; border-bottom:2px solid var(--border);
+  display:flex; overflow-x:auto; padding:0 20px;
+  box-shadow:0 1px 4px rgba(0,0,0,.05);
+  position:sticky; top:64px; z-index:90;
+}
+.tabs::-webkit-scrollbar { height:0; }
+.tab-btn {
+  padding:16px 22px; border:none; background:none; cursor:pointer;
+  font-family:inherit; font-size:14px; font-weight:600; color:var(--gray);
+  white-space:nowrap; border-bottom:3px solid transparent; margin-bottom:-2px;
+  transition:all .2s; display:flex; align-items:center; gap:7px;
+}
+.tab-btn.active { color:var(--navy); border-bottom-color:var(--blue); }
+.tab-btn:hover:not(.active) { color:#374151; background:#F9FAFB; }
+.tab-badge {
+  min-width:20px; height:20px; padding:0 6px;
+  background:var(--blue-lt); color:var(--blue);
+  border-radius:20px; font-size:11px; font-weight:700;
+  display:inline-flex; align-items:center; justify-content:center;
+}
+.tab-btn.active .tab-badge { background:var(--blue); color:white; }
+
+.content { padding:24px 28px; max-width:1280px; margin:0 auto; }
+@media(max-width:640px){ .content { padding:14px; } }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; animation:fadeIn .15s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
+
+.card {
+  background:white; border-radius:14px; padding:22px;
+  margin-bottom:20px; box-shadow:var(--shadow); border:1px solid var(--border);
+}
+.card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; gap:10px; flex-wrap:wrap; }
+.card-title  { font-size:16px; font-weight:700; color:var(--navy); display:flex; align-items:center; gap:8px; }
+
+.btn {
+  padding:9px 18px; border-radius:8px; border:none; cursor:pointer;
+  font-family:inherit; font-size:13px; font-weight:700;
+  transition:all .18s; display:inline-flex; align-items:center; gap:7px;
+}
+.btn-primary { background:var(--navy); color:white; }
+.btn-primary:hover  { background:#162d4c; }
+.btn-success { background:var(--green); color:white; }
+.btn-success:hover  { background:#155235; }
+.btn-danger  { background:var(--red); color:white; }
+.btn-danger:hover   { background:#991B1B; }
+.btn-tg      { background:var(--tg); color:white; }
+.btn-tg:hover       { background:#1a8fbf; }
+.btn-amber   { background:#D97706; color:white; }
+.btn-ghost   { background:#F3F4F6; color:#374151; border:1px solid var(--border); }
+.btn-ghost:hover    { background:var(--border); }
+.btn-sm      { padding:6px 12px; font-size:12px; }
+.btn-xs      { padding:4px 9px; font-size:11px; border-radius:6px; }
+.icon-btn {
+  width:32px; height:32px; border-radius:7px; border:1px solid var(--border);
+  background:#F9FAFB; cursor:pointer; font-size:14px;
+  display:inline-flex; align-items:center; justify-content:center;
+  transition:all .18s; flex-shrink:0;
+}
+.icon-btn:hover { background:var(--border); }
+.icon-btn.del:hover { background:var(--red-lt); border-color:#FECACA; color:var(--red); }
+
+.form-group    { margin-bottom:14px; }
+.form-label    { font-size:12px; font-weight:700; color:#4B5563; margin-bottom:5px; display:block; }
+.form-input, .form-select, .form-textarea {
+  width:100%; padding:10px 13px; border:1.5px solid var(--border); border-radius:9px;
+  font-family:inherit; font-size:14px; color:#1F2937; outline:none; transition:border-color .2s; background:white;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus { border-color:var(--blue); }
+.form-textarea { resize:vertical; min-height:70px; }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media(max-width:480px){ .form-row { grid-template-columns:1fr; } }
+
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.55);
+  display:none; align-items:center; justify-content:center;
+  z-index:500; padding:20px; overflow-y:auto;
+}
+.modal-overlay.open { display:flex; }
+.modal {
+  background:white; border-radius:16px; padding:26px;
+  width:100%; max-width:520px;
+  box-shadow:0 24px 64px rgba(0,0,0,.3);
+  max-height:90vh; overflow-y:auto;
+}
+.modal h3      { font-size:18px; font-weight:800; margin-bottom:18px; color:var(--navy); }
+.modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; }
+.modal-wide    { max-width:680px; }
+
+.badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+.badge-blue   { background:var(--blue-lt);   color:var(--blue); }
+.badge-green  { background:var(--green-lt);  color:var(--green); }
+.badge-red    { background:var(--red-lt);    color:var(--red); }
+.badge-amber  { background:var(--amber-lt);  color:var(--amber); }
+.badge-gray   { background:#F3F4F6;          color:var(--gray); }
+.badge-tg     { background:var(--tg-lt);     color:var(--tg); }
+
+/* ── DOC ITEMS ── */
+.doc-item { border:1.5px solid var(--border); border-radius:12px; margin-bottom:10px; overflow:hidden; transition:border-color .2s; }
+.doc-item.done { border-color:#86EFAC; background:#F0FDF4; }
+.doc-header { padding:13px 16px; display:flex; align-items:center; gap:12px; cursor:pointer; user-select:none; background:#FAFAFA; transition:background .15s; }
+.doc-item.done .doc-header { background:#F0FDF4; }
+.doc-header:hover { background:#F3F4F6; }
+.check-circle { width:24px; height:24px; border-radius:50%; border:2px solid #D1D5DB; background:white; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all .2s; flex-shrink:0; font-size:13px; }
+.check-circle.checked { background:var(--green); border-color:var(--green); color:white; }
+.doc-body { display:none; padding:16px; border-top:1.5px solid var(--border); }
+.doc-item.expanded .doc-body { display:block; }
+.doc-item.expanded .chevron { transform:rotate(180deg); }
+.chevron { transition:transform .2s; font-size:11px; color:var(--gray); }
+
+/* ── IMG ── */
+.img-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px; margin-bottom:12px; }
+.img-thumb { position:relative; border-radius:9px; overflow:hidden; border:1.5px solid var(--border); aspect-ratio:1; background:#F9FAFB; cursor:pointer; }
+.img-thumb img { width:100%; height:100%; object-fit:cover; }
+.img-thumb .img-del { position:absolute; top:4px; right:4px; background:rgba(185,28,28,.88); color:white; border:none; border-radius:50%; width:22px; height:22px; cursor:pointer; font-size:11px; display:none; align-items:center; justify-content:center; }
+.img-thumb:hover .img-del { display:flex; }
+.img-thumb .img-label { position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,.55); color:white; font-size:10px; padding:3px 6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.upload-zone { border:2px dashed #CBD5E1; border-radius:10px; padding:18px 16px; text-align:center; cursor:pointer; transition:all .2s; color:var(--gray); font-size:13px; }
+.upload-zone:hover { border-color:var(--blue); color:var(--blue); background:var(--blue-lt); }
+input[type="file"] { display:none; }
+
+/* ── WON PROPERTY SECTION ── */
+.won-prop-section { margin-bottom:28px; }
+.won-prop-header {
+  background:linear-gradient(135deg,var(--green) 0%,#27ae60 100%);
+  color:white; border-radius:12px 12px 0 0; padding:14px 20px;
+  display:flex; align-items:center; justify-content:space-between;
+  flex-wrap:wrap; gap:10px;
+}
+.won-prop-header h3 { font-size:16px; font-weight:800; }
+.won-prop-body { border:1.5px solid #86EFAC; border-top:none; border-radius:0 0 12px 12px; padding:18px; }
+.doc-progress { margin-bottom:16px; }
+.doc-progress-bar-wrap { background:#D1FAE5; border-radius:4px; height:8px; overflow:hidden; margin-top:6px; }
+.doc-progress-bar { height:100%; border-radius:4px; background:var(--green); transition:width .4s ease; }
+
+/* ── PROPERTY CARDS ── */
+.prop-card { border:1.5px solid var(--border); border-radius:13px; margin-bottom:14px; overflow:hidden; transition:border-color .2s; }
+.prop-card.won  { border-color:#86EFAC; }
+.prop-card.lost { border-color:#FECACA; }
+.prop-header { padding:15px 18px; background:#FAFAFA; display:flex; align-items:center; gap:13px; cursor:pointer; transition:background .15s; }
+.prop-card.won  .prop-header { background:#F0FDF4; }
+.prop-card.lost .prop-header { background:#FFF5F5; }
+.prop-header:hover { filter:brightness(.97); }
+.prop-num { width:34px; height:34px; background:var(--navy); color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; flex-shrink:0; }
+.prop-info { flex:1; min-width:0; }
+.prop-name { font-weight:700; font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.prop-sub  { font-size:12px; color:var(--gray); margin-top:2px; }
+.prop-body { display:none; padding:18px; border-top:1.5px solid var(--border); }
+.prop-card.expanded .prop-body { display:block; }
+.prop-card.expanded .chevron { transform:rotate(180deg); }
+
+/* ── ROUNDS ── */
+.rounds-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin-bottom:18px; }
+@media(max-width:700px){ .rounds-grid { grid-template-columns:repeat(3,1fr); } }
+@media(max-width:420px){ .rounds-grid { grid-template-columns:repeat(2,1fr); } }
+.round-tile { border:2px solid var(--border); border-radius:10px; padding:10px 8px; text-align:center; cursor:pointer; user-select:none; transition:all .2s; }
+.round-tile.target  { border-color:#F59E0B; background:var(--amber-lt); box-shadow:0 0 0 2px #FCD34D55; }
+.round-tile.joined  { border-color:var(--blue); background:var(--blue-lt); }
+.round-tile.skipped { opacity:.6; background:#F9FAFB; }
+.round-num   { font-size:10px; font-weight:700; color:var(--gray); letter-spacing:.5px; margin-bottom:4px; }
+.round-price { font-size:13px; font-weight:800; color:var(--navy); line-height:1.2; }
+.round-disc  { font-size:10px; margin-top:4px; padding:2px 6px; border-radius:4px; display:inline-block; font-weight:700; }
+.disc-0  { background:#E5E7EB; color:#374151; }
+.disc-10 { background:#FEF9C3; color:#854D0E; }
+.disc-20 { background:#FED7AA; color:#9A3412; }
+.disc-30 { background:#FECACA; color:var(--red); }
+.round-status { font-size:15px; margin-top:5px; display:block; }
+
+/* ── NOTIF SECTION ── */
+.notif-box {
+  border:2px solid var(--tg); border-radius:12px; padding:16px;
+  margin-top:16px; background:var(--tg-lt);
+}
+.notif-box-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.notif-box-title { font-weight:800; font-size:15px; color:var(--tg); }
+.notif-dot { width:10px; height:10px; border-radius:50%; background:#D1D5DB; display:inline-block; margin-left:4px; }
+.notif-dot.ok { background:#22C55E; animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+.notif-method-tabs { display:flex; gap:6px; margin-bottom:14px; }
+.notif-method-tab { padding:6px 14px; border-radius:20px; font-size:12px; font-weight:700; border:1.5px solid var(--border); cursor:pointer; background:white; color:var(--gray); transition:all .18s; }
+.notif-method-tab.active { background:var(--tg); color:white; border-color:var(--tg); }
+
+/* ── NOTIFICATION HISTORY ── */
+.notif-log { margin-top:12px; max-height:140px; overflow-y:auto; }
+.notif-log-item { font-size:12px; color:var(--gray); padding:4px 0; border-bottom:1px solid var(--border); display:flex; gap:8px; }
+.notif-log-item:last-child { border:none; }
+.notif-time { color:#9CA3AF; font-size:11px; white-space:nowrap; }
+
+/* ── RENO ── */
+.reno-summary-bar { background:linear-gradient(135deg,var(--navy) 0%,var(--blue) 100%); color:white; border-radius:12px; padding:18px 22px; display:flex; gap:28px; flex-wrap:wrap; margin-bottom:20px; align-items:center; }
+.reno-stat-num   { font-size:22px; font-weight:800; }
+.reno-stat-label { font-size:11px; opacity:.8; margin-top:2px; }
+.category-chips  { display:flex; gap:7px; flex-wrap:wrap; margin-bottom:16px; }
+.chip { padding:5px 13px; border-radius:20px; font-size:12px; font-weight:700; border:1.5px solid var(--border); cursor:pointer; transition:all .18s; background:white; color:#374151; }
+.chip.active { background:var(--navy); color:white; border-color:var(--navy); }
+.expense-row { border:1.5px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:10px; display:grid; grid-template-columns:auto 1fr auto; align-items:start; gap:12px; }
+.expense-row:hover { border-color:#A7C7E7; }
+.expense-date   { font-size:11px; color:var(--gray); font-weight:600; min-width:70px; padding-top:2px; }
+.expense-title  { font-weight:700; font-size:14px; }
+.expense-sub    { font-size:12px; color:var(--gray); margin-top:2px; }
+.expense-amount { font-size:16px; font-weight:800; color:var(--navy); text-align:right; white-space:nowrap; }
+.expense-imgs   { margin-top:8px; display:flex; gap:7px; flex-wrap:wrap; }
+.bill-thumb { width:54px; height:54px; border-radius:7px; overflow:hidden; border:1.5px solid var(--border); cursor:pointer; flex-shrink:0; }
+.bill-thumb img { width:100%; height:100%; object-fit:cover; }
+
+/* ── SUMMARY ── */
+.stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; margin-bottom:22px; }
+.stat-card { background:white; border-radius:13px; padding:20px 18px; text-align:center; border:1.5px solid var(--border); box-shadow:var(--shadow); }
+.stat-num   { font-size:32px; font-weight:900; line-height:1; }
+.stat-label { font-size:12px; color:var(--gray); margin-top:6px; font-weight:600; }
+.progress-bar-wrap { background:#E5E7EB; border-radius:4px; height:6px; overflow:hidden; margin-top:8px; }
+.progress-bar { height:100%; border-radius:4px; transition:width .4s ease; background:var(--blue); }
+.summary-table { width:100%; border-collapse:collapse; font-size:13px; }
+.summary-table th { background:var(--navy); color:white; padding:10px 14px; text-align:left; font-weight:700; font-size:12px; }
+.summary-table td { padding:10px 14px; border-bottom:1px solid var(--border); }
+.summary-table tr:last-child td { border-bottom:none; }
+.summary-table tr:hover td { background:#F9FAFB; }
+.summary-table .num { text-align:right; font-weight:700; font-variant-numeric:tabular-nums; }
+
+/* ── MISC ── */
+.section-title { font-size:12px; font-weight:700; color:var(--gray); letter-spacing:.8px; text-transform:uppercase; margin:16px 0 10px; display:flex; align-items:center; gap:8px; }
+.section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+.empty { text-align:center; padding:48px 20px; color:#9CA3AF; }
+.empty-icon { font-size:46px; margin-bottom:12px; }
+.empty p { font-size:14px; }
+.lightbox { position:fixed; inset:0; background:rgba(0,0,0,.92); display:none; align-items:center; justify-content:center; z-index:2000; }
+.lightbox.open { display:flex; }
+.lightbox img { max-width:92vw; max-height:92vh; border-radius:10px; }
+.lightbox-close { position:absolute; top:18px; right:18px; background:white; border:none; border-radius:50%; width:40px; height:40px; cursor:pointer; font-size:20px; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 10px rgba(0,0,0,.3); }
+.toast { position:fixed; bottom:28px; left:50%; transform:translateX(-50%); background:#1F2937; color:white; padding:11px 22px; border-radius:30px; font-size:14px; font-weight:600; box-shadow:0 8px 24px rgba(0,0,0,.2); z-index:9999; opacity:0; transition:opacity .25s; pointer-events:none; max-width:90vw; text-align:center; }
+.toast.show { opacity:1; }
+.toast.success { background:var(--green); }
+.toast.error   { background:var(--red); }
+.toast.tg      { background:var(--tg); }
+.divider { height:1px; background:var(--border); margin:16px 0; }
+
+/* ── MOBILE ─────────────────────────────────────────────── */
+/* ป้องกัน iOS auto-zoom เมื่อ focus input */
+input, select, textarea { font-size: 16px !important; }
+/* แต่ยังคง font เล็กสำหรับ desktop */
+@media (min-width: 641px) {
+  .form-input, .form-select, .form-textarea { font-size: 14px !important; }
+  .btn { font-size: 13px !important; }
+}
+
+@media (max-width: 640px) {
+  .header { padding: 0 14px; height: 56px; }
+  .header h1 { font-size: 15px; }
+  .header p  { display: none; }
+
+  .tabs { padding: 0 6px; top: 56px; }
+  .tab-btn { padding: 12px 14px; font-size: 12px; gap: 4px; }
+
+  .content { padding: 10px 10px; }
+
+  /* Bottom-sheet modals */
+  .modal-overlay { align-items: flex-end; padding: 0; }
+  .modal {
+    border-radius: 22px 22px 0 0;
+    max-height: 92vh;
+    max-width: 100% !important;
+    padding: 20px 16px calc(env(safe-area-inset-bottom) + 24px);
+    width: 100%;
+  }
+  /* handle bar hint */
+  .modal::before {
+    content: '';
+    display: block;
+    width: 40px; height: 4px;
+    background: #D1D5DB;
+    border-radius: 2px;
+    margin: 0 auto 16px;
+  }
+  .modal h3 { font-size: 16px; margin-bottom: 14px; }
+
+  /* Form rows stack on mobile */
+  .form-row { grid-template-columns: 1fr !important; }
+
+  /* Rounds grid: 3 columns on mobile */
+  .rounds-grid { grid-template-columns: repeat(3, 1fr) !important; }
+
+  /* Prop card header: allow wrap for badges */
+  .prop-header { flex-wrap: wrap; padding: 12px 14px; }
+  .prop-body  { padding: 14px; }
+  .prop-num   { width: 30px; height: 30px; font-size: 12px; }
+
+  /* Card/button sizing */
+  .card { padding: 16px; }
+  .btn  { padding: 8px 14px; min-height: 38px; }
+  .btn-sm { padding: 7px 12px; }
+  .btn-xs { padding: 5px 10px; }
+
+  /* Summary table scroll hint */
+  .summary-table { font-size: 12px; }
+  .summary-table th, .summary-table td { padding: 8px 10px; }
+
+  /* Notif box compact */
+  .notif-box { padding: 12px; }
+}
+
+@media (max-width: 420px) {
+  .rounds-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .round-tile  { padding: 8px 6px; }
+  .round-price { font-size: 11px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div style="font-size:30px">🏛️</div>
+  <div style="flex:1;min-width:0">
+    <h1>ระบบจัดการทรัพย์ กรมบังคับคดี</h1>
+    <p>บริหารเอกสาร · ติดตามประมูล · บันทึกรีโนเวท · แจ้งเตือน ntfy / Telegram</p>
+  </div>
+  <button onclick="pushToCloud()" title="Push รูปขึ้น Cloud ให้มือถือเห็น" style="background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.35);color:white;border-radius:9px;padding:8px 12px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0">
+    ☁️
+  </button>
+  <button onclick="openSettings()" style="background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.35);color:white;border-radius:9px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0">
+    ⚙️ <span id="sync-dot" style="width:8px;height:8px;border-radius:50%;background:#6EE7B7;display:inline-block" title="Sync status"></span>
+  </button>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('props')">
+    🏠 ทรัพย์ <span class="tab-badge" id="badge-props">0</span>
+  </button>
+  <button class="tab-btn" onclick="switchTab('reno')">
+    🔨 รีโนเวท <span class="tab-badge" id="badge-reno">0</span>
+  </button>
+  <button class="tab-btn" onclick="switchTab('summary')">
+    📊 สรุปภาพรวม
+  </button>
+  <button class="tab-btn" onclick="switchTab('calc')">
+    🧮 คำนวณทรัพย์
+  </button>
+</div>
+
+<div class="content">
+
+  <!-- ══ DOCUMENTS tab (hidden — docs live inside each property card) ══ -->
+  <div class="tab-panel" id="tab-docs" style="display:none!important">
+    <div id="docs-won-list"></div>
+    <div id="docs-empty"></div>
+  </div>
+
+  <!-- ══ PROPERTIES ════════════════════════════════════ -->
+  <div class="tab-panel active" id="tab-props">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">🏠 ทรัพย์ที่เล็งไว้</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" onclick="openModal('modal-doctype')">📋 จัดการประเภทเอกสาร</button>
+          <button class="btn btn-primary btn-sm" onclick="openAddPropModal()">+ เพิ่มทรัพย์</button>
+        </div>
+      </div>
+      <div id="doctypes-list" style="display:none"></div>
+      <div id="props-list"></div>
+    </div>
+  </div>
+
+  <!-- ══ RENOVATION ════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-reno">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">🔨 บันทึกค่าใช้จ่ายรีโนเวท</div>
+        <button class="btn btn-success btn-sm" onclick="openModal('modal-reno')">+ เพิ่มรายการ</button>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap;">
+        <span style="font-size:12px;font-weight:700;color:var(--gray);">กรองทรัพย์:</span>
+        <select class="form-select" style="max-width:240px;" id="reno-filter" onchange="renderReno()">
+          <option value="">ทั้งหมด</option>
+        </select>
+      </div>
+      <div id="reno-summary-bar"></div>
+      <div class="category-chips" id="reno-chips"></div>
+      <div id="reno-list"></div>
+    </div>
+  </div>
+
+  <!-- ══ SUMMARY ════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-summary">
+    <div id="summary-content"></div>
+  </div>
+
+  <!-- ══ CALC ══════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-calc">
+    <div style="max-width:760px;margin:0 auto;padding:20px 16px">
+
+      <!-- เลือกทรัพย์ -->
+      <div style="background:white;border-radius:14px;padding:14px 18px;margin-bottom:14px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:700;color:var(--navy);white-space:nowrap">🏠 เลือกทรัพย์</span>
+        <select class="form-input" id="calc-prop-sel" onchange="calcFillFromProp()" style="margin:0;flex:1;min-width:200px">
+          <option value="">— กรอกเองด้านล่าง —</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" onclick="calcClearAll()">ล้างข้อมูล</button>
+      </div>
+
+      <!-- Main calc sheet — looks like Excel -->
+      <div style="background:white;border-radius:14px;padding:0;box-shadow:var(--shadow);overflow:hidden">
+
+        <!-- Property header info -->
+        <div id="calc-prop-header" style="display:none;background:linear-gradient(135deg,var(--navy),var(--blue));color:white;padding:14px 20px">
+          <div style="font-size:16px;font-weight:800" id="calc-header-name"></div>
+          <div style="font-size:12px;opacity:.8;margin-top:3px" id="calc-header-sub"></div>
+        </div>
+
+        <div style="padding:18px 20px">
+
+          <!-- Input grid -->
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:4px">ราคาขายที่คาดหวัง *</div>
+              <input class="form-input" type="text" inputmode="numeric" id="calc-sell" placeholder="2,650,000" oninput="fmtNumInput(this);calcUpdate()" style="padding:8px 10px">
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:4px">ราคาประเมิณที่ดิน *</div>
+              <input class="form-input" type="text" inputmode="numeric" id="calc-appraisal" placeholder="2,285,947" oninput="fmtNumInput(this);calcUpdate()" style="padding:8px 10px">
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:4px">ราคาขายตลาด (อ้างอิง)</div>
+              <input class="form-input" type="text" inputmode="numeric" id="calc-market" placeholder="ไม่บังคับ" oninput="fmtNumInput(this);calcUpdate()" style="padding:8px 10px">
+            </div>
+          </div>
+
+          <!-- Fee table — like Excel -->
+          <div id="calc-result" style="display:none">
+            <div style="overflow-x:auto">
+              <table style="width:100%;border-collapse:collapse;font-size:13px">
+                <colgroup>
+                  <col style="width:40%">
+                  <col style="width:12%">
+                  <col style="width:20%">
+                  <col style="width:28%">
+                </colgroup>
+                <thead>
+                  <tr style="background:#F8FAFC;border-bottom:2px solid var(--border)">
+                    <th style="padding:8px 10px;text-align:left;font-weight:700;color:var(--navy)">รายการ</th>
+                    <th style="padding:8px 10px;text-align:center;font-weight:700;color:var(--navy)">อัตรา</th>
+                    <th style="padding:8px 10px;text-align:left;font-weight:700;color:var(--navy)">ฐานคำนวณ</th>
+                    <th style="padding:8px 10px;text-align:right;font-weight:700;color:var(--navy)">จำนวนเงิน (฿)</th>
+                  </tr>
+                </thead>
+                <tbody id="calc-fee-rows"></tbody>
+                <tfoot>
+                  <tr style="background:#1F3A5F">
+                    <td colspan="3" style="padding:10px 10px;font-weight:800;font-size:14px;color:white">รวมทุน (ไม่รวมราคาซื้อ)</td>
+                    <td style="padding:10px 10px;text-align:right;font-weight:800;font-size:15px;color:#FCD34D" id="calc-total-cost"></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <!-- Profit table -->
+            <div style="margin-top:2px;overflow-x:auto">
+              <table style="width:100%;border-collapse:collapse;font-size:13px">
+                <colgroup>
+                  <col style="width:20%">
+                  <col style="width:20%">
+                  <col style="width:16%">
+                  <col style="width:20%">
+                  <col style="width:15%">
+                  <col style="width:9%">
+                </colgroup>
+                <thead>
+                  <tr style="background:#EFF6FF;border-bottom:2px solid var(--border)">
+                    <th style="padding:8px 10px;text-align:left;font-weight:700;color:var(--navy)">ระดับ</th>
+                    <th style="padding:8px 10px;text-align:right;font-weight:700;color:var(--navy)">ราคาซื้อ (฿)</th>
+                    <th style="padding:8px 10px;text-align:right;font-weight:700;color:var(--navy)">ทุน (฿)</th>
+                    <th style="padding:8px 10px;text-align:right;font-weight:700;color:var(--navy)">รวมทั้งหมด (฿)</th>
+                    <th style="padding:8px 10px;text-align:right;font-weight:700;color:var(--navy)">กำไร (฿)</th>
+                    <th style="padding:8px 10px;text-align:right;font-weight:700;color:var(--navy)">%</th>
+                  </tr>
+                </thead>
+                <tbody id="calc-profit-rows"></tbody>
+              </table>
+            </div>
+
+            <!-- Mortgage note -->
+            <div id="calc-mortgage-note" style="display:none;margin-top:10px;padding:10px 12px;background:var(--amber-lt);border-radius:8px;font-size:12px;color:var(--amber)"></div>
+          </div>
+
+          <div id="calc-empty" style="text-align:center;padding:32px;color:var(--gray);font-size:13px">
+            กรอก <strong>ราคาประเมิณที่ดิน</strong> และ <strong>ราคาขายที่คาดหวัง</strong> เพื่อเริ่มคำนวณ
+          </div>
+        </div>
+
+        <input type="hidden" id="calc-repair" value="0">
+        <input type="hidden" id="calc-broker" value="0">
+        <input type="hidden" id="calc-mortgage" value="">
+        <input type="hidden" id="calc-custom-bid-store" value="">
+        <div id="calc-prop-ref" style="display:none"></div>
+
+        <!-- Save back to property -->
+        <div id="calc-save-bar" style="display:none;margin-top:0;padding:12px 20px;background:var(--green-lt);border-top:1px solid #86EFAC;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <span style="font-size:13px;color:var(--green);font-weight:700">คำนวณเสร็จแล้ว — บันทึกผลกลับไปยังทรัพย์?</span>
+          <button class="btn btn-success btn-sm" onclick="calcSaveToProperty()">💾 บันทึกกลับทรัพย์</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══ MODALS ════════════════════════════════════════ -->
+
+<!-- Add DocType -->
+<div class="modal-overlay" id="modal-doctype">
+  <div class="modal">
+    <h3>📁 เพิ่มประเภทเอกสาร</h3>
+    <div class="form-group">
+      <label class="form-label">ชื่อประเภทเอกสาร *</label>
+      <input class="form-input" id="doctype-name" placeholder="เช่น สำเนาบัตรประชาชน" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-doctype')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveDocType()">เพิ่ม</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add / Edit Property -->
+<div class="modal-overlay" id="modal-prop">
+  <div class="modal" style="max-width:740px;padding:24px 24px 20px">
+    <h3 id="modal-prop-title" style="margin-bottom:16px">🏠 เพิ่มทรัพย์</h3>
+    <input type="hidden" id="prop-edit-id" />
+
+    <!-- ── General Info ── -->
+    <div class="section-title" style="margin-bottom:10px">📋 ข้อมูลทั่วไป</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">รหัสทรัพย์ * <span style="font-weight:400;color:var(--gray)">(เช่น 180-1)</span></label>
+        <input class="form-input" id="prop-code" placeholder="180-1" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">ชื่อทรัพย์</label>
+        <input class="form-input" id="prop-name" placeholder="บ้านเดี่ยว 2 ชั้น" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">ที่ตั้ง</label>
+        <input class="form-input" id="prop-loc" placeholder="อำเภอ / จังหวัด" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">ขนาด (ตร.ว.)</label>
+        <input class="form-input" type="number" id="prop-size" placeholder="63.5" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">เลขโฉนด</label>
+        <input class="form-input" id="prop-deed" placeholder="43340" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">เลขคดี</label>
+        <input class="form-input" id="prop-case" placeholder="ผบ.386/2556" />
+      </div>
+    </div>
+
+    <!-- ── Prices ── -->
+    <div class="section-title" style="margin-top:14px;margin-bottom:10px">💰 ราคา</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">ราคาประเมิณที่ดิน (บาท) *</label>
+        <input class="form-input" type="text" inputmode="numeric" id="prop-appraisal" placeholder="1,061,250" oninput="fmtNumInput(this)" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">ราคาขายที่คาดหวัง (บาท)</label>
+        <input class="form-input" type="text" inputmode="numeric" id="prop-target-sell" placeholder="1,690,000" oninput="fmtNumInput(this)" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">🎯 นัดที่ต้องการเข้าซื้อ</label>
+      <select class="form-select" id="prop-target-round-sel">
+        <option value="0">นัดที่ 1 — ราคาเต็ม (100%)</option>
+        <option value="1">นัดที่ 2 — ลด 10% (90%)</option>
+        <option value="2">นัดที่ 3 — ลด 20% (80%)</option>
+        <option value="3">นัดที่ 4 — ลด 30% (70%)</option>
+        <option value="4">นัดที่ 5 — ลด 30% (70%)</option>
+        <option value="5">นัดที่ 6 — ลด 30% (70%)</option>
+      </select>
+    </div>
+    <div style="margin-bottom:10px">
+      <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center" onclick="goCalcFromPropForm()">🧮 เปิดคำนวณทรัพย์นี้</button>
+    </div>
+
+    <!-- ── Auction Rounds ── -->
+    <div class="section-title" style="margin-top:14px;margin-bottom:6px">📅 ตารางนัด 6 รอบ</div>
+    <div style="background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:8px;padding:9px 12px;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span style="font-size:12px;font-weight:700;color:var(--green)">🔔 ntfy Topic:</span>
+      <span id="form-ntfy-status" style="font-size:12px;color:var(--gray);flex:1"></span>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-prop');openSettings()">⚙️ ตั้งค่าแจ้งเตือน</button>
+    </div>
+    <div style="overflow-x:auto;margin-bottom:4px">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:480px">
+        <thead>
+          <tr style="background:#F1F5F9;border-radius:8px">
+            <th style="padding:8px 8px;text-align:left;font-weight:700;color:var(--navy);white-space:nowrap;border-bottom:2px solid var(--border)">นัดที่</th>
+            <th style="padding:8px 8px;text-align:left;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">วันที่</th>
+            <th style="padding:8px 8px;text-align:left;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">หมายเหตุ</th>
+            <th style="padding:8px 8px;text-align:center;font-weight:700;color:var(--green);border-bottom:2px solid var(--border);white-space:nowrap">🔔 แจ้งเตือน</th>
+          </tr>
+        </thead>
+        <tbody id="prop-rounds-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- ── Images ── -->
+    <div class="section-title" style="margin-top:14px;margin-bottom:10px">📸 รูปภาพ</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">รูปทรัพย์</label>
+        <div id="img-prop-preview" style="display:none;margin-bottom:6px;position:relative">
+          <img id="img-prop-thumb" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)">
+          <button onclick="clearPropImg('prop')" style="position:absolute;top:4px;right:4px;background:rgba(185,28,28,.85);color:white;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:11px">✕</button>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;border:2px dashed var(--border);border-radius:9px;padding:10px 14px;font-size:13px;color:var(--gray);transition:all .2s" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
+          <span>📁 เลือกรูป</span>
+          <input type="file" accept="image/*" id="prop-img-prop" style="display:none" onchange="handlePropImg(this,'prop')">
+        </label>
+      </div>
+      <div class="form-group">
+        <label class="form-label">รูปรายละเอียด</label>
+        <div id="img-detail-preview" style="display:none;margin-bottom:6px;position:relative">
+          <img id="img-detail-thumb" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)">
+          <button onclick="clearPropImg('detail')" style="position:absolute;top:4px;right:4px;background:rgba(185,28,28,.85);color:white;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:11px">✕</button>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;border:2px dashed var(--border);border-radius:9px;padding:10px 14px;font-size:13px;color:var(--gray);transition:all .2s" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
+          <span>📁 เลือกรูป</span>
+          <input type="file" accept="image/*" id="prop-img-detail" style="display:none" onchange="handlePropImg(this,'detail')">
+        </label>
+      </div>
+    </div>
+
+    <!-- ── Map ── -->
+    <div class="section-title" style="margin-top:8px;margin-bottom:8px">📍 แผนที่</div>
+    <div class="form-group">
+      <label class="form-label">Google Maps URL หรือพิกัด (lat, lng)</label>
+      <div style="display:flex;gap:8px">
+        <input class="form-input" id="prop-map" placeholder="https://maps.google.com/... หรือ 17.399840, 102.816920" style="flex:1" />
+        <button class="btn btn-ghost btn-sm" onclick="openPropMap()" style="white-space:nowrap">เปิดแผนที่</button>
+      </div>
+    </div>
+
+    <!-- ── Notes ── -->
+    <div class="form-group">
+      <label class="form-label">หมายเหตุ</label>
+      <textarea class="form-textarea" id="prop-notes" placeholder="สภาพทรัพย์ ข้อสังเกต..."></textarea>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-prop')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveProp()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- Notification Settings -->
+<div class="modal-overlay" id="modal-notif">
+  <div class="modal">
+    <h3>🔔 ตั้งค่าการแจ้งเตือน</h3>
+    <input type="hidden" id="notif-prop-id" />
+
+    <div class="notif-method-tabs">
+      <div class="notif-method-tab active" id="tab-tg-btn"   onclick="switchNotifTab('tg')">✈️ Telegram</div>
+      <div class="notif-method-tab"        id="tab-browser-btn" onclick="switchNotifTab('browser')">🖥 Browser</div>
+    </div>
+
+    <!-- Telegram -->
+    <div id="notif-tg-section">
+      <div style="background:var(--tg-lt);border:1.5px solid var(--tg);border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#1a3a52;">
+        <strong>วิธีตั้งค่า Telegram Bot:</strong><br>
+        1. แชทกับ <strong>@BotFather</strong> → พิมพ์ <code>/newbot</code> → ตั้งชื่อ → รับ <strong>Token</strong><br>
+        2. แชทกับ Bot ของคุณก่อน 1 ครั้ง (เพื่อให้ระบบรู้จัก Chat ID)<br>
+        3. เปิด <code>https://api.telegram.org/bot<strong>[TOKEN]</strong>/getUpdates</code> แล้วดู <strong>chat.id</strong>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Bot Token *</label>
+          <input class="form-input" type="password" id="tg-token" placeholder="1234567890:AAF..." />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Chat ID *</label>
+          <input class="form-input" id="tg-chat-id" placeholder="เช่น 123456789" />
+        </div>
+      </div>
+      <button class="btn btn-tg btn-sm" onclick="testTelegram()" style="margin-bottom:14px;">📨 ส่งทดสอบ</button>
+    </div>
+
+    <!-- Browser -->
+    <div id="notif-browser-section" style="display:none;">
+      <div style="background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#1a4731;">
+        แจ้งเตือนผ่าน <strong>การแจ้งเตือนของ Browser</strong> — ไม่ต้องสมัครอะไร<br>
+        กด "ขอสิทธิ์แจ้งเตือน" แล้ว Allow ที่ Browser จะแจ้งเตือนผ่าน OS อัตโนมัติ
+      </div>
+      <button class="btn btn-success btn-sm" onclick="requestBrowserNotif()" id="browser-perm-btn" style="margin-bottom:14px;">
+        🔔 ขอสิทธิ์แจ้งเตือน Browser
+      </button>
+      <div id="browser-perm-status" style="font-size:13px;color:var(--gray);"></div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">แจ้งเตือนล่วงหน้า (วัน)</label>
+      <select class="form-select" id="notif-days">
+        <option value="0">วันเดียวกัน</option>
+        <option value="1" selected>1 วันก่อน</option>
+        <option value="2">2 วันก่อน</option>
+        <option value="3">3 วันก่อน</option>
+        <option value="5">5 วันก่อน</option>
+        <option value="7">7 วันก่อน</option>
+      </select>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-notif')">ยกเลิก</button>
+      <button class="btn btn-tg" onclick="saveNotif()">💾 บันทึกการตั้งค่า</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Expense -->
+<div class="modal-overlay" id="modal-reno">
+  <div class="modal modal-wide">
+    <h3>🔨 เพิ่มรายการค่าใช้จ่าย</h3>
+    <input type="hidden" id="reno-edit-id" />
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">ทรัพย์ *</label>
+        <select class="form-select" id="reno-prop-sel"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">วันที่ *</label>
+        <input class="form-input" type="text" inputmode="numeric" id="reno-date" placeholder="วว/ดด/ปปปป" oninput="validateBEInput(this)" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">หมวดหมู่</label>
+        <select class="form-select" id="reno-cat">
+          <option>โครงสร้าง/หลังคา</option><option>งานระบบไฟฟ้า</option>
+          <option>งานระบบประปา</option><option>งานพื้น/กระเบื้อง</option>
+          <option>ทาสี/ผนัง</option><option>ประตู/หน้าต่าง</option>
+          <option>ห้องน้ำ/สุขภัณฑ์</option><option>ครัว/เฟอร์นิเจอร์</option>
+          <option>สวน/รั้ว/ถนน</option><option>ค่าแรงงาน</option>
+          <option>ค่าออกแบบ/สำรวจ</option><option>ค่าขนส่ง/อุปกรณ์</option>
+          <option>ค่าดำเนินการ/ราชการ</option><option>อื่นๆ</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">จำนวนเงิน (บาท) *</label>
+        <input class="form-input" type="text" inputmode="numeric" id="reno-amount" placeholder="0" oninput="fmtNumInput(this)" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">รายละเอียด *</label>
+      <input class="form-input" id="reno-desc" placeholder="เช่น ค่าช่างซ่อมหลังคาห้องนอน" />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">ผู้รับเงิน / ร้านค้า</label>
+        <input class="form-input" id="reno-vendor" placeholder="ชื่อร้าน / ช่าง" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">วิธีชำระ</label>
+        <select class="form-select" id="reno-pay">
+          <option>เงินสด</option><option>โอนเงิน</option>
+          <option>บัตรเครดิต</option><option>เช็ค</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">อัปโหลดบิล / ใบเสร็จ</label>
+      <div id="reno-imgs-preview" class="img-grid" style="min-height:0;"></div>
+      <div class="upload-zone" onclick="document.getElementById('reno-img-input').click()">
+        📎 คลิกอัปโหลดบิลหรือใบเสร็จ
+      </div>
+      <input type="file" id="reno-img-input" accept="image/*" multiple onchange="handleRenoImgUpload(event)" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-reno');clearRenoForm()">ยกเลิก</button>
+      <button class="btn btn-success" onclick="saveReno()">บันทึกรายการ</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Settings Modal ── -->
+<div class="modal-overlay" id="modal-settings">
+  <div class="modal" style="max-width:540px">
+    <h3>⚙️ ตั้งค่าระบบ</h3>
+
+    <!-- LINE Messaging API -->
+    <div style="background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:10px;padding:14px;margin-bottom:16px">
+      <div style="font-weight:800;color:var(--green);margin-bottom:8px">💬 การแจ้งเตือน — LINE Messaging API (ฟรี 200 ข้อความ/เดือน)</div>
+      <div style="font-size:12px;color:#374151;line-height:1.8;margin-bottom:12px;background:white;border-radius:8px;padding:10px;border:1px solid var(--border)">
+        <strong>วิธีตั้งค่า (ทำครั้งเดียว ~15 นาที):</strong><br>
+        1. เปิด <strong>developers.line.biz</strong> → Log in ด้วย LINE<br>
+        2. กด <strong>Create a new provider</strong> → ตั้งชื่อ → Create<br>
+        3. กด <strong>Create a new channel</strong> → เลือก <strong>Messaging API</strong><br>
+        4. กรอกข้อมูล channel → Create → ยืนยัน email<br>
+        5. แท็บ <strong>Messaging API</strong> → เลื่อนลงหา <strong>Channel access token</strong> → กด <strong>Issue</strong> → Copy<br>
+        6. แท็บ <strong>Basic settings</strong> → เลื่อนลงหา <strong>Your user ID</strong> → Copy (ขึ้นต้น U...)<br>
+        7. เปิด LINE → Add เพื่อน OA ที่สร้างขึ้น (scan QR ในหน้า Messaging API)
+      </div>
+      <div class="form-group" style="margin-bottom:8px">
+        <label class="form-label">Channel Access Token *</label>
+        <input class="form-input" type="password" id="set-line-token" placeholder="วาง token ที่ได้จาก Issue">
+      </div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label class="form-label">Your User ID * <span style="font-weight:400;color:var(--gray)">(ขึ้นต้น U เช่น Uxxxxxxxx)</span></label>
+        <div style="display:flex;gap:8px">
+          <input class="form-input" id="set-line-uid" placeholder="U1234567890abcdef" style="flex:1">
+          <button class="btn btn-success btn-sm" onclick="testLineMsg()">ทดสอบ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Supabase -->
+    <div style="background:var(--blue-lt);border:1.5px solid #93C5FD;border-radius:10px;padding:14px;margin-bottom:16px">
+      <div style="font-weight:800;color:var(--blue);margin-bottom:8px">☁️ Cloud Sync — Supabase (ฟรี)</div>
+      <div style="font-size:12px;color:#374151;line-height:1.7;margin-bottom:10px">
+        สมัครที่ <strong>supabase.com</strong> → สร้าง Project → Settings → API → copy URL + anon key<br>
+        จากนั้นรัน SQL ใน SQL Editor ของ Supabase:
+        <pre style="background:white;border:1px solid var(--border);border-radius:6px;padding:8px;margin-top:6px;font-size:11px;overflow-x:auto;white-space:pre">create table auction_data (
+  user_key text primary key,
+  data jsonb not null,
+  updated_at timestamptz default now()
+);
+alter table auction_data enable row level security;
+create policy "open" on auction_data for all using (true) with check (true);</pre>
+      </div>
+      <div class="form-group" style="margin-bottom:8px">
+        <label class="form-label">Project URL</label>
+        <input class="form-input" id="set-sb-url" placeholder="https://xxxxxxxxxxx.supabase.co">
+      </div>
+      <div class="form-group" style="margin-bottom:8px">
+        <label class="form-label">anon / public key</label>
+        <input class="form-input" type="password" id="set-sb-key" placeholder="eyJhbGciOiJIUzI1NiIs...">
+      </div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label class="form-label">User Key <span style="font-weight:400">(ใช้ sync ข้ามเครื่อง — เก็บไว้ให้ดี)</span></label>
+        <div style="display:flex;gap:8px">
+          <input class="form-input" id="set-sb-userkey" placeholder="กด สร้างรหัส" style="flex:1">
+          <button class="btn btn-ghost btn-sm" onclick="genUserKey()">สร้างรหัส</button>
+        </div>
+        <div style="font-size:11px;color:var(--gray);margin-top:4px">เครื่องอื่นใส่รหัสเดิมแล้วกด ⬇️ Sync เพื่อดึงข้อมูล</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="testSupabase()">🔌 ทดสอบการเชื่อมต่อ</button>
+        <button class="btn btn-primary btn-sm" onclick="syncFromSupabase()">⬇️ Sync จาก Cloud</button>
+      </div>
+    </div>
+
+    <!-- Storage -->
+    <div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:10px;padding:14px;margin-bottom:16px">
+      <div style="font-weight:800;color:var(--amber);margin-bottom:10px">🗄️ พื้นที่จัดเก็บ</div>
+      <div id="storage-info" style="font-size:13px;margin-bottom:10px"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="calcStorageUsage()">🔄 ตรวจสอบพื้นที่</button>
+        <button class="btn btn-amber btn-sm" onclick="confirmClearImages()">🗑️ ลบรูปภาพทั้งหมด</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmClearProps()">🏠 ลบทรัพย์ทั้งหมด</button>
+      </div>
+      <div style="font-size:11px;color:var(--gray);margin-top:6px">ลบรูปภาพ = ลบเฉพาะรูป ข้อมูลยังอยู่ · ลบทรัพย์ = ลบข้อมูลทรัพย์และรีโนเวทที่เกี่ยวข้องทั้งหมด</div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-settings')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveSettings()">💾 บันทึกการตั้งค่า</button>
+    </div>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox" onclick="this.classList.remove('open')">
+  <button class="lightbox-close" onclick="event.stopPropagation();document.getElementById('lightbox').classList.remove('open')">✕</button>
+  <img id="lightbox-img" src="" />
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+const KEY = 'acktion_v4';
+
+let S = {
+  settings: { lineToken:'', lineUserId:'', supabaseUrl:'', supabaseKey:'', userKey:'' },
+  docTypes: [
+    { id: uid(), name: 'ใบมอบอำนาจการประมูลทรัพย์' },
+    { id: uid(), name: 'ใบอนุมัติคำร้องขอขายเวลา' },
+  ],
+  props: [],
+  expenses: [],
+  notifLog:  {},
+  notifSent: {},
+};
+
+function loadS() {
+  try { const r = localStorage.getItem(KEY); if (r) S = JSON.parse(r); } catch(e) {}
+  if (!Array.isArray(S.expenses)) S.expenses = [];
+  if (!Array.isArray(S.props))    S.props    = [];
+  if (!Array.isArray(S.docTypes)) S.docTypes = [];
+  if (!S.notifLog)  S.notifLog  = {};
+  if (!S.settings)  S.settings  = {};
+  // pre-fill credentials (local device only — not uploaded to GitHub)
+  if (!S.settings.lineToken)   S.settings.lineToken   = '1J5ZqLl2Vjmnkg588P18+y5Bn//UpjO83fMycumFc7Dhjib70cr+9VLXe4i/4uLvvZNUe5SJUTiKLD6ZkbZhYizofHXHi89AMjfiYKNpJp+ZvvOJqGD9z9yx8HH9Uyd4N6RxjuZUlg06Hzk5ruSq2wdB04t89/1O/w1cDnyilFU=';
+  if (!S.settings.lineUserId)  S.settings.lineUserId  = 'U0d5170057f3ed5465b05b5ada360f36f';
+  if (!S.settings.supabaseUrl) S.settings.supabaseUrl = 'https://rjpzmaeiopiqtsjaksed.supabase.co';
+  if (!S.settings.supabaseKey) S.settings.supabaseKey = 'sb_publishable_-5eRFVpav1DpEbgKSV_zmA_AHTH2XFt';
+  if (!S.settings.userKey)     S.settings.userKey     = 'sirikul_auction_2026';
+}
+function saveS() {
+  S.lastModified = new Date().toISOString();
+  localStorage.setItem(KEY, JSON.stringify(S));
+  supabaseSave(); // cloud sync (non-blocking)
+}
+
+function uid() { return '_'+Math.random().toString(36).slice(2,9)+Date.now().toString(36); }
+
+// ═══════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════
+const ROUNDS = [
+  {label:'รอบ 1',disc:0,   discLabel:'ราคาเต็ม',cls:'disc-0'},
+  {label:'รอบ 2',disc:.10, discLabel:'ลด 10%',  cls:'disc-10'},
+  {label:'รอบ 3',disc:.20, discLabel:'ลด 20%',  cls:'disc-20'},
+  {label:'รอบ 4',disc:.30, discLabel:'ลด 30%',  cls:'disc-30'},
+  {label:'รอบ 5',disc:.30, discLabel:'ลด 30%',  cls:'disc-30'},
+  {label:'รอบ 6',disc:.30, discLabel:'ลด 30%',  cls:'disc-30'},
+];
+
+function fmtNum(n)   { if (!n && n!==0) return '—'; return Number(n).toLocaleString('th-TH'); }
+function fmtPrice(n) { return fmtNum(n)+' ฿'; }
+function fmtDate(d)  { if (!d) return ''; return new Date(d+'T00:00:00').toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'}); }
+
+// พ.ศ. helpers
+function isoToBE(iso) {
+  if (!iso) return '';
+  const [y,m,d] = iso.split('-');
+  if (!y||!m||!d) return '';
+  return `${d}/${m}/${parseInt(y)+543}`;
+}
+function beToISO(str) {
+  if (!str) return '';
+  const parts = str.replace(/\s/g,'').split('/');
+  if (parts.length !== 3) return '';
+  const [d,m,y] = parts;
+  const ce = parseInt(y) - 543;
+  if (isNaN(ce)||isNaN(parseInt(m))||isNaN(parseInt(d))) return '';
+  return `${ce}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+}
+function validateBEInput(el) {
+  el.value = el.value.replace(/[^0-9/]/g,'');
+}
+function fmtDateTime(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+}
+function todayISO()  { return new Date().toISOString().slice(0,10); }
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  const ms = new Date(dateStr) - new Date(todayISO());
+  return Math.round(ms/(1000*60*60*24));
+}
+
+// ═══════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════
+function toast(msg, type='') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + type;
+  setTimeout(() => el.className = 'toast', 2800);
+}
+
+// ═══════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════
+function switchTab(t) {
+  // docs tab no longer exists as a real tab — redirect to props
+  if (t === 'docs') t = 'props';
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  const tabOrder = ['props','reno','summary','calc'];
+  const idx = tabOrder.indexOf(t);
+  if (idx >= 0) document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+  document.getElementById('tab-'+t).classList.add('active');
+  if (t === 'summary') renderSummary();
+  if (t === 'reno')    renderReno();
+  if (t === 'calc')    calcPopulatePropSel();
+}
+
+function updateBadges() {
+  document.getElementById('badge-props').textContent = S.props.length;
+  document.getElementById('badge-reno').textContent = S.expenses.length;
+}
+
+// ═══════════════════════════════════════════════
+//  DOC TYPES
+// ═══════════════════════════════════════════════
+function renderDocTypes() {
+  const el = document.getElementById('doctypes-list');
+  el.innerHTML = S.docTypes.map(dt => `
+    <div style="display:flex;align-items:center;gap:6px;background:#F3F4F6;border-radius:20px;padding:5px 12px 5px 10px;">
+      <span style="font-size:13px;font-weight:600;">📄 ${dt.name}</span>
+      <button class="icon-btn del" style="width:22px;height:22px;font-size:11px;" onclick="deleteDocType('${dt.id}')">✕</button>
+    </div>`).join('');
+}
+
+function saveDocType() {
+  const name = document.getElementById('doctype-name').value.trim();
+  if (!name) { alert('กรุณากรอกชื่อ'); return; }
+  const newDT = { id: uid(), name };
+  S.docTypes.push(newDT);
+  // add this new doc entry to all won properties
+  S.props.forEach(p => {
+    if (!p.docs) p.docs = [];
+    p.docs.push({ typeId: newDT.id, done: false, images: [], note: '' });
+  });
+  saveS(); renderDocTypes(); renderProps();
+  closeModal('modal-doctype');
+  document.getElementById('doctype-name').value = '';
+  toast('✓ เพิ่มประเภทเอกสารแล้ว');
+}
+
+function deleteDocType(id) {
+  if (!confirm('ลบประเภทเอกสารนี้ออกจากทุกทรัพย์?')) return;
+  S.docTypes = S.docTypes.filter(d => d.id!==id);
+  S.props.forEach(p => { if (p.docs) p.docs = p.docs.filter(d => d.typeId!==id); });
+  saveS(); renderDocTypes(); renderProps();
+}
+
+// ensure a property has all docType entries
+function syncPropDocs(prop) {
+  if (!prop.docs) prop.docs = [];
+  S.docTypes.forEach(dt => {
+    if (!prop.docs.find(d => d.typeId===dt.id)) {
+      prop.docs.push({ typeId: dt.id, done: false, images: [], note: '' });
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  DOCS TAB (won properties only)
+// ═══════════════════════════════════════════════
+function renderDocs() {
+  renderDocTypes();
+  const wonProps = S.props.filter(p => p.status==='won');
+  const listEl   = document.getElementById('docs-won-list');
+  const emptyEl  = document.getElementById('docs-empty');
+
+  if (!wonProps.length) {
+    listEl.innerHTML = '';
+    emptyEl.style.display = 'block';
+    updateBadges(); return;
+  }
+  emptyEl.style.display = 'none';
+
+  listEl.innerHTML = wonProps.map(p => {
+    syncPropDocs(p);
+    const total = p.docs.length;
+    const done  = p.docs.filter(d=>d.done).length;
+    const pct   = total ? Math.round(done/total*100) : 0;
+
+    const docsHtml = p.docs.map(d => {
+      const dt = S.docTypes.find(t=>t.id===d.typeId);
+      if (!dt) return '';
+      const domId = 'doc_'+p.id+'_'+d.typeId;
+      return `
+        <div class="doc-item ${d.done?'done':''}" id="${domId}">
+          <div class="doc-header" onclick="toggleDocItem('${domId}')">
+            <div class="check-circle ${d.done?'checked':''}"
+                 onclick="event.stopPropagation();toggleDocDone('${p.id}','${d.typeId}')">
+              ${d.done?'✓':''}
+            </div>
+            <div style="flex:1;font-weight:700;font-size:14px;${d.done?'color:var(--green)':''}">${dt.name}</div>
+            ${d.done
+              ? '<span class="badge badge-green">✓ เสร็จแล้ว</span>'
+              : '<span class="badge badge-gray">ยังไม่เสร็จ</span>'}
+            <span style="font-size:12px;color:var(--gray);">${d.images.length} รูป</span>
+            <span class="chevron">▼</span>
+          </div>
+          <div class="doc-body">
+            <div class="img-grid" id="dimg_${p.id}_${d.typeId}">
+              ${d.images.map((img,i)=>`
+                <div class="img-thumb">
+                  <img src="${img.data}" onclick="showLightbox('${img.data}')" />
+                  <button class="img-del" onclick="removeDocImg('${p.id}','${d.typeId}',${i})">✕</button>
+                  <div class="img-label">${img.name}</div>
+                </div>`).join('')}
+            </div>
+            <div class="upload-zone" onclick="document.getElementById('dfile_${p.id}_${d.typeId}').click()">
+              📎 อัปโหลดรูปหรือเอกสาร (หลายรูปได้)
+            </div>
+            <input type="file" id="dfile_${p.id}_${d.typeId}" accept="image/*" multiple
+                   onchange="handleDocUpload(event,'${p.id}','${d.typeId}')" />
+            <textarea class="form-textarea" style="margin-top:10px;" placeholder="หมายเหตุ..."
+                      onblur="saveDocNote('${p.id}','${d.typeId}',this.value)">${d.note||''}</textarea>
+          </div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="won-prop-section">
+        <div class="won-prop-header">
+          <div>
+            <h3>🏆 ${p.name}</h3>
+            <div style="font-size:12px;opacity:.85;">${p.loc||''}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:13px;font-weight:700;">${done}/${total} เอกสาร</div>
+            <div style="font-size:11px;opacity:.8;">${pct}% เสร็จแล้ว</div>
+          </div>
+        </div>
+        <div class="won-prop-body">
+          <div class="doc-progress">
+            <div style="font-size:12px;color:var(--green);font-weight:700;">ความคืบหน้า: ${done}/${total} (${pct}%)</div>
+            <div class="doc-progress-bar-wrap">
+              <div class="doc-progress-bar" style="width:${pct}%"></div>
+            </div>
+          </div>
+          ${docsHtml}
+        </div>
+      </div>`;
+  }).join('');
+  updateBadges();
+}
+
+function toggleDocItem(id) { document.getElementById(id).classList.toggle('expanded'); }
+
+function toggleDocDone(propId, typeId) {
+  const p = S.props.find(x=>x.id===propId); if (!p) return;
+  const d = p.docs.find(x=>x.typeId===typeId); if (!d) return;
+  d.done = !d.done; saveS(); renderProps();
+}
+
+function handleDocUpload(ev, propId, typeId) {
+  const p = S.props.find(x=>x.id===propId); if (!p) return;
+  const d = p.docs.find(x=>x.typeId===typeId); if (!d) return;
+  const files = [...ev.target.files]; let cnt = 0;
+  files.forEach(f => {
+    const r = new FileReader();
+    r.onload = e => {
+      d.images.push({name:f.name, data:e.target.result});
+      if (++cnt===files.length) { saveS(); renderProps(); }
+    };
+    r.readAsDataURL(f);
+  });
+  ev.target.value = '';
+}
+
+function removeDocImg(propId, typeId, idx) {
+  const p = S.props.find(x=>x.id===propId); if (!p) return;
+  const d = p.docs.find(x=>x.typeId===typeId); if (!d) return;
+  d.images.splice(idx,1); saveS(); renderProps();
+}
+
+function saveDocNote(propId, typeId, val) {
+  const p = S.props.find(x=>x.id===propId); if (!p) return;
+  const d = p.docs.find(x=>x.typeId===typeId); if (!d) return;
+  d.note = val; saveS();
+}
+
+// ═══════════════════════════════════════════════
+//  PROPERTIES
+// ═══════════════════════════════════════════════
+function renderProps() {
+  const el = document.getElementById('props-list');
+  // จำ card ที่กางอยู่ก่อน re-render
+  const openIds = new Set(
+    [...document.querySelectorAll('.prop-card.expanded')].map(e => e.id.replace('pp-',''))
+  );
+  if (!S.props.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🏠</div><p>ยังไม่มีทรัพย์ที่เล็ง</p></div>`;
+    updateBadges(); return;
+  }
+  el.innerHTML = S.props.map((p,i) => {
+    const base = Number(p.appraisal)||Number(p.price)||0;
+    const statusMap   = {watching:'badge-blue', won:'badge-green', lost:'badge-red'};
+    const statusLabel = {watching:'👁 ติดตาม', won:'✓ ชนะประมูล', lost:'✗ ไม่ได้ทรัพย์'};
+
+    // days until next auction — scan all rounds for upcoming dates
+    const allRoundDates = (p.rounds||[]).map(r=>(typeof r==='object'?r.date:'')).filter(Boolean);
+    const firstDate = p.date || allRoundDates[0] || '';
+    const daysLeft = daysUntil(firstDate);
+    // find next upcoming round date
+    const today = new Date(); today.setHours(0,0,0,0);
+    const nextRound = (p.rounds||[]).map((r,ri)=>{
+      const d = typeof r==='object'?r.date:'';
+      if (!d) return null;
+      const dt = new Date(d); dt.setHours(0,0,0,0);
+      return { ri, dt, daysLeft: Math.round((dt-today)/86400000) };
+    }).filter(Boolean).sort((a,b)=>a.dt-b.dt).find(x=>x.daysLeft>=0);
+    let dateChip = '';
+    if (nextRound) {
+      const dl = nextRound.daysLeft;
+      if      (dl === 0) dateChip = `<span class="badge badge-red">🔴 นัดที่${nextRound.ri+1} วันนี้!</span>`;
+      else if (dl <= 3)  dateChip = `<span class="badge badge-red">⚠️ นัดที่${nextRound.ri+1} อีก ${dl} วัน</span>`;
+      else if (dl <= 7)  dateChip = `<span class="badge badge-amber">นัดที่${nextRound.ri+1} อีก ${dl} วัน</span>`;
+      else               dateChip = `<span class="badge badge-blue">นัดที่${nextRound.ri+1} อีก ${dl} วัน</span>`;
+    }
+
+    const roundsHtml = ROUNDS.map((r,ri) => {
+      const rObj = (p.rounds||[])[ri];
+      const rSt  = typeof rObj==='object' ? (rObj.status||'pending') : (rObj||'pending');
+      const rDate= typeof rObj==='object' ? rObj.date : '';
+      const rNote= typeof rObj==='object' ? rObj.note : '';
+      const lineOn   = typeof rObj==='object' && !!rObj.lineNotif;
+      const hasLine  = !!(S.settings?.lineToken && S.settings?.lineUserId);
+      const isTarget = ri === (p.targetRound||0);
+      const cls  = rSt==='joined'?'joined': rSt==='skipped'?'skipped': isTarget?'target':'';
+      const icon = rSt==='joined'?'✓': rSt==='skipped'?'—': isTarget?'🎯':'';
+      const price = base ? fmtNum(Math.floor(base*(1-r.disc)))+' ฿' : '—';
+      const dL = rDate ? Math.round((new Date(rDate).setHours(0,0,0,0)-today.getTime())/86400000) : null;
+      const dateLabel = rDate ? `<div style="font-size:9px;color:var(--gray);margin-top:3px">${fmtDate(rDate)}${dL===0?' 🔴':dL>0&&dL<=3?' ⚠️':''}</div>` : '';
+      const bellColor = lineOn && hasLine ? '#06C755' : lineOn ? '#F59E0B' : '#D1D5DB';
+      const bellTitle = lineOn ? (hasLine ? 'LINE🔔 เปิดอยู่ — คลิกปิด' : 'เปิดแต่ยังไม่ตั้งค่า LINE') : 'คลิกเปิดแจ้งเตือน LINE';
+      const lineCtrl = `<div onclick="event.stopPropagation()" style="margin-top:4px;display:flex;align-items:center;gap:2px;justify-content:center">
+        <button onclick="toggleRoundLine('${p.id}',${ri})" style="font-size:13px;background:none;border:none;cursor:pointer;color:${bellColor};padding:0;line-height:1;transition:color .15s" title="${bellTitle}">🔔</button>
+        ${lineOn && hasLine ? `<button onclick="sendNtfyForRound('${p.id}',${ri})" style="font-size:9px;background:#06C755;color:white;border:none;border-radius:3px;padding:1px 5px;cursor:pointer;font-weight:700" title="ส่ง LINE ตอนนี้">ส่ง</button>` : ''}
+      </div>`;
+      return `
+        <div class="round-tile ${cls}" onclick="cycleRound('${p.id}',${ri})" title="${rNote||'คลิกเปลี่ยนสถานะ'}">
+          <div class="round-num">นัดที่ ${ri+1}</div>
+          <div class="round-price">${price}</div>
+          <div class="round-disc ${r.cls}">${r.discLabel}</div>
+          ${dateLabel}
+          ${lineCtrl}
+          <span class="round-status">${icon}</span>
+        </div>`;
+    }).join('');
+
+    const renoItems = S.expenses.filter(e=>e.propId===p.id);
+    const renoTotal = renoItems.reduce((s,e)=>s+Number(e.amount||0),0);
+
+    // Notif status
+    const hasTg      = !!(p.notif && p.notif.tgToken && p.notif.tgChatId);
+    const hasBrowser = !!(p.notif && p.notif.browser);
+    const hasNotif   = hasTg || hasBrowser;
+    const notifLog   = (S.notifLog[p.id]||[]).slice(-3).reverse();
+
+    return `
+      <div class="prop-card ${p.status||'watching'}" id="pp-${p.id}">
+        <div class="prop-header" onclick="toggleProp('${p.id}')">
+          <div class="prop-num">${i+1}</div>
+          <div class="prop-info">
+            <div class="prop-name">${p.code?`<span style="font-size:12px;font-weight:700;background:var(--blue-lt);color:var(--blue);padding:1px 7px;border-radius:5px;margin-right:6px">${p.code}</span>`:''}${p.name}</div>
+            <div class="prop-sub">
+              ${p.loc?p.loc+' · ':''}${base?'ประเมิณ '+fmtNum(base)+' ฿':''}
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            ${dateChip}
+            <span class="badge ${statusMap[p.status||'watching']}">${statusLabel[p.status||'watching']}</span>
+            ${hasTg?'<span class="badge badge-tg">✈️ Telegram</span>':''}
+            ${hasBrowser?'<span class="badge badge-green">🔔 Browser</span>':''}
+          </div>
+          <div onclick="event.stopPropagation()" style="display:flex;gap:5px;">
+            <button class="icon-btn" onclick="editProp('${p.id}')" title="แก้ไข">✏️</button>
+            <button class="icon-btn del" onclick="deleteProp('${p.id}')" title="ลบ">🗑</button>
+          </div>
+          <span class="chevron">▼</span>
+        </div>
+        <div class="prop-body">
+          ${(p.imgProp||p.imgDetail)?`<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+            ${p.imgProp?`<img src="${p.imgProp}" style="height:90px;border-radius:8px;object-fit:cover;border:1.5px solid var(--border);cursor:pointer" onclick="window.open('${p.imgProp}','_blank')" title="รูปทรัพย์">`:'' }
+            ${p.imgDetail?`<img src="${p.imgDetail}" style="height:90px;border-radius:8px;object-fit:cover;border:1.5px solid var(--border);cursor:pointer" onclick="window.open('${p.imgDetail}','_blank')" title="รูปรายละเอียด">`:'' }
+          </div>`:''}
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+            ${p.code?`<span class="badge badge-blue">🔖 ${p.code}</span>`:''}
+            ${p.deed?`<span class="badge badge-gray">โฉนด ${p.deed}</span>`:''}
+            ${p.case?`<span class="badge badge-gray">คดี ${p.case}</span>`:''}
+            ${p.mapUrl?`<a href="${p.mapUrl.startsWith('http')?p.mapUrl:'https://maps.google.com/?q='+encodeURIComponent(p.mapUrl)}" target="_blank" class="btn btn-ghost btn-xs">📍 แผนที่</a>`:''}
+            <button class="btn btn-ghost btn-xs" onclick="switchTab('calc');setTimeout(()=>{const s=document.getElementById('calc-prop-sel');if(s){s.value='${p.id}';calcFillFromProp();}},100)">🧮 คำนวณ</button>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px">
+            <div class="section-title" style="margin-bottom:0">📅 ตารางนัด</div>
+            <div onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:12px;font-weight:700;color:var(--amber);white-space:nowrap">🎯 นัดที่เข้าซื้อ:</span>
+              <select style="border:1.5px solid #F59E0B;border-radius:7px;padding:4px 8px;font-size:12px;font-weight:700;color:var(--navy);background:var(--amber-lt);cursor:pointer"
+                onchange="setTargetRound('${p.id}',this.value)">
+                ${ROUNDS.map((r,ri)=>`<option value="${ri}" ${ri===(p.targetRound||0)?'selected':''}>${ri+1} — ${r.discLabel}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          <div class="rounds-grid">${roundsHtml}</div>
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;">
+            <span style="font-size:12px;font-weight:700;color:var(--gray);align-self:center;">สถานะ:</span>
+            ${['watching','won','lost'].map(s=>`
+              <button class="btn btn-xs ${p.status===s?'btn-primary':'btn-ghost'}"
+                      onclick="setPropStatus('${p.id}','${s}')">
+                ${{watching:'👁 ติดตาม',won:'✓ ชนะประมูล',lost:'✗ ไม่ได้ทรัพย์'}[s]}
+              </button>`).join('')}
+          </div>
+
+          <!-- RENO SECTION -->
+          <div style="margin-bottom:16px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <div class="section-title" style="margin-bottom:0">🔨 ค่าใช้จ่ายรีโนเวท${renoTotal>0?` <span style="color:var(--green);font-weight:800;margin-left:6px">${fmtPrice(renoTotal)}</span>`:''}</div>
+              <button class="btn btn-success btn-xs" onclick="event.stopPropagation();openRenoForProp('${p.id}')">+ เพิ่ม</button>
+            </div>
+            ${renoItems.length ? `
+            <div style="background:var(--green-lt);border-radius:9px;padding:4px 12px;">
+              ${renoItems.map(e=>`
+                <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dashed #C6E6D0;font-size:12px">
+                  <span style="color:var(--gray);min-width:68px;flex-shrink:0">${fmtDate(e.date)}</span>
+                  <span style="flex:1;font-weight:600;color:#1F2937">${e.desc}</span>
+                  <span style="color:var(--gray);font-size:11px;white-space:nowrap">${e.cat||''}</span>
+                  <span style="font-weight:700;color:var(--green);white-space:nowrap">${fmtPrice(e.amount)}</span>
+                  <button onclick="event.stopPropagation();deleteExpense('${e.id}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:12px;padding:0;flex-shrink:0" title="ลบ">✕</button>
+                </div>`).join('')}
+              <div style="text-align:right;font-size:13px;font-weight:800;color:var(--green);padding:8px 0 4px">รวม ${fmtPrice(renoTotal)}</div>
+            </div>` : `<div style="font-size:12px;color:var(--gray)">ยังไม่มีรายการ</div>`}
+          </div>
+
+          <!-- NOTIFICATION BOX -->
+          <div class="notif-box">
+            <div class="notif-box-header">
+              <span style="font-size:22px;">🔔</span>
+              <span class="notif-box-title">การแจ้งเตือน</span>
+              <span class="notif-dot ${hasNotif?'ok':''}"></span>
+              <span style="font-size:12px;color:var(--tg);">
+                ${hasTg&&hasBrowser?'Telegram + Browser':hasTg?'Telegram':hasBrowser?'Browser':'ยังไม่ได้ตั้งค่า'}
+              </span>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn-tg btn-sm" onclick="openNotifModal('${p.id}')">
+                ⚙️ ${hasNotif?'แก้ไขการตั้งค่า':'ตั้งค่าการแจ้งเตือน'}
+              </button>
+              ${hasNotif?`
+              <button class="btn btn-ghost btn-sm" onclick="sendNotifNow('${p.id}')">
+                📨 ส่งการแจ้งเตือนตอนนี้
+              </button>`:''}
+            </div>
+            ${hasNotif&&p.notif?`
+            <div style="margin-top:10px;font-size:12px;color:var(--gray);">
+              แจ้งเตือนล่วงหน้า <strong>${p.notif.days||1} วัน</strong>
+              ${p.date?' · วันประมูล '+fmtDate(p.date):''}
+            </div>`:''}
+            ${notifLog.length?`
+            <div class="notif-log" style="margin-top:10px;max-height:120px;overflow-y:auto;">
+              <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:4px;">ประวัติการแจ้งเตือน</div>
+              ${notifLog.map(l=>`
+                <div class="notif-log-item">
+                  <span class="notif-time">${fmtDateTime(l.time)}</span>
+                  <span>${l.msg}</span>
+                </div>`).join('')}
+            </div>`:''}
+          </div>
+
+          ${p.notes?`
+          <div style="margin-top:16px;">
+            <div class="section-title">📝 หมายเหตุ</div>
+            <div style="font-size:13px;color:#374151;background:#F9FAFB;padding:10px 14px;border-radius:8px;">${p.notes}</div>
+          </div>`:''}
+
+          <!-- DOCS SECTION (ทุกทรัพย์) -->
+          <div style="margin-top:18px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <div class="section-title" style="margin-bottom:0">📋 เอกสาร</div>
+              <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openModal('modal-doctype')">+ เพิ่มประเภท</button>
+            </div>
+            ${propDocsHtml(p)}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+  // คืน expanded state
+  openIds.forEach(id => {
+    const card = document.getElementById('pp-'+id);
+    if (card) card.classList.add('expanded');
+  });
+  updateBadges();
+}
+
+function toggleProp(id) { document.getElementById('pp-'+id).classList.toggle('expanded'); }
+
+function cycleRound(propId, ri) {
+  const p = S.props.find(x=>x.id===propId); if (!p) return;
+  if (!p.rounds) p.rounds = Array(6).fill({status:'pending',date:'',note:'',lineNotif:false,isTarget:false});
+  const seq = ['pending','joined','skipped'];
+  const cur = p.rounds[ri];
+  const curStatus = typeof cur==='object' ? (cur.status||'pending') : (cur||'pending');
+  const nextStatus = seq[(seq.indexOf(curStatus)+1)%seq.length];
+  if (typeof cur==='object') {
+    p.rounds[ri] = {...cur, status: nextStatus};
+  } else {
+    p.rounds[ri] = nextStatus;
+  }
+  saveS(); renderProps();
+}
+
+function toggleRoundLine(propId, ri) {
+  const p = S.props.find(x=>x.id===propId); if (!p) return;
+  if (!p.rounds) p.rounds = Array(6).fill(null).map((_,i)=>({status:'pending',date:'',note:'',lineNotif:false,isTarget:false}));
+  const cur = p.rounds[ri];
+  if (typeof cur==='object') {
+    p.rounds[ri] = {...cur, lineNotif: !cur.lineNotif};
+  } else {
+    p.rounds[ri] = {status: cur||'pending', date:'', note:'', lineNotif: true, isTarget: false};
+  }
+  if (!S.settings?.lineToken || !S.settings?.lineUserId) {
+    toast('ยังไม่ได้ตั้งค่า LINE — กด ⚙️ มุมบนขวาก่อน','error');
+  }
+  saveS(); renderProps();
+}
+
+function setTargetRound(propId, ri) {
+  const p = S.props.find(x=>x.id===propId); if (!p) return;
+  p.targetRound = parseInt(ri);
+  saveS(); renderProps();
+}
+
+function setPropStatus(id, status) {
+  const p = S.props.find(x=>x.id===id); if (!p) return;
+  const prev = p.status;
+  p.status = status;
+  // when newly won, ensure docs are initialised
+  if (status==='won' && prev!=='won') syncPropDocs(p);
+  saveS(); renderProps();
+}
+
+function openAddPropModal() {
+  document.getElementById('prop-edit-id').value = '';
+  document.getElementById('modal-prop-title').textContent = '🏠 เพิ่มทรัพย์ที่เล็งไว้';
+  ['prop-code','prop-name','prop-loc','prop-size','prop-deed','prop-case','prop-appraisal','prop-target-sell','prop-notes','prop-map'].forEach(id=>{
+    document.getElementById(id).value='';
+  });
+  document.getElementById('prop-target-round-sel').value = '0';
+  clearPropImgAll();
+  renderPropRoundsTable([]);
+  openModal('modal-prop');
+}
+
+function editProp(id) {
+  const p = S.props.find(x=>x.id===id); if (!p) return;
+  document.getElementById('prop-edit-id').value = id;
+  document.getElementById('modal-prop-title').textContent = '✏️ แก้ไขทรัพย์';
+  document.getElementById('prop-code').value        = p.code||'';
+  document.getElementById('prop-name').value        = p.name||'';
+  document.getElementById('prop-loc').value         = p.loc||'';
+  document.getElementById('prop-size').value        = p.size||'';
+  document.getElementById('prop-deed').value        = p.deed||'';
+  document.getElementById('prop-case').value        = p.case||'';
+  // prop-price removed — appraisal is the single price field
+  setNumInput('prop-appraisal',   p.appraisal||0);
+  setNumInput('prop-target-sell', p.targetSell||0);
+  document.getElementById('prop-notes').value       = p.notes||'';
+  document.getElementById('prop-map').value         = p.mapUrl||'';
+  const st = document.getElementById('form-ntfy-status');
+  if (st) st.textContent = S.settings?.ntfyTopic ? `Topic: ${S.settings.ntfyTopic}` : 'ยังไม่ได้ตั้งค่า';
+  clearPropImgAll();
+  if (p.imgProp)   { document.getElementById('img-prop-thumb').src=p.imgProp; document.getElementById('img-prop-preview').style.display=''; }
+  if (p.imgDetail) { document.getElementById('img-detail-thumb').src=p.imgDetail; document.getElementById('img-detail-preview').style.display=''; }
+  document.getElementById('prop-target-round-sel').value = String(p.targetRound ?? 0);
+  renderPropRoundsTable(p.rounds||[], p.targetRound||0);
+  openModal('modal-prop');
+}
+
+function saveProp() {
+  const code = document.getElementById('prop-code').value.trim();
+  const name = document.getElementById('prop-name').value.trim();
+  if (!code && !name) { alert('กรุณากรอกรหัสทรัพย์หรือชื่อทรัพย์'); return; }
+  const editId = document.getElementById('prop-edit-id').value;
+  const rounds = collectPropRounds();
+  const targetRound = parseInt(document.getElementById('prop-target-round-sel').value)||0;
+  const data = {
+    code,
+    name: name || code,
+    loc:        document.getElementById('prop-loc').value.trim(),
+    size:       document.getElementById('prop-size').value,
+    deed:       document.getElementById('prop-deed').value.trim(),
+    case:       document.getElementById('prop-case').value.trim(),
+    appraisal:  parseNumInput(document.getElementById('prop-appraisal').value),
+    price:      parseNumInput(document.getElementById('prop-appraisal').value),
+    targetSell: parseNumInput(document.getElementById('prop-target-sell').value),
+    notes:      document.getElementById('prop-notes').value.trim(),
+    mapUrl:     document.getElementById('prop-map').value.trim(),
+    targetRound,
+    rounds,
+    imgProp:    document.getElementById('img-prop-thumb').src.startsWith('data:') ? document.getElementById('img-prop-thumb').src : (editId ? (S.props.find(x=>x.id===editId)||{}).imgProp||'' : ''),
+    imgDetail:  document.getElementById('img-detail-thumb').src.startsWith('data:') ? document.getElementById('img-detail-thumb').src : (editId ? (S.props.find(x=>x.id===editId)||{}).imgDetail||'' : ''),
+  };
+  if (editId) {
+    const p = S.props.find(x=>x.id===editId);
+    if (p) Object.assign(p, data);
+  } else {
+    S.props.push({ id:uid(), ...data, status:'watching', docs:[], notif:null });
+  }
+  saveS(); renderProps(); populateRenoProps(); calcPopulatePropSel(); closeModal('modal-prop');
+  document.getElementById('prop-edit-id').value = '';
+  toast('✓ บันทึกทรัพย์แล้ว');
+}
+
+function deleteProp(id) {
+  if (!confirm('ลบทรัพย์นี้?')) return;
+  S.props = S.props.filter(x=>x.id!==id); saveS(); renderProps(); renderReno();
+}
+
+// ── Property form helpers ─────────────────────
+const ROUND_DISC_LABELS = ['ราคาเต็ม (รอบ 1)','ลด 10% (รอบ 2)','ลด 20% (รอบ 3)','ลด 30% (รอบ 4)','ลด 30% (รอบ 5)','ลด 30% (รอบ 6)'];
+
+function renderPropRoundsTable(rounds, targetRound) {
+  const tbody = document.getElementById('prop-rounds-tbody');
+  if (!tbody) return;
+  const getR = (i) => {
+    const r = rounds[i];
+    if (!r || typeof r === 'string') return { status: r||'pending', date:'', note:'', lineNotif:false, isTarget: i===(targetRound||0) };
+    return { ...r, isTarget: r.isTarget !== undefined ? r.isTarget : i===(targetRound||0) };
+  };
+  tbody.innerHTML = Array.from({length:6},(_,i)=>{
+    const r = getR(i);
+    return `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:7px 8px;white-space:nowrap;font-weight:700;color:var(--navy);font-size:13px">
+        นัดที่ ${i+1}<br><span style="font-size:10px;color:var(--gray);font-weight:400">${ROUND_DISC_LABELS[i]}</span>
+      </td>
+      <td style="padding:7px 8px">
+        <input type="text" inputmode="numeric" class="form-input" id="round-date-${i}"
+          value="${isoToBE(r.date||'')}" placeholder="วว/ดด/ปปปป"
+          oninput="validateBEInput(this)"
+          style="font-size:12px;padding:5px 8px;min-width:110px">
+      </td>
+      <td style="padding:7px 8px">
+        <input type="text" class="form-input" id="round-note-${i}" value="${(r.note||'').replace(/"/g,'&quot;')}" placeholder="เช่น งดขาย" style="font-size:12px;padding:5px 8px">
+      </td>
+      <td style="padding:7px 8px;text-align:center">
+        <label style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">
+          <input type="checkbox" id="round-line-${i}" ${r.lineNotif?'checked':''} style="width:16px;height:16px;cursor:pointer">
+        </label>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function collectPropRounds() {
+  const target = parseInt(document.getElementById('prop-target-round-sel')?.value||0);
+  return Array.from({length:6},(_,i)=>({
+    status:    'pending',
+    date:      beToISO(document.getElementById(`round-date-${i}`)?.value||''),
+    note:      document.getElementById(`round-note-${i}`)?.value||'',
+    lineNotif: document.getElementById(`round-line-${i}`)?.checked||false,
+    isTarget:  i === target,
+  }));
+}
+
+function handlePropImg(input, type) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const maxW = 800, maxH = 800;
+      let w = img.width, h = img.height;
+      if (w > maxW || h > maxH) {
+        const r = Math.min(maxW/w, maxH/h);
+        w = Math.round(w*r); h = Math.round(h*r);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const b64 = canvas.toDataURL('image/jpeg', 0.80);
+      if (type==='prop') {
+        document.getElementById('img-prop-thumb').src = b64;
+        document.getElementById('img-prop-preview').style.display = '';
+      } else {
+        document.getElementById('img-detail-thumb').src = b64;
+        document.getElementById('img-detail-preview').style.display = '';
+      }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearPropImg(type) {
+  if (type==='prop') {
+    document.getElementById('img-prop-thumb').src='';
+    document.getElementById('img-prop-preview').style.display='none';
+    document.getElementById('prop-img-prop').value='';
+  } else {
+    document.getElementById('img-detail-thumb').src='';
+    document.getElementById('img-detail-preview').style.display='none';
+    document.getElementById('prop-img-detail').value='';
+  }
+}
+
+function clearPropImgAll() {
+  clearPropImg('prop'); clearPropImg('detail');
+}
+
+function openPropMap() {
+  const v = document.getElementById('prop-map').value.trim();
+  if (!v) return;
+  let url = v;
+  if (!v.startsWith('http')) url = `https://maps.google.com/?q=${encodeURIComponent(v)}`;
+  window.open(url, '_blank');
+}
+
+function goCalcFromPropForm() {
+  saveProp();
+  const code = document.getElementById('prop-code').value.trim();
+  const name = document.getElementById('prop-name').value.trim();
+  switchTab('calc');
+  setTimeout(()=>{
+    const sel = document.getElementById('calc-prop-sel');
+    if (!sel) return;
+    const found = S.props.find(p=>(p.code&&p.code===(code||name))||(p.name===name));
+    if (found) { sel.value = found.id; calcFillFromProp(); }
+  }, 100);
+}
+
+// ── LINE Messaging API ────────────────────────
+async function sendLineMessage(token, userId, message) {
+  if (!token || !userId) return false;
+  try {
+    const res = await fetch('https://api.line.me/v2/bot/message/push', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        to: userId,
+        messages: [{ type: 'text', text: message }]
+      }),
+    });
+    return res.ok;
+  } catch(e) { return false; }
+}
+
+async function sendNtfyForRound(propId, roundIdx) {
+  const { lineToken, lineUserId } = S.settings || {};
+  const p = S.props.find(x=>x.id===propId);
+  if (!p || !lineToken || !lineUserId) { toast('ยังไม่ได้ตั้งค่า LINE — กด ⚙️','error'); return; }
+  const r     = (p.rounds||[])[roundIdx]||{};
+  const base  = Number(p.appraisal)||Number(p.price)||0;
+  const discs = [0, 0.1, 0.2, 0.3, 0.3, 0.3];
+  const bidPr = base ? Math.floor(base*(1-discs[roundIdx])) : 0;
+  const msg   = `🏛️ แจ้งเตือนนัดประมูล\n━━━━━━━━━━━━━━\n🏠 ${p.code?p.code+' — ':''}${p.name}\n📅 นัดที่ ${roundIdx+1}: ${r.date ? fmtDate(r.date) : 'ไม่ระบุ'}${bidPr?'\n💰 ราคาประมูล: '+fmtNum(bidPr)+' บาท':''}${r.note?'\n📝 '+r.note:''}\n━━━━━━━━━━━━━━`;
+  const ok = await sendLineMessage(lineToken, lineUserId, msg);
+  toast(ok ? '✓ ส่ง LINE สำเร็จ!' : '❌ ส่งไม่สำเร็จ — ตรวจสอบ Token/User ID', ok?'success':'error');
+}
+
+// ── Supabase ──────────────────────────────────
+function compressForCloud(b64) {
+  return new Promise(resolve => {
+    if (!b64 || !b64.startsWith('data:')) { resolve(b64); return; }
+    const img = new Image();
+    img.onload = () => {
+      const maxPx = 500;
+      let w = img.width, h = img.height;
+      const r = Math.min(maxPx / w, maxPx / h, 1);
+      w = Math.round(w * r); h = Math.round(h * r);
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(c.toDataURL('image/jpeg', 0.55));
+    };
+    img.onerror = () => resolve(b64);
+    img.src = b64;
+  });
+}
+
+async function buildCloudData() {
+  const cloud = JSON.parse(JSON.stringify(S));
+  for (const p of cloud.props || []) {
+    if (p.imgProp)   p.imgProp   = await compressForCloud(p.imgProp);
+    if (p.imgDetail) p.imgDetail = await compressForCloud(p.imgDetail);
+    for (const d of p.docs || []) {
+      if (Array.isArray(d.images))
+        d.images = await Promise.all(d.images.map(async img => ({ ...img, data: await compressForCloud(img.data) })));
+    }
+  }
+  for (const e of cloud.expenses || []) {
+    if (Array.isArray(e.images))
+      e.images = await Promise.all(e.images.map(async img => ({ ...img, data: await compressForCloud(img.data) })));
+  }
+  return cloud;
+}
+
+async function supabaseSave() {
+  const cfg = S.settings;
+  if (!cfg?.supabaseUrl || !cfg?.supabaseKey || !cfg?.userKey) return;
+  const dot = document.getElementById('sync-dot');
+  try {
+    const cloud = await buildCloudData();
+    const res = await fetch(`${cfg.supabaseUrl}/rest/v1/auction_data`, {
+      method: 'POST',
+      headers: {
+        'apikey': cfg.supabaseKey,
+        'Authorization': 'Bearer ' + cfg.supabaseKey,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates',
+      },
+      body: JSON.stringify({ user_key: cfg.userKey, data: cloud, updated_at: new Date().toISOString() }),
+    });
+    if (dot) dot.style.background = res.ok ? '#6EE7B7' : '#FCA5A5';
+  } catch(e) {
+    if (dot) dot.style.background = '#FCA5A5';
+  }
+}
+
+async function pushToCloud() {
+  if (!S.props?.length && !S.expenses?.length) {
+    toast('⚠️ ไม่มีทรัพย์ในเครื่องนี้ — กด Push จากคอมที่มีข้อมูล', '');
+    return;
+  }
+  const dot = document.getElementById('sync-dot');
+  if (dot) dot.style.background = '#FCD34D';
+  toast('⏳ กำลังอัปโหลดรูปภาพขึ้น Cloud...', '');
+  await supabaseSave();
+  const ok = document.getElementById('sync-dot')?.style.background !== 'rgb(252, 165, 165)';
+  toast(ok ? '☁️ Push สำเร็จ! มือถือ Refresh แล้วจะเห็นข้อมูล' : '❌ Push ไม่สำเร็จ ลองใหม่', ok ? 'success' : 'error');
+}
+
+async function supabaseLoad() {
+  const cfg = S.settings;
+  if (!cfg?.supabaseUrl || !cfg?.supabaseKey || !cfg?.userKey) return false;
+  try {
+    const res = await fetch(
+      `${cfg.supabaseUrl}/rest/v1/auction_data?user_key=eq.${encodeURIComponent(cfg.userKey)}&select=data,updated_at`,
+      { headers: { 'apikey': cfg.supabaseKey, 'Authorization': 'Bearer ' + cfg.supabaseKey } }
+    );
+    if (!res.ok) return false;
+    const rows = await res.json();
+    if (rows.length && rows[0].data) {
+      const localSettings = S.settings;
+      S = rows[0].data;
+      S.settings = { ...S.settings, ...localSettings };
+      S._cloudUpdatedAt = rows[0].updated_at;
+      if (!Array.isArray(S.expenses)) S.expenses = [];
+      if (!Array.isArray(S.props))    S.props    = [];
+      if (!Array.isArray(S.docTypes)) S.docTypes = [];
+      if (!S.notifLog) S.notifLog = {};
+      localStorage.setItem(KEY, JSON.stringify(S));
+      return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
+// ── Settings functions ─────────────────────────
+function openSettings() {
+  const g = id => document.getElementById(id);
+  g('set-line-token').value  = S.settings?.lineToken   || '';
+  g('set-line-uid').value    = S.settings?.lineUserId  || '';
+  g('set-sb-url').value      = S.settings?.supabaseUrl || '';
+  g('set-sb-key').value      = S.settings?.supabaseKey || '';
+  g('set-sb-userkey').value  = S.settings?.userKey     || '';
+  const st = document.getElementById('form-ntfy-status');
+  if (st) st.textContent = S.settings?.lineToken ? 'ตั้งค่าแล้ว ✓' : 'ยังไม่ได้ตั้งค่า';
+  openModal('modal-settings');
+}
+
+function saveSettings() {
+  if (!S.settings) S.settings = {};
+  S.settings.lineToken   = document.getElementById('set-line-token').value.trim();
+  S.settings.lineUserId  = document.getElementById('set-line-uid').value.trim();
+  S.settings.supabaseUrl = document.getElementById('set-sb-url').value.trim().replace(/\/$/,'');
+  S.settings.supabaseKey = document.getElementById('set-sb-key').value.trim();
+  S.settings.userKey     = document.getElementById('set-sb-userkey').value.trim();
+  saveS(); closeModal('modal-settings');
+  toast('✓ บันทึกการตั้งค่าแล้ว', 'success');
+}
+
+function genUserKey() {
+  document.getElementById('set-sb-userkey').value =
+    'u_' + Math.random().toString(36).slice(2,9) + Date.now().toString(36);
+}
+
+async function testLineMsg() {
+  const token  = document.getElementById('set-line-token').value.trim();
+  const userId = document.getElementById('set-line-uid').value.trim();
+  if (!token || !userId) { toast('กรุณากรอก Token และ User ID ก่อน','error'); return; }
+  toast('⏳ กำลังทดสอบ LINE...','');
+  const ok = await sendLineMessage(token, userId, '🔔 [ทดสอบ] ระบบจัดการทรัพย์กรมบังคับคดี\nการแจ้งเตือน LINE ทำงานปกติ ✓');
+  toast(ok ? '✓ ส่ง LINE สำเร็จ! เช็ค LINE ได้เลย' : '❌ ส่งไม่สำเร็จ — ตรวจสอบ Token/User ID', ok?'success':'error');
+}
+
+async function testSupabase() {
+  const url = document.getElementById('set-sb-url').value.trim().replace(/\/$/,'');
+  const key = document.getElementById('set-sb-key').value.trim();
+  if (!url || !key) { toast('กรุณากรอก URL และ Key','error'); return; }
+  toast('⏳ กำลังทดสอบ Supabase...','');
+  try {
+    const res = await fetch(`${url}/rest/v1/auction_data?limit=1`, {
+      headers: { 'apikey': key, 'Authorization': 'Bearer ' + key }
+    });
+    toast(res.ok ? '✓ เชื่อมต่อ Supabase สำเร็จ!' : '❌ ไม่สำเร็จ — ตรวจ URL/Key หรือสร้างตารางก่อน', res.ok?'success':'error');
+  } catch(e) { toast('❌ เชื่อมต่อไม่ได้','error'); }
+}
+
+function calcStorageUsage() {
+  const raw = localStorage.getItem(KEY) || '';
+  const bytes = new Blob([raw]).size;
+  const kb = (bytes / 1024).toFixed(1);
+  const mb = (bytes / 1024 / 1024).toFixed(2);
+  const pct = Math.min(100, (bytes / (5 * 1024 * 1024) * 100)).toFixed(1);
+
+  // นับรูปทั้งหมด
+  let imgCount = 0;
+  S.props.forEach(p => {
+    if (p.imgProp)    imgCount++;
+    if (p.imgDetail)  imgCount++;
+    (p.docs||[]).forEach(d => { imgCount += (d.images||[]).length; });
+  });
+  S.expenses.forEach(e => { imgCount += (e.images||[]).length; });
+
+  const color = pct > 80 ? 'var(--red)' : pct > 50 ? 'var(--amber)' : 'var(--green)';
+  document.getElementById('storage-info').innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <div style="flex:1;background:#E5E7EB;border-radius:4px;height:10px;overflow:hidden">
+        <div style="width:${pct}%;height:100%;background:${color};border-radius:4px;transition:width .4s"></div>
+      </div>
+      <span style="font-weight:700;color:${color};white-space:nowrap">${pct}%</span>
+    </div>
+    <div style="color:#374151">ใช้ไป <strong>${mb} MB</strong> จาก ~5 MB (localStorage)</div>
+    <div style="color:var(--gray);font-size:12px;margin-top:2px">รูปภาพทั้งหมด: ${imgCount} ภาพ · ข้อมูล: ${kb} KB</div>`;
+}
+
+function confirmClearProps() {
+  if (!confirm(`ลบทรัพย์ทั้งหมด ${S.props.length} รายการ?\nรวมถึงรายการรีโนเวทที่เกี่ยวข้องด้วย\n\nไม่สามารถกู้คืนได้!`)) return;
+  S.props    = [];
+  S.expenses = [];
+  S.notifLog = {};
+  saveS(); renderProps(); renderReno(); updateBadges(); populateRenoProps(); calcPopulatePropSel();
+  calcStorageUsage();
+  toast('✓ ลบทรัพย์ทั้งหมดแล้ว', 'success');
+}
+
+function confirmClearImages() {
+  if (!confirm('ลบรูปภาพทั้งหมดในระบบ?\n(รูปทรัพย์ รูปเอกสาร รูปบิลรีโนเวท)\n\nข้อมูลอื่นไม่ได้รับผลกระทบ')) return;
+  S.props.forEach(p => {
+    p.imgProp = ''; p.imgDetail = '';
+    (p.docs||[]).forEach(d => { d.images = []; });
+  });
+  S.expenses.forEach(e => { e.images = []; });
+  saveS(); renderProps(); renderReno();
+  calcStorageUsage();
+  toast('✓ ลบรูปภาพทั้งหมดแล้ว', 'success');
+}
+
+async function syncFromSupabase() {
+  toast('⏳ กำลัง Sync จาก Cloud...','');
+  const ok = await supabaseLoad();
+  if (ok) {
+    renderProps(); renderReno(); populateRenoProps(); calcPopulatePropSel();
+    toast('✓ Sync สำเร็จ! ข้อมูลอัปเดตแล้ว','success');
+  } else {
+    toast('❌ Sync ไม่สำเร็จ ตรวจสอบการตั้งค่า','error');
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  NOTIFICATIONS (Telegram + Browser)
+// ═══════════════════════════════════════════════
+let _notifTab = 'tg';
+
+function switchNotifTab(tab) {
+  _notifTab = tab;
+  document.getElementById('notif-tg-section').style.display      = tab==='tg'      ? '' : 'none';
+  document.getElementById('notif-browser-section').style.display = tab==='browser' ? '' : 'none';
+  document.getElementById('tab-tg-btn').classList.toggle('active',      tab==='tg');
+  document.getElementById('tab-browser-btn').classList.toggle('active', tab==='browser');
+  if (tab==='browser') updateBrowserPermStatus();
+}
+
+function updateBrowserPermStatus() {
+  const perm = Notification.permission;
+  const btn  = document.getElementById('browser-perm-btn');
+  const st   = document.getElementById('browser-perm-status');
+  if (perm==='granted') {
+    btn.textContent = '✓ ได้รับสิทธิ์แล้ว'; btn.disabled = true;
+    st.innerHTML = '<span style="color:var(--green);font-weight:700;">✓ Browser จะแจ้งเตือนอัตโนมัติ</span>';
+  } else if (perm==='denied') {
+    st.innerHTML = '<span style="color:var(--red);">❌ ถูกบล็อก — เปิดสิทธิ์ที่ไอคอนรูปกุญแจใน address bar</span>';
+  } else {
+    btn.textContent = '🔔 ขอสิทธิ์แจ้งเตือน Browser'; btn.disabled = false;
+    st.innerHTML = '<span style="color:var(--gray);">กด Allow เมื่อ Browser ถามสิทธิ์</span>';
+  }
+}
+
+async function requestBrowserNotif() {
+  const perm = await Notification.requestPermission();
+  updateBrowserPermStatus();
+  if (perm==='granted') toast('✓ ได้รับสิทธิ์แจ้งเตือน Browser แล้ว','success');
+  else toast('❌ ไม่ได้รับสิทธิ์ ลองเปิดจาก Settings ของ Browser','error');
+}
+
+function openNotifModal(propId) {
+  document.getElementById('notif-prop-id').value = propId;
+  const p = S.props.find(x=>x.id===propId); if (!p) return;
+  const n = p.notif || {};
+  document.getElementById('tg-token').value   = n.tgToken||'';
+  document.getElementById('tg-chat-id').value = n.tgChatId||'';
+  document.getElementById('notif-days').value = n.days||1;
+  switchNotifTab('tg');
+  openModal('modal-notif');
+}
+
+function saveNotif() {
+  const propId = document.getElementById('notif-prop-id').value;
+  const p = S.props.find(x=>x.id===propId); if (!p) return;
+  const tgToken  = document.getElementById('tg-token').value.trim();
+  const tgChatId = document.getElementById('tg-chat-id').value.trim();
+  const browser  = Notification.permission==='granted';
+  const days     = Number(document.getElementById('notif-days').value);
+  if (!tgToken && !tgChatId && !browser) {
+    alert('กรุณากรอก Telegram Token + Chat ID หรือขอสิทธิ์ Browser Notification ก่อน'); return;
+  }
+  p.notif = { tgToken, tgChatId, browser, days };
+  saveS(); renderProps(); closeModal('modal-notif');
+  toast('✓ บันทึกการตั้งค่าแจ้งเตือนแล้ว','success');
+}
+
+// ── Telegram ──────────────────────────────────
+async function sendTelegram(token, chatId, text) {
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode:'HTML' }),
+    });
+    return res.ok;
+  } catch(e) { return false; }
+}
+
+async function testTelegram() {
+  const token  = document.getElementById('tg-token').value.trim();
+  const chatId = document.getElementById('tg-chat-id').value.trim();
+  if (!token||!chatId) { alert('กรุณากรอก Token และ Chat ID ก่อน'); return; }
+  toast('⏳ กำลังส่งทดสอบ...','');
+  const ok = await sendTelegram(token, chatId,
+    '🔔 <b>[ทดสอบ]</b> ระบบจัดการทรัพย์กรมบังคับคดี\nการแจ้งเตือนทำงานปกติ ✓');
+  toast(ok ? '✓ ส่งสำเร็จ! เช็ค Telegram ได้เลย' : '❌ ส่งไม่สำเร็จ ตรวจสอบ Token / Chat ID', ok?'tg':'error');
+}
+
+// ── Build message ─────────────────────────────
+function buildNotifMsg(p, html=false) {
+  const daysLeft   = daysUntil(p.date);
+  const dateStr    = p.date ? fmtDate(p.date) : 'ไม่ระบุ';
+  const base       = Number(p.appraisal)||Number(p.price)||0;
+  const tRound     = ROUNDS[p.targetRound||0]||ROUNDS[0];
+  const targetPrice= base ? Math.floor(base*(1-tRound.disc)) : 0;
+  const b  = s => html ? `<b>${s}</b>` : s;
+  const nl = '\n';
+  let msg = `🏛️ ${b('แจ้งเตือนประมูลทรัพย์ กรมบังคับคดี')}${nl}`;
+  msg += `━━━━━━━━━━━━━━━━━${nl}`;
+  msg += `🏠 ${b(p.name)}${nl}`;
+  if (p.loc)   msg += `📍 ${p.loc}${nl}`;
+  msg += `📅 วันประมูล: ${b(dateStr)}${nl}`;
+  if (daysLeft===0)       msg += `⚡ ${b('วันนี้เลย!')}${nl}`;
+  else if (daysLeft>0)    msg += `⏰ อีก ${b(daysLeft+' วัน')}${nl}`;
+  else if (daysLeft<0)    msg += `(ผ่านมาแล้ว ${Math.abs(daysLeft)} วัน)${nl}`;
+  msg += `🎯 รอบเป้าหมาย: ${b(tRound.label+' '+tRound.discLabel)}${nl}`;
+  if (targetPrice) msg += `💰 ราคาที่คาด: ${b(fmtNum(targetPrice)+' บาท')}${nl}`;
+  if (p.deed)  msg += `📄 โฉนด: ${p.deed}${nl}`;
+  if (p.case)  msg += `⚖️ คดี: ${p.case}${nl}`;
+  msg += `━━━━━━━━━━━━━━━━━`;
+  return msg;
+}
+
+// ── Send now (manual) ─────────────────────────
+async function sendNotifNow(propId) {
+  const p = S.props.find(x=>x.id===propId);
+  if (!p||!p.notif) { toast('ยังไม่ได้ตั้งค่าการแจ้งเตือน','error'); return; }
+  toast('⏳ กำลังส่งแจ้งเตือน...','');
+  let ok = false;
+  if (p.notif.tgToken && p.notif.tgChatId) {
+    ok = await sendTelegram(p.notif.tgToken, p.notif.tgChatId, buildNotifMsg(p, true));
+  }
+  if (p.notif.browser && Notification.permission==='granted') {
+    const daysLeft = daysUntil(p.date);
+    new Notification('🏛️ แจ้งเตือนประมูล', {
+      body: `${p.name}\nวันประมูล: ${fmtDate(p.date)}${daysLeft>=0?' (อีก '+daysLeft+' วัน)':''}`,
+      icon: 'https://cdn-icons-png.flaticon.com/512/1040/1040993.png',
+    });
+    ok = true;
+  }
+  if (ok) {
+    logNotif(propId, '📨 ส่งแจ้งเตือนด้วยตนเอง');
+    saveS(); renderProps();
+    toast('✓ ส่งแจ้งเตือนสำเร็จ!','tg');
+  } else {
+    toast('❌ ส่งไม่สำเร็จ ตรวจสอบการตั้งค่า','error');
+  }
+}
+
+// ── Log ───────────────────────────────────────
+function logNotif(propId, msg) {
+  if (!S.notifLog[propId]) S.notifLog[propId] = [];
+  S.notifLog[propId].push({ msg, time: new Date().toISOString() });
+  if (S.notifLog[propId].length > 20) S.notifLog[propId].splice(0, S.notifLog[propId].length-20);
+}
+
+// ── Auto-check on load + hourly ──────────────
+async function autoCheckNotifications() {
+  const today = todayISO();
+
+  for (const p of S.props) {
+    // ── Telegram / Browser (ใช้ p.date เดิม) ──
+    if (p.notif && p.date) {
+      const daysLeft = daysUntil(p.date);
+      if (daysLeft !== null && daysLeft >= 0) {
+        const key = p.id+'_'+today;
+        if (!S.notifSent[key] && daysLeft <= (p.notif.days||1)) {
+          let sent = false;
+          if (p.notif.tgToken && p.notif.tgChatId)
+            sent = await sendTelegram(p.notif.tgToken, p.notif.tgChatId, buildNotifMsg(p, true));
+          if (p.notif.browser && Notification.permission==='granted') {
+            new Notification('🏛️ แจ้งเตือนประมูล', {
+              body: `${p.name}\nวันประมูล: ${fmtDate(p.date)} (อีก ${daysLeft} วัน)`,
+              icon: 'https://cdn-icons-png.flaticon.com/512/1040/1040993.png',
+            });
+            sent = true;
+          }
+          if (sent) { S.notifSent[key] = true; logNotif(p.id, `🔔 แจ้งเตือนอัตโนมัติ (อีก ${daysLeft} วัน)`); }
+        }
+      }
+    }
+
+    // ── LINE อัตโนมัติ ต่อ Round ─────────────
+    const { lineToken, lineUserId } = S.settings || {};
+    if (!lineToken || !lineUserId || !p.rounds) continue;
+    for (let ri = 0; ri < p.rounds.length; ri++) {
+      const r = p.rounds[ri];
+      if (typeof r !== 'object' || !r.lineNotif || !r.date) continue;
+      const dL = daysUntil(r.date);
+      if (dL === null || dL < 0 || dL > 7) continue;
+      const key = `line_${p.id}_${ri}_${today}`;
+      if (S.notifSent[key]) continue;
+      const base  = Number(p.appraisal)||Number(p.price)||0;
+      const discs = [0, 0.1, 0.2, 0.3, 0.3, 0.3];
+      const bidPr = base ? Math.floor(base*(1-discs[ri])) : 0;
+      const urgency = dL === 0 ? '🔴 วันนี้!' : `⏰ อีก ${dL} วัน`;
+      const msg = `🏛️ แจ้งเตือนนัดประมูล\n━━━━━━━━━━━━━━\n🏠 ${p.code?p.code+' — ':''}${p.name}\n📅 นัดที่ ${ri+1}: ${fmtDate(r.date)}\n${urgency}${bidPr?'\n💰 '+fmtNum(bidPr)+' บาท':''}${r.note?'\n📝 '+r.note:''}\n━━━━━━━━━━━━━━`;
+      const ok = await sendLineMessage(lineToken, lineUserId, msg);
+      if (ok) {
+        S.notifSent[key] = true;
+        logNotif(p.id, `💬 LINE อัตโนมัติ นัดที่${ri+1} (อีก ${dL} วัน)`);
+      }
+    }
+  }
+  saveS();
+}
+
+// ═══════════════════════════════════════════════
+//  RENOVATION
+// ═══════════════════════════════════════════════
+let renoTmpImgs = [];
+let renoCatFilter = '';
+
+function populateRenoProps() {
+  const sel    = document.getElementById('reno-prop-sel');
+  const filter = document.getElementById('reno-filter');
+  const opts   = S.props.map(p=>`<option value="${p.id}">${p.code ? p.code+' — '+p.name : p.name}</option>`).join('');
+  if (sel)    sel.innerHTML    = '<option value="">— เลือกทรัพย์ —</option>'+opts;
+  if (filter) filter.innerHTML = '<option value="">ทั้งหมด</option>'+opts;
+}
+
+function openRenoForProp(propId) {
+  openModal('modal-reno');
+  setTimeout(() => {
+    const sel = document.getElementById('reno-prop-sel');
+    if (sel) sel.value = propId;
+  }, 60);
+}
+
+function propDocsHtml(p) {
+  syncPropDocs(p);
+  if (!p.docs || !p.docs.length) return '<div style="font-size:12px;color:var(--gray);padding:6px 0">ยังไม่มีประเภทเอกสาร — กดปุ่ม <strong>+ เพิ่มประเภท</strong> ด้านบน</div>';
+  return p.docs.map(d => {
+    const dt = S.docTypes.find(t=>t.id===d.typeId);
+    if (!dt) return '';
+    const domId = 'doc_'+p.id+'_'+d.typeId;
+    return `
+      <div class="doc-item ${d.done?'done':''}" id="${domId}" style="margin-bottom:6px;border:1px solid var(--border);border-radius:9px;overflow:hidden">
+        <div class="doc-header" onclick="toggleDocItem('${domId}')" style="padding:10px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;background:${d.done?'var(--green-lt)':'white'}">
+          <div class="check-circle ${d.done?'checked':''}" onclick="event.stopPropagation();toggleDocDone('${p.id}','${d.typeId}')" style="flex-shrink:0">${d.done?'✓':''}</div>
+          <div style="flex:1;font-weight:700;font-size:13px;${d.done?'color:var(--green)':''}">${dt.name}</div>
+          ${d.done?'<span class="badge badge-green">✓ เสร็จ</span>':'<span class="badge badge-gray">ยังไม่เสร็จ</span>'}
+          <span style="font-size:11px;color:var(--gray)">${d.images.length} ไฟล์</span>
+          <span class="chevron" style="font-size:11px;color:var(--gray)">▼</span>
+        </div>
+        <div class="doc-body" style="padding:12px 14px;background:#FAFAFA;border-top:1px solid var(--border)">
+          <div class="img-grid" id="dimg_${p.id}_${d.typeId}">
+            ${d.images.map((img,i)=>`
+              <div class="img-thumb">
+                <img src="${img.data}" onclick="showLightbox('${img.data}')" />
+                <button class="img-del" onclick="removeDocImg('${p.id}','${d.typeId}',${i})">✕</button>
+                <div class="img-label">${img.name}</div>
+              </div>`).join('')}
+          </div>
+          <div class="upload-zone" onclick="document.getElementById('dfile2_${p.id}_${d.typeId}').click()">📎 อัปโหลดเอกสาร</div>
+          <input type="file" id="dfile2_${p.id}_${d.typeId}" accept="image/*" multiple onchange="handleDocUpload(event,'${p.id}','${d.typeId}')" />
+          <textarea class="form-textarea" style="margin-top:8px;font-size:12px" placeholder="หมายเหตุ..."
+                    onblur="saveDocNote('${p.id}','${d.typeId}',this.value)">${d.note||''}</textarea>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function handleRenoImgUpload(ev) {
+  const files = [...ev.target.files];
+  const preview = document.getElementById('reno-imgs-preview');
+  files.forEach(f => {
+    const r = new FileReader();
+    r.onload = e => {
+      const idx = renoTmpImgs.length;
+      renoTmpImgs.push({name:f.name, data:e.target.result});
+      const d = document.createElement('div');
+      d.className = 'img-thumb';
+      d.innerHTML = `<img src="${e.target.result}" onclick="showLightbox('${e.target.result}')" />
+                     <button class="img-del" onclick="renoTmpImgs.splice(${idx},1);this.parentNode.remove()">✕</button>
+                     <div class="img-label">${f.name}</div>`;
+      preview.appendChild(d);
+    };
+    r.readAsDataURL(f);
+  });
+  ev.target.value = '';
+}
+
+function clearRenoForm() {
+  renoTmpImgs = [];
+  document.getElementById('reno-imgs-preview').innerHTML = '';
+  document.getElementById('reno-edit-id').value = '';
+  ['reno-date','reno-desc','reno-vendor','reno-amount'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+}
+
+function saveReno() {
+  const propId = document.getElementById('reno-prop-sel').value;
+  const dateISO = beToISO(document.getElementById('reno-date').value);
+  const desc   = document.getElementById('reno-desc').value.trim();
+  const amount = parseNumInput(document.getElementById('reno-amount').value);
+  if (!propId)  { alert('กรุณาเลือกทรัพย์'); return; }
+  if (!dateISO) { alert('กรุณากรอกวันที่ให้ถูกต้อง เช่น 15/06/2568'); return; }
+  if (!desc)   { alert('กรุณากรอกรายละเอียด'); return; }
+  if (!amount) { alert('กรุณากรอกจำนวนเงิน'); return; }
+
+  const editId = document.getElementById('reno-edit-id').value;
+  const data = {
+    propId, date: dateISO, desc, amount,
+    cat:    document.getElementById('reno-cat').value,
+    vendor: document.getElementById('reno-vendor').value.trim(),
+    pay:    document.getElementById('reno-pay').value,
+    images: [...renoTmpImgs],
+  };
+  if (editId) {
+    const e = S.expenses.find(x=>x.id===editId);
+    if (e) Object.assign(e, data);
+  } else {
+    S.expenses.push({id:uid(), ...data});
+  }
+  saveS(); renderReno(); renderProps(); closeModal('modal-reno'); clearRenoForm();
+  toast('✓ บันทึกรายการค่าใช้จ่ายแล้ว','success');
+}
+
+function deleteExpense(id) {
+  if (!confirm('ลบรายการนี้?')) return;
+  S.expenses = S.expenses.filter(x=>x.id!==id); saveS(); renderReno(); renderProps();
+}
+
+function renderReno() {
+  const filterPropId = document.getElementById('reno-filter').value;
+  let list = S.expenses;
+  if (filterPropId) list = list.filter(e=>e.propId===filterPropId);
+  if (renoCatFilter) list = list.filter(e=>e.cat===renoCatFilter);
+  list = [...list].sort((a,b)=>b.date.localeCompare(a.date));
+
+  const baseList = S.expenses.filter(e=>!filterPropId||e.propId===filterPropId);
+  const total    = baseList.reduce((s,e)=>s+Number(e.amount||0),0);
+  const propName = filterPropId?(S.props.find(p=>p.id===filterPropId)||{}).name:'ทั้งหมด';
+
+  document.getElementById('reno-summary-bar').innerHTML = `
+    <div class="reno-summary-bar">
+      <div class="reno-stat">
+        <div class="reno-stat-num">${fmtNum(total)}</div>
+        <div class="reno-stat-label">ค่าใช้จ่ายรวม (฿)</div>
+      </div>
+      <div class="reno-stat">
+        <div class="reno-stat-num">${baseList.length}</div>
+        <div class="reno-stat-label">รายการ</div>
+      </div>
+      <div style="flex:1;text-align:right;opacity:.8;font-size:13px;">${propName}</div>
+    </div>`;
+
+  const allCats = [...new Set(S.expenses.map(e=>e.cat))].filter(Boolean);
+  document.getElementById('reno-chips').innerHTML = allCats.length ? [
+    `<div class="chip ${!renoCatFilter?'active':''}" onclick="renoCatFilter='';renderReno()">ทั้งหมด</div>`,
+    ...allCats.map(c=>`<div class="chip ${renoCatFilter===c?'active':''}" onclick="renoCatFilter='${c}';renderReno()">${c}</div>`)
+  ].join('') : '';
+
+  const listEl = document.getElementById('reno-list');
+  if (!list.length) {
+    listEl.innerHTML = `<div class="empty"><div class="empty-icon">🧾</div><p>ยังไม่มีรายการค่าใช้จ่าย</p></div>`;
+    return;
+  }
+  const byProp = {};
+  list.forEach(e=>{ if(!byProp[e.propId]) byProp[e.propId]=[]; byProp[e.propId].push(e); });
+  let html = '';
+  Object.entries(byProp).forEach(([pid,items]) => {
+    const prop = S.props.find(p=>p.id===pid);
+    const sub  = items.reduce((s,e)=>s+Number(e.amount||0),0);
+    html += `<div class="section-title">🏠 ${prop?prop.name:'(ทรัพย์ถูกลบ)'} — รวม ${fmtPrice(sub)}</div>`;
+    html += items.map(e=>`
+      <div class="expense-row">
+        <div class="expense-date">${fmtDate(e.date)}</div>
+        <div>
+          <div class="expense-title">${e.desc}</div>
+          <div class="expense-sub">
+            <span class="badge badge-gray" style="font-size:10px;">${e.cat||'อื่นๆ'}</span>
+            ${e.vendor?' · '+e.vendor:''}${e.pay?' · '+e.pay:''}
+          </div>
+          ${e.images&&e.images.length?`
+          <div class="expense-imgs">
+            ${e.images.map(img=>`<div class="bill-thumb"><img src="${img.data}" onclick="showLightbox('${img.data}')" /></div>`).join('')}
+          </div>`:''}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+          <div class="expense-amount">${fmtPrice(e.amount)}</div>
+          <button class="icon-btn del btn-xs" onclick="deleteExpense('${e.id}')" title="ลบ">🗑</button>
+        </div>
+      </div>`).join('');
+  });
+  listEl.innerHTML = html;
+  updateBadges();
+}
+
+// ═══════════════════════════════════════════════
+//  SUMMARY
+// ═══════════════════════════════════════════════
+function renderSummary() {
+  const won  = S.props.filter(p=>p.status==='won').length;
+  const lost = S.props.filter(p=>p.status==='lost').length;
+  const watching = S.props.filter(p=>p.status==='watching').length;
+  const totalExp = S.expenses.reduce((s,e)=>s+Number(e.amount||0),0);
+  const wonDocs = S.props.filter(p=>p.status==='won').map(p=>{
+    syncPropDocs(p);
+    return { total:p.docs.length, done:p.docs.filter(d=>d.done).length };
+  });
+  const docsTotal = wonDocs.reduce((s,x)=>s+x.total,0);
+  const docsDone  = wonDocs.reduce((s,x)=>s+x.done,0);
+  const notifProps = S.props.filter(p=>p.notif&&(p.notif.tgToken||p.notif.browser)).length;
+
+  document.getElementById('summary-content').innerHTML = `
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-num" style="color:var(--blue)">${S.props.length}</div><div class="stat-label">ทรัพย์ทั้งหมด</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--green)">${won}</div><div class="stat-label">ชนะประมูล</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--red)">${lost}</div><div class="stat-label">ไม่ได้ทรัพย์</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--amber)">${watching}</div><div class="stat-label">กำลังติดตาม</div></div>
+      <div class="stat-card">
+        <div class="stat-num" style="color:var(--green)">${docsDone}/${docsTotal}</div>
+        <div class="stat-label">เอกสาร (ชนะประมูล)</div>
+        <div class="progress-bar-wrap"><div class="progress-bar" style="width:${docsTotal?Math.round(docsDone/docsTotal*100):0}%"></div></div>
+      </div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--navy)">${fmtNum(totalExp)}</div><div class="stat-label">ค่ารีโนเวทรวม (฿)</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--tg)">${notifProps}</div><div class="stat-label">ทรัพย์มีการแจ้งเตือน</div></div>
+    </div>
+
+    ${S.props.length?`
+    <div class="card">
+      <div class="card-title" style="margin-bottom:14px;">🏠 สรุปทรัพย์ทั้งหมด</div>
+      <div style="overflow-x:auto;">
+        <table class="summary-table">
+          <thead><tr>
+            <th>#</th><th>ชื่อทรัพย์</th><th>ที่ตั้ง</th>
+            <th class="num">ราคาประเมิน</th><th>นัดที่เข้าซื้อ</th>
+            <th class="num">ราคาเป้า (ซื้อ)</th><th class="num">ราคาขายที่คาดหวัง</th>
+            <th class="num">ค่ารีโนเวท</th><th>วันนัดเข้าซื้อ</th><th>สถานะ</th>
+          </tr></thead>
+          <tbody>
+            ${S.props.map((p,i)=>{
+              const base      = Number(p.appraisal)||Number(p.price)||0;
+              const tIdx      = p.targetRound||0;
+              const tR        = ROUNDS[tIdx]||ROUNDS[0];
+              const bidPrice  = base ? Math.floor(base*(1-tR.disc)) : 0;
+              const sellPrice = Number(p.targetSell)||0;
+              const reno      = Number(p.calcRepair)||0;
+              // วันของนัดที่เลือกเข้าซื้อ
+              const tRoundObj = (p.rounds||[])[tIdx];
+              const tDate     = typeof tRoundObj==='object' ? tRoundObj.date : '';
+              const today2    = new Date(); today2.setHours(0,0,0,0);
+              const dl        = tDate ? Math.round((new Date(tDate).setHours(0,0,0,0)-today2.getTime())/86400000) : null;
+              let dateTd = tDate ? fmtDate(tDate) : '—';
+              if (dl===0)      dateTd = `<span style="color:var(--red);font-weight:800">🔴 วันนี้!</span>`;
+              else if (dl>0&&dl<=3) dateTd = `<span style="color:var(--red)">⚠️ อีก ${dl} วัน</span>`;
+              const sb = p.status==='won'?'badge-green':p.status==='lost'?'badge-red':'badge-blue';
+              const sl = {watching:'👁 ติดตาม',won:'✓ ชนะ',lost:'✗ ไม่ได้'}[p.status||'watching'];
+              return `<tr>
+                <td style="font-weight:700;color:var(--blue)">${i+1}</td>
+                <td style="font-weight:700">${p.code?`<span style="font-size:11px;background:var(--blue-lt);color:var(--blue);padding:1px 6px;border-radius:4px;margin-right:4px">${p.code}</span>`:''}${p.name}</td>
+                <td style="color:var(--gray);font-size:12px">${p.loc||'—'}</td>
+                <td class="num">${base?fmtNum(base):'—'}</td>
+                <td style="text-align:center"><span class="badge badge-amber">นัดที่ ${tIdx+1}</span><br><span style="font-size:10px;color:var(--gray)">${tR.discLabel}</span></td>
+                <td class="num" style="color:var(--navy);font-weight:800">${bidPrice?fmtNum(bidPrice):'—'}</td>
+                <td class="num" style="color:var(--green);font-weight:700">${sellPrice?fmtNum(sellPrice):'—'}</td>
+                <td class="num" style="${reno?'color:var(--red)':''}">${reno?fmtNum(reno):'—'}</td>
+                <td style="font-size:12px">${dateTd}</td>
+                <td><span class="badge ${sb}">${sl}</span></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`:''}
+
+    ${S.expenses.length?`
+    <div class="card">
+      <div class="card-title" style="margin-bottom:14px;">🔨 สรุปค่ารีโนเวทแยกตามทรัพย์</div>
+      <div style="overflow-x:auto;">
+        <table class="summary-table">
+          <thead><tr><th>ทรัพย์</th><th class="num">ค่ารีโนเวท (฿)</th><th class="num">จำนวนรายการ</th><th>หมวดใช้จ่ายมากสุด</th></tr></thead>
+          <tbody>
+            ${S.props.filter(p=>S.expenses.some(e=>e.propId===p.id)).map(p=>{
+              const items = S.expenses.filter(e=>e.propId===p.id);
+              const tot   = items.reduce((s,e)=>s+Number(e.amount||0),0);
+              const bycat = {}; items.forEach(e=>{ bycat[e.cat||'อื่นๆ']=(bycat[e.cat||'อื่นๆ']||0)+Number(e.amount||0); });
+              const top   = Object.entries(bycat).sort((a,b)=>b[1]-a[1])[0];
+              return `<tr>
+                <td style="font-weight:700">${p.name}</td>
+                <td class="num" style="color:var(--red);font-weight:800">${fmtNum(tot)}</td>
+                <td class="num">${items.length}</td>
+                <td><span class="badge badge-amber">${top?top[0]:'—'}</span></td>
+              </tr>`;
+            }).join('')}
+            <tr style="background:var(--navy);">
+              <td style="color:white;font-weight:800;">รวม</td>
+              <td class="num" style="color:white;font-weight:800;">${fmtNum(totalExp)}</td>
+              <td class="num" style="color:white;">${S.expenses.length}</td><td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>`:''}
+  `;
+}
+
+// ═══════════════════════════════════════════════
+//  LIGHTBOX / MODAL
+// ═══════════════════════════════════════════════
+function showLightbox(src) {
+  document.getElementById('lightbox-img').src = src;
+  document.getElementById('lightbox').classList.add('open');
+}
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', function(e) { if(e.target===this) { this.classList.remove('open'); clearRenoForm(); }});
+});
+document.addEventListener('keydown', e => {
+  if (e.key==='Escape') {
+    document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open'));
+    document.getElementById('lightbox').classList.remove('open');
+    clearRenoForm();
+  }
+  if (e.key==='Enter') {
+    if (document.getElementById('modal-doctype').classList.contains('open')) saveDocType();
+  }
+});
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+loadS();
+populateRenoProps();
+renderDocTypes();
+renderProps();
+updateBadges();
+
+// auto-sync: เปรียบเทียบ timestamp — เครื่องไหนข้อมูลใหม่กว่าชนะ
+(async () => {
+  const cfg = S.settings;
+  if (!cfg?.supabaseUrl || !cfg?.supabaseKey || !cfg?.userKey) return;
+  try {
+    const res = await fetch(
+      `${cfg.supabaseUrl}/rest/v1/auction_data?user_key=eq.${encodeURIComponent(cfg.userKey)}&select=updated_at`,
+      { headers: { 'apikey': cfg.supabaseKey, 'Authorization': 'Bearer ' + cfg.supabaseKey } }
+    );
+    const rows = await res.json();
+    if (!Array.isArray(rows)) return;
+
+    const localTime  = S.lastModified ? new Date(S.lastModified).getTime() : 0;
+    const localProps = S.props?.length || 0;
+
+    if (rows.length === 0) {
+      // Cloud ว่าง → push local ขึ้น
+      if (localProps > 0) {
+        await supabaseSave();
+        toast('☁️ อัปโหลดข้อมูลขึ้น Cloud สำเร็จ!', 'success');
+      }
+    } else {
+      const cloudTime = new Date(rows[0].updated_at).getTime();
+
+      if (localProps > 0 && localTime === 0) {
+        // เครื่องเก่าไม่มี timestamp แต่มีข้อมูล → push ขึ้น cloud
+        await supabaseSave();
+        toast('☁️ อัปโหลดข้อมูลล่าสุดขึ้น Cloud แล้ว', 'success');
+      } else if (localTime >= cloudTime) {
+        // Local ใหม่กว่าหรือเท่ากัน → push ขึ้น cloud
+        await supabaseSave();
+      } else {
+        // Cloud ใหม่กว่า → pull ลงมา
+        const ok = await supabaseLoad();
+        if (ok) {
+          populateRenoProps(); renderDocTypes(); renderProps(); updateBadges(); calcPopulatePropSel();
+          toast('☁️ ซิงค์ข้อมูลล่าสุดจาก Cloud แล้ว', '');
+        }
+      }
+    }
+  } catch(e) {}
+})();
+
+// auto notifications: ตรวจตอนโหลดและทุก 1 ชั่วโมง
+setTimeout(autoCheckNotifications, 1500);
+setInterval(autoCheckNotifications, 60 * 60 * 1000);
+
+// ═══════════════════════════════════════════════
+//  CALC TAB
+// ═══════════════════════════════════════════════
+function calcPopulatePropSel() {
+  const sel = document.getElementById('calc-prop-sel');
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">— กรอกเองด้านล่าง —</option>' +
+    S.props.map(p => {
+      const appr = p.appraisal || p.price;
+      return `<option value="${p.id}">${p.name}${appr ? ' — ประเมิณ ' + fmtPrice(appr) : ''}</option>`;
+    }).join('');
+  if (prev) sel.value = prev;
+}
+
+function calcFillFromProp() {
+  const id = document.getElementById('calc-prop-sel').value;
+  const hdr = document.getElementById('calc-prop-header');
+  if (!id) { if(hdr) hdr.style.display='none'; calcUpdate(); return; }
+  const p = S.props.find(x => x.id === id);
+  if (!p) return;
+  const appr = p.appraisal || p.price;
+  if (appr) setNumInput('calc-appraisal', appr);
+  if (p.targetSell) setNumInput('calc-sell', p.targetSell);
+  // โหลดค่า repair / broker / customBid ที่บันทึกไว้
+  document.getElementById('calc-repair').value         = p.calcRepair   || 0;
+  document.getElementById('calc-broker').value         = p.calcBroker   || 0;
+  document.getElementById('calc-mortgage').value       = p.calcMortgage || '';
+  document.getElementById('calc-custom-bid-store').value = p.calcCustomBid || '';
+  // show header
+  if (hdr) {
+    hdr.style.display = '';
+    document.getElementById('calc-header-name').textContent = (p.code ? p.code+' — ' : '') + p.name;
+    const sub = [p.loc, p.size?p.size+' ตร.ว.':'', p.deed?'โฉนด '+p.deed:'', p.case?'คดี '+p.case:''].filter(Boolean).join('  ·  ');
+    document.getElementById('calc-header-sub').textContent = sub;
+  }
+  calcUpdate();
+}
+
+const fmtB  = n => Number(n||0).toLocaleString('th-TH',{maximumFractionDigits:2}) + ' ฿';
+const fmtN  = n => Number(n||0).toLocaleString('th-TH',{maximumFractionDigits:2});
+
+function fmtNumInput(el) {
+  const pos = el.selectionStart;
+  const before = el.value.length;
+  const digits = el.value.replace(/[^0-9]/g, '');
+  el.value = digits ? Number(digits).toLocaleString('th-TH') : '';
+  const diff = el.value.length - before;
+  try { el.setSelectionRange(pos + diff, pos + diff); } catch(e) {}
+}
+function parseNumInput(val) {
+  return Number(String(val||'').replace(/[^0-9.]/g, '')) || 0;
+}
+function setNumInput(id, val) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const n = Number(val||0);
+  el.value = n ? n.toLocaleString('th-TH') : '';
+}
+const pctColor = v => v >= 0.15 ? '#1E6B45' : v >= 0.05 ? '#B45309' : '#B91C1C';
+const pctBg    = v => v >= 0.15 ? '#E8F5EE' : v >= 0.05 ? '#FFFBEB' : '#FEF2F2';
+
+function calcClearAll() {
+  ['calc-appraisal','calc-sell','calc-market'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value='';
+  });
+  const sel = document.getElementById('calc-prop-sel');
+  if (sel) sel.value = '';
+  document.getElementById('calc-prop-header').style.display='none';
+  calcUpdate();
+}
+
+function calcUpdate() {
+  const appraisal = parseNumInput(document.getElementById('calc-appraisal').value);
+  const sell      = parseNumInput(document.getElementById('calc-sell').value);
+  const market    = parseNumInput(document.getElementById('calc-market')?.value);
+
+  // ค่าซ่อมแซม / นายหน้า อ่านจาก hidden inputs (ถูก set โดย calcFillFromProp)
+  const repair   = Number(document.getElementById('calc-repair')?.value) || 0;
+  const broker   = Number(document.getElementById('calc-broker')?.value) || 0;
+  const mortgage = Number(document.getElementById('calc-mortgage')?.value) || 0;
+
+  const result = document.getElementById('calc-result');
+  const empty  = document.getElementById('calc-empty');
+
+  const saveBar = document.getElementById('calc-save-bar');
+  if (!appraisal || !sell) {
+    result.style.display='none'; empty.style.display='';
+    if (saveBar) saveBar.style.display='none';
+    return;
+  }
+  result.style.display=''; empty.style.display='none';
+  const hasPropSel = !!document.getElementById('calc-prop-sel')?.value;
+  if (saveBar) saveBar.style.display = hasPropSel ? '' : 'none';
+
+  // ── fee rows ──
+  const fees = [
+    { label:'ราคาขายที่คาดหวัง',            rate:'',      baseLabel:'',                        val: sell,        isHeader: true },
+    { label:'ราคาประเมิณที่ดิน',             rate:'',      baseLabel:'ยกมา',                    val: appraisal,   isHeader: true },
+    { label:'ค่าธรรมเนียมโอนเข้า',          rate:'1%',    baseLabel:'ของราคาประเมิณ',           val: appraisal * 0.01 },
+    { label:'ค่าภาษีเงินได้บุคคล (เข้า)',   rate:'2%',    baseLabel:'ของราคาประเมิณ',           val: appraisal * 0.02 },
+    { label:'ค่าธรรมเนียมโอนออก',           rate:'1%',    baseLabel:'ของราคาขาย',              val: sell * 0.01 },
+    { label:'ภาษีเงินได้ ณ ที่จ่าย',        rate:'1%',    baseLabel:'ของราคาขาย',              val: sell * 0.01 },
+    { label:'ค่าซ่อมแซม',                   rate:'',      baseLabel:'วิเคราะห์จากพื้นที่',     val: repair,      editable:'repair' },
+    { label:'ค่าอากร (กรมบังคับคดี)',        rate:'0.5%',  baseLabel:'ของราคาซื้อ',             val: appraisal * 0.005 },
+    { label:'ค่าจดจำนอง',                   rate:'1%',    baseLabel:'ของราคาขาย',              val: sell * 0.01 },
+    { label:'ค่าภาษีธุรกิจเฉพาะ',           rate:'3.3%',  baseLabel:'ของราคาขาย',              val: sell * 0.033 },
+    { label:'ค่านายหน้า',                   rate:'',      baseLabel:'ของราคาขาย',              val: broker,      editable:'broker' },
+  ];
+
+  const totalCost = fees.filter(f=>!f.isHeader).reduce((s,f)=>s+f.val, 0);
+
+  const td = (txt, style='') => `<td style="padding:7px 10px;${style}">${txt}</td>`;
+  document.getElementById('calc-fee-rows').innerHTML = fees.map(f => {
+    const rowStyle = f.isHeader ? 'background:#F8FAFC;font-weight:700;border-bottom:1px solid var(--border)' : 'border-bottom:1px dashed #EEE';
+    const valCell = f.editable
+      ? `<input type="text" inputmode="numeric" value="${f.val ? Number(f.val).toLocaleString('th-TH') : ''}" placeholder="0" style="width:100%;border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:12px;text-align:right" oninput="fmtNumInput(this);document.getElementById('calc-${f.editable}').value=this.value.replace(/[^0-9.]/g,'');calcUpdate()">`
+      : `<span style="font-weight:${f.isHeader?'700':'600'};color:${f.isHeader?'var(--navy)':'#374151'}">${f.isHeader ? fmtN(f.val) : fmtN(Math.round(f.val*100)/100)}</span>`;
+    return `<tr style="${rowStyle}">
+      ${td(f.label, f.isHeader?'color:var(--navy)':'color:#374151')}
+      ${td(f.rate, 'text-align:center;color:var(--blue);font-weight:700')}
+      ${td(f.baseLabel, 'color:var(--gray);font-size:12px')}
+      ${td(valCell, 'text-align:right')}
+    </tr>`;
+  }).join('');
+
+  document.getElementById('calc-total-cost').textContent = fmtB(Math.round(totalCost));
+
+  // ── profit table ──
+  const selPropId   = document.getElementById('calc-prop-sel').value;
+  const selProp     = selPropId ? S.props.find(x=>x.id===selPropId) : null;
+  const targetRound = selProp ? (selProp.targetRound||0) : -1;
+
+  const customBidInline = parseNumInput(document.getElementById('calc-custom-bid')?.value);
+  const customBidStore  = parseNumInput(document.getElementById('calc-custom-bid-store')?.value);
+  const customBid = customBidInline || customBidStore;
+
+  const levels = [
+    { label:'ปกติ (รอบ 1)',    disc:0,   roundIdx:0 },
+    { label:'ลด 10% (รอบ 2)', disc:0.1, roundIdx:1 },
+    { label:'ลด 20% (รอบ 3)', disc:0.2, roundIdx:2 },
+    { label:'ลด 30% (รอบ 4–6)',disc:0.3, roundIdx:3 },
+    { label:'ยกได้',            disc:null,roundIdx:-1, custom:true },
+  ];
+
+  document.getElementById('calc-profit-rows').innerHTML = levels.map(lv => {
+    const buyPrice = lv.custom ? customBid : Math.round(appraisal * (1 - lv.disc));
+    const totalInvest = buyPrice + totalCost;
+    const profit = sell - totalInvest;
+    const profitPct = totalInvest > 0 ? profit / totalInvest : 0;
+    const isP = profit >= 0;
+    const isTarget = !lv.custom && targetRound >= 0 && (lv.roundIdx===3 ? targetRound>=3 : lv.roundIdx===targetRound);
+    const rowBg = isTarget ? '#FFFBEB' : (lv.custom ? '#F0FDF4' : '');
+    const profColor = pctColor(profitPct);
+    const buyCell = lv.custom
+      ? `<input type="text" inputmode="numeric" id="calc-custom-bid" value="${customBid ? Number(customBid).toLocaleString('th-TH') : ''}" placeholder="ใส่ราคา" style="width:100%;border:1.5px solid var(--green);border-radius:5px;padding:3px 6px;font-size:12px;text-align:right;color:var(--green);font-weight:700" oninput="fmtNumInput(this);document.getElementById('calc-custom-bid-store').value=this.value.replace(/[^0-9.]/g,'');calcUpdate()">`
+      : fmtN(buyPrice);
+    return `<tr style="border-bottom:1px solid var(--border);background:${rowBg}">
+      <td style="padding:8px 10px;font-weight:700;color:${isTarget?'var(--amber)':lv.custom?'var(--green)':'var(--navy)'};white-space:nowrap">
+        ${isTarget?'🎯 ':''}${lv.label}
+      </td>
+      <td style="padding:8px 10px;text-align:right;font-weight:${lv.custom?800:600}">${buyCell}</td>
+      <td style="padding:8px 10px;text-align:right;color:var(--gray)">${fmtN(Math.round(totalCost))}</td>
+      <td style="padding:8px 10px;text-align:right;font-weight:600">${buyPrice ? fmtN(Math.round(totalInvest)) : '—'}</td>
+      <td style="padding:8px 10px;text-align:right;font-weight:800;color:${buyPrice?profColor:'var(--gray)'}">${buyPrice?(isP?'+':'')+fmtN(Math.round(profit)):'—'}</td>
+      <td style="padding:8px 6px;text-align:right;font-weight:700;color:${buyPrice?profColor:'var(--gray)'};white-space:nowrap">
+        ${buyPrice ? `<span style="background:${pctBg(profitPct)};padding:2px 6px;border-radius:4px">${(profitPct*100).toFixed(1)}%</span>` : '—'}
+      </td>
+    </tr>`;
+  }).join('');
+
+  // mortgage note
+  const mortEl = document.getElementById('calc-mortgage-note');
+  if (mortgage > 0 && mortEl) {
+    mortEl.style.display='';
+    mortEl.innerHTML = `⚠️ ราคาติดจำนอง ${fmtB(mortgage)} — กำไรหลังหักจำนอง = ขาย ${fmtB(sell)} − รวมทุน − จำนอง`;
+  } else if (mortEl) mortEl.style.display='none';
+}
+
+function calcSaveToProperty() {
+  const selPropId = document.getElementById('calc-prop-sel').value;
+  if (!selPropId) { toast('เลือกทรัพย์ก่อน','error'); return; }
+  const p = S.props.find(x=>x.id===selPropId); if (!p) return;
+  p.appraisal    = parseNumInput(document.getElementById('calc-appraisal').value);
+  p.targetSell   = parseNumInput(document.getElementById('calc-sell').value);
+  p.calcRepair   = Number(document.getElementById('calc-repair').value)  || 0;
+  p.calcBroker   = Number(document.getElementById('calc-broker').value)  || 0;
+  p.calcMortgage = Number(document.getElementById('calc-mortgage').value) || 0;
+  p.calcCustomBid= parseNumInput(document.getElementById('calc-custom-bid')?.value);
+  saveS(); renderProps(); toast('✓ บันทึกข้อมูลการคำนวณกลับทรัพย์แล้ว');
+}
+</script>
+</body>
+</html>
