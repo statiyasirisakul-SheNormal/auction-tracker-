@@ -1506,18 +1506,39 @@ function renderProps() {
             <div style="font-size:13px;color:#374151;background:#F9FAFB;padding:10px 14px;border-radius:8px;">${p.notes}</div>
           </div>`:''}
 
-          <!-- ACTUAL SELL PRICE (ชนะประมูล) -->
+          <!-- BUY / SELL PRICE (ชนะประมูล) -->
           ${p.status==='won'?`
           <div onclick="event.stopPropagation()" style="margin-top:14px;background:#F0FDF4;border-radius:9px;padding:12px 14px;border:1px solid #BBF7D0">
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-              <span style="font-size:13px;font-weight:700;color:var(--green);white-space:nowrap">💵 ราคาที่ขายได้จริง</span>
-              <input type="text" inputmode="numeric"
-                value="${Number(p.actualSell)>0 ? Number(p.actualSell).toLocaleString('th-TH') : ''}"
-                placeholder="กรอกราคาที่ขายได้ (฿)"
-                oninput="fmtNumInput(this)"
-                onblur="savePropActualSell('${p.id}',this.value)"
-                style="flex:1;min-width:140px;border:1.5px solid var(--green);border-radius:7px;padding:6px 10px;font-size:14px;font-weight:700;color:var(--green);background:white;outline:none">
-              ${(()=>{ const _s=Number(p.actualSell); const _e=renoItems.reduce((s,e)=>s+Number(e.amount||0),0); const _net=(_s-_e)/2; return _s>0?`<span style="font-size:12px;color:var(--navy);white-space:nowrap">กำไรส่วนตัว (÷2): <strong style="color:${_net>=0?'var(--green)':'var(--red)'};font-size:14px">${_net>=0?'+':''}${fmtNum(Math.round(_net))}</strong> ฿</span>`:''; })()}
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                <span style="font-size:13px;font-weight:700;color:var(--navy);white-space:nowrap;min-width:160px">🏷 ราคาที่ซื้อทรัพย์ได้</span>
+                <input type="text" inputmode="numeric"
+                  value="${Number(p.actualBuy)>0 ? Number(p.actualBuy).toLocaleString('th-TH') : ''}"
+                  placeholder="กรอกราคาที่ประมูลได้ (฿)"
+                  oninput="fmtNumInput(this)"
+                  onblur="savePropActualBuy('${p.id}',this.value)"
+                  style="flex:1;min-width:140px;border:1.5px solid var(--navy);border-radius:7px;padding:6px 10px;font-size:14px;font-weight:700;color:var(--navy);background:white;outline:none">
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                <span style="font-size:13px;font-weight:700;color:var(--green);white-space:nowrap;min-width:160px">💵 ราคาที่ขายได้จริง</span>
+                <input type="text" inputmode="numeric"
+                  value="${Number(p.actualSell)>0 ? Number(p.actualSell).toLocaleString('th-TH') : ''}"
+                  placeholder="กรอกราคาที่ขายได้ (฿)"
+                  oninput="fmtNumInput(this)"
+                  onblur="savePropActualSell('${p.id}',this.value)"
+                  style="flex:1;min-width:140px;border:1.5px solid var(--green);border-radius:7px;padding:6px 10px;font-size:14px;font-weight:700;color:var(--green);background:white;outline:none">
+              </div>
+              ${(()=>{
+                const _sell=Number(p.actualSell); const _buy=Number(p.actualBuy);
+                const _exp=renoItems.reduce((s,e)=>s+Number(e.amount||0),0);
+                if (!_sell || !_buy) return '';
+                const _gross=_sell-_buy-_exp; const _net=_gross/2;
+                const _gc=_gross>=0?'var(--green)':'var(--red)'; const _nc=_net>=0?'var(--green)':'var(--red)';
+                return '<div style="border-top:1px solid #BBF7D0;padding-top:8px;display:flex;gap:16px;flex-wrap:wrap">'
+                  +'<span style="font-size:12px;color:var(--gray)">กำไรรวม: <strong style="color:'+_gc+'">'+(  _gross>=0?'+':'')+fmtNum(Math.round(_gross))+'</strong> ฿</span>'
+                  +'<span style="font-size:13px;font-weight:700;color:var(--navy)">กำไรส่วนตัว (÷2): <strong style="color:'+_nc+';font-size:15px">'+(_net>=0?'+':'')+fmtNum(Math.round(_net))+'</strong> ฿</span>'
+                  +'</div>';
+              })()}
             </div>
           </div>`:''}
 
@@ -1659,6 +1680,14 @@ function saveProp() {
   saveS(); renderProps(); populateRenoProps(); calcPopulatePropSel(); closeModal('modal-prop');
   document.getElementById('prop-edit-id').value = '';
   toast('✓ บันทึกทรัพย์แล้ว');
+}
+
+function savePropActualBuy(propId, val) {
+  const p = S.props.find(x=>x.id===propId); if (!p) return;
+  const v = parseNumInput(val);
+  if (v === (p.actualBuy||0)) return;
+  p.actualBuy = v;
+  saveS(); renderProps();
 }
 
 function savePropActualSell(propId, val) {
@@ -2518,9 +2547,9 @@ function renderSummary() {
   const watching= S.props.filter(p=>p.status==='watching').length;
   const totalExp= S.expenses.filter(e=>!e.reimbursed).reduce((s,e)=>s+Number(e.amount||0),0);
   const totalReimb = S.expenses.filter(e=>e.reimbursed).reduce((s,e)=>s+Number(e.amount||0),0);
-  const profitProps = S.props.filter(p=>p.status==='won'&&Number(p.actualSell)>0).map(p=>{
+  const profitProps = S.props.filter(p=>p.status==='won'&&Number(p.actualSell)>0&&Number(p.actualBuy)>0).map(p=>{
     const allExp = S.expenses.filter(e=>e.propId===p.id).reduce((s,e)=>s+Number(e.amount||0),0);
-    const gross  = Number(p.actualSell)-allExp;
+    const gross  = Number(p.actualSell)-Number(p.actualBuy)-allExp;
     return { p, allExp, gross, net: gross/2 };
   });
   const wonDocs = S.props.filter(p=>p.status==='won').map(p=>{ syncPropDocs(p); return { total:p.docs.length, done:p.docs.filter(d=>d.done).length }; });
@@ -2641,8 +2670,8 @@ function renderSummaryProp(pid) {
   const sb      = p.status==='won'?'badge-green':p.status==='lost'?'badge-red':'badge-blue';
   const sl      = {watching:'👁 กำลังติดตาม',won:'✓ ชนะประมูล',lost:'✗ ไม่ได้ทรัพย์'}[p.status||'watching'];
   const docsTotal= p.docs.length; const docsDone = p.docs.filter(d=>d.done).length;
-  const hasSold = Number(p.actualSell)>0;
-  const gross   = hasSold ? Number(p.actualSell)-expAll : null;
+  const hasSold = Number(p.actualSell)>0 && Number(p.actualBuy)>0;
+  const gross   = hasSold ? Number(p.actualSell)-Number(p.actualBuy)-expAll : null;
   const net     = hasSold ? gross/2 : null;
 
   document.getElementById('summary-content').innerHTML = `
@@ -2716,10 +2745,11 @@ function renderPnL() {
   const rows = wonProps.map(p => {
     const allExp = S.expenses.filter(e => e.propId === p.id).reduce((s, e) => s + Number(e.amount || 0), 0);
     const sold   = Number(p.actualSell) || 0;
-    const gross  = sold ? sold - allExp : null;
+    const bought = Number(p.actualBuy)  || 0;
+    const gross  = (sold && bought) ? sold - bought - allExp : null;
     const net    = gross !== null ? gross / 2 : null;
     const isP    = net !== null && net >= 0;
-    return { p, allExp, sold, gross, net, isP };
+    return { p, allExp, sold, bought, gross, net, isP };
   });
 
   const totalSold  = rows.reduce((s, r) => s + r.sold, 0);
@@ -2738,23 +2768,28 @@ function renderPnL() {
 
     <div class="card">
       <div class="card-title" style="margin-bottom:14px">📋 รายละเอียดกำไร/ขาดทุนรายหลัง</div>
-      ${rows.map(({ p, allExp, sold, gross, net, isP }) => {
-        const pct = sold > 0 && allExp > 0 ? ((sold - allExp) / allExp * 100) : null;
+      ${rows.map(({ p, allExp, sold, bought, gross, net, isP }) => {
+        const totalCost = bought + allExp;
+        const pct = sold > 0 && totalCost > 0 ? ((sold - totalCost) / totalCost * 100) : null;
         return `
         <div style="background:${sold>0?'#F8FAFC':'#FFFBEB'};border:1.5px solid ${sold>0?(isP?'#BBF7D0':'#FCA5A5'):'#FDE68A'};border-radius:10px;padding:14px 16px;margin-bottom:10px">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
             ${p.code?`<span style="font-size:11px;background:var(--blue-lt);color:var(--blue);padding:1px 7px;border-radius:5px;font-weight:700">${p.code}</span>`:''}
             <span style="font-size:14px;font-weight:800;color:var(--navy)">${p.name}</span>
-            ${!sold?`<span style="font-size:11px;background:#FEF3C7;color:#92400E;padding:1px 8px;border-radius:5px;font-weight:700">⏳ รอกรอกราคาขาย</span>`:''}
+            ${!sold||!bought?`<span style="font-size:11px;background:#FEF3C7;color:#92400E;padding:1px 8px;border-radius:5px;font-weight:700">⏳ ${!bought?'รอกรอกราคาซื้อ':'รอกรอกราคาขาย'}</span>`:''}
           </div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;text-align:center">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;text-align:center">
             <div style="background:white;border-radius:8px;padding:8px 4px">
-              <div style="font-size:13px;font-weight:800;color:var(--green)">${sold ? fmtNum(sold) : '—'}</div>
-              <div style="font-size:10px;color:var(--gray)">ราคาขาย (฿)</div>
+              <div style="font-size:13px;font-weight:800;color:var(--navy)">${bought ? fmtNum(bought) : '—'}</div>
+              <div style="font-size:10px;color:var(--gray)">ราคาซื้อ (฿)</div>
             </div>
             <div style="background:white;border-radius:8px;padding:8px 4px">
               <div style="font-size:13px;font-weight:700;color:var(--red)">${fmtNum(Math.round(allExp))}</div>
               <div style="font-size:10px;color:var(--gray)">ค่าใช้จ่ายรวม (฿)</div>
+            </div>
+            <div style="background:white;border-radius:8px;padding:8px 4px">
+              <div style="font-size:13px;font-weight:800;color:var(--green)">${sold ? fmtNum(sold) : '—'}</div>
+              <div style="font-size:10px;color:var(--gray)">ราคาขาย (฿)</div>
             </div>
             <div style="background:white;border-radius:8px;padding:8px 4px">
               <div style="font-size:13px;font-weight:800;color:${gross!==null?(isP?'var(--green)':'var(--red)'):'var(--gray)'}">${gross!==null?(isP?'+':'')+fmtNum(Math.round(gross)):'—'}</div>
