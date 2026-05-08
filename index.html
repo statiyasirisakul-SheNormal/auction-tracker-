@@ -2902,13 +2902,8 @@ function pnlDetailHTML({ p, costs, sold, gross, net, isP }) {
       </div>
       ${pct!==null?`<span style="font-size:12px;font-weight:700;color:${isP?'var(--green)':'var(--red)'}">${isP?'+':''}${pct.toFixed(1)}%</span>`:''}
     </div>` : `
-    <div>
-      <label style="font-size:12px;color:var(--gray);display:block;margin-bottom:4px">กรอกราคาขายเพื่อดูกำไร</label>
-      <input type="text" inputmode="numeric"
-        placeholder="ราคาขาย (฿)"
-        oninput="fmtNumInput(this)"
-        onblur="savePropActualSell('${p.id}',this.value);renderPnL()"
-        style="width:100%;border:1.5px solid var(--amber);border-radius:7px;padding:8px 12px;font-size:14px;font-weight:700;color:var(--navy);background:white;box-sizing:border-box">
+    <div style="background:#FFFBEB;border:1.5px dashed #FCD34D;border-radius:8px;padding:10px 14px;font-size:13px;color:#92400E">
+      ⏳ ยังไม่มีราคาขาย — กรอกได้ที่การ์ดทรัพย์ในแท็บ "ทรัพย์"
     </div>`}
   </div>`;
 }
