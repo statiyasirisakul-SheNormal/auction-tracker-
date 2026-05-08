@@ -398,6 +398,9 @@ input, select, textarea { font-size: 16px !important; }
   <button class="tab-btn" onclick="switchTab('calc')">
     🧮 คำนวณทรัพย์
   </button>
+  <button class="tab-btn" onclick="switchTab('pnl')">
+    💰 กำไร/ขาดทุน
+  </button>
 </div>
 
 <div class="content">
@@ -576,6 +579,13 @@ input, select, textarea { font-size: 16px !important; }
           <button class="btn btn-success btn-sm" onclick="calcSaveToProperty()">💾 บันทึกกลับทรัพย์</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ══ P&L ══════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-pnl">
+    <div style="max-width:760px;margin:0 auto;padding:20px 16px">
+      <div id="pnl-content"></div>
     </div>
   </div>
 
@@ -987,6 +997,29 @@ let S = {
 
 function loadS() {
   try { const r = localStorage.getItem(KEY); if (r) S = JSON.parse(r); } catch(e) {}
+
+  // กู้ข้อมูลจาก key เก่า: สแกนทุก key ใน localStorage หาข้อมูลทรัพย์/ค่าใช้จ่าย
+  if (!S.props?.length && !S.expenses?.length) {
+    let bestCandidate = null, bestCount = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k === KEY) continue;
+      try {
+        const parsed = JSON.parse(localStorage.getItem(k));
+        if (parsed && typeof parsed === 'object') {
+          const cnt = (parsed.props?.length || 0) + (parsed.expenses?.length || 0);
+          if (cnt > bestCount) { bestCount = cnt; bestCandidate = { key: k, data: parsed }; }
+        }
+      } catch(e) {}
+    }
+    if (bestCandidate) {
+      S = bestCandidate.data;
+      localStorage.setItem(KEY, JSON.stringify(S)); // ย้ายมา key ใหม่
+      console.log('[Recovery] ย้ายข้อมูลจาก key เก่า:', bestCandidate.key, '→', KEY,
+                  '| ทรัพย์:', S.props?.length, '| ค่าใช้จ่าย:', S.expenses?.length);
+    }
+  }
+
   if (!Array.isArray(S.expenses)) S.expenses = [];
   if (!Array.isArray(S.props))    S.props    = [];
   if (!Array.isArray(S.docTypes)) S.docTypes = [];
@@ -1071,13 +1104,14 @@ function switchTab(t) {
   if (t === 'docs') t = 'props';
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  const tabOrder = ['props','reno','summary','calc'];
+  const tabOrder = ['props','reno','summary','calc','pnl'];
   const idx = tabOrder.indexOf(t);
   if (idx >= 0) document.querySelectorAll('.tab-btn')[idx].classList.add('active');
   document.getElementById('tab-'+t).classList.add('active');
   if (t === 'summary') renderSummary();
   if (t === 'reno')    renderReno();
   if (t === 'calc')    { calcPopulatePropSel(); calcUpdate(); }
+  if (t === 'pnl')     renderPnL();
 }
 
 function updateBadges() {
@@ -1116,15 +1150,16 @@ function saveDocType() {
 function deleteDocType(id) {
   if (!confirm('ลบประเภทเอกสารนี้ออกจากทุกทรัพย์?')) return;
   S.docTypes = S.docTypes.filter(d => d.id!==id);
-  S.props.forEach(p => { if (p.docs) p.docs = p.docs.filter(d => d.typeId!==id); });
+  S.props.forEach(p => { if (p.docs) p.docs = p.docs.filter(d => d.typeId!==id); if (p.removedDocs) p.removedDocs = p.removedDocs.filter(x=>x!==id); });
   saveS(); renderDocTypes(); renderProps();
 }
 
-// ensure a property has all docType entries
+// ensure a property has all docType entries (skip explicitly removed ones)
 function syncPropDocs(prop) {
   if (!prop.docs) prop.docs = [];
+  if (!prop.removedDocs) prop.removedDocs = [];
   S.docTypes.forEach(dt => {
-    if (!prop.docs.find(d => d.typeId===dt.id)) {
+    if (!prop.docs.find(d => d.typeId===dt.id) && !prop.removedDocs.includes(dt.id)) {
       prop.docs.push({ typeId: dt.id, done: false, images: [], note: '' });
     }
   });
@@ -1168,6 +1203,7 @@ function renderDocs() {
               ? '<span class="badge badge-green">✓ เสร็จแล้ว</span>'
               : '<span class="badge badge-gray">ยังไม่เสร็จ</span>'}
             <span style="font-size:12px;color:var(--gray);">${d.images.length} รูป</span>
+            <button onclick="event.stopPropagation();deleteDocFromProp('${p.id}','${d.typeId}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:15px;padding:0 2px;line-height:1;flex-shrink:0" title="ลบเอกสารนี้จากทรัพย์">✕</button>
             <span class="chevron">▼</span>
           </div>
           <div class="doc-body">
@@ -1222,6 +1258,16 @@ function toggleDocDone(propId, typeId) {
   const p = S.props.find(x=>x.id===propId); if (!p) return;
   const d = p.docs.find(x=>x.typeId===typeId); if (!d) return;
   d.done = !d.done; saveS(); renderProps();
+}
+
+function deleteDocFromProp(propId, typeId) {
+  const p = S.props.find(x=>x.id===propId); if (!p) return;
+  const dt = S.docTypes.find(t=>t.id===typeId);
+  if (!confirm(`ลบเอกสาร "${dt?.name||typeId}" ออกจากทรัพย์นี้?`)) return;
+  p.docs = p.docs.filter(d=>d.typeId!==typeId);
+  if (!p.removedDocs) p.removedDocs = [];
+  if (!p.removedDocs.includes(typeId)) p.removedDocs.push(typeId);
+  saveS(); renderProps();
 }
 
 async function handleDocUpload(ev, propId, typeId) {
@@ -1460,6 +1506,21 @@ function renderProps() {
             <div style="font-size:13px;color:#374151;background:#F9FAFB;padding:10px 14px;border-radius:8px;">${p.notes}</div>
           </div>`:''}
 
+          <!-- ACTUAL SELL PRICE (ชนะประมูล) -->
+          ${p.status==='won'?`
+          <div onclick="event.stopPropagation()" style="margin-top:14px;background:#F0FDF4;border-radius:9px;padding:12px 14px;border:1px solid #BBF7D0">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <span style="font-size:13px;font-weight:700;color:var(--green);white-space:nowrap">💵 ราคาที่ขายได้จริง</span>
+              <input type="text" inputmode="numeric"
+                value="${Number(p.actualSell)>0 ? Number(p.actualSell).toLocaleString('th-TH') : ''}"
+                placeholder="กรอกราคาที่ขายได้ (฿)"
+                oninput="fmtNumInput(this)"
+                onblur="savePropActualSell('${p.id}',this.value)"
+                style="flex:1;min-width:140px;border:1.5px solid var(--green);border-radius:7px;padding:6px 10px;font-size:14px;font-weight:700;color:var(--green);background:white;outline:none">
+              ${(()=>{ const _s=Number(p.actualSell); const _e=renoItems.reduce((s,e)=>s+Number(e.amount||0),0); const _net=(_s-_e)/2; return _s>0?`<span style="font-size:12px;color:var(--navy);white-space:nowrap">กำไรส่วนตัว (÷2): <strong style="color:${_net>=0?'var(--green)':'var(--red)'};font-size:14px">${_net>=0?'+':''}${fmtNum(Math.round(_net))}</strong> ฿</span>`:''; })()}
+            </div>
+          </div>`:''}
+
           <!-- DOCS SECTION (ทุกทรัพย์) -->
           <div style="margin-top:18px">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
@@ -1598,6 +1659,14 @@ function saveProp() {
   saveS(); renderProps(); populateRenoProps(); calcPopulatePropSel(); closeModal('modal-prop');
   document.getElementById('prop-edit-id').value = '';
   toast('✓ บันทึกทรัพย์แล้ว');
+}
+
+function savePropActualSell(propId, val) {
+  const p = S.props.find(x=>x.id===propId); if (!p) return;
+  const v = parseNumInput(val);
+  if (v === (p.actualSell||0)) return;
+  p.actualSell = v;
+  saveS(); renderProps();
 }
 
 function deleteProp(id) {
@@ -1827,7 +1896,7 @@ async function supabaseSave() {
         'Content-Type': 'application/json',
         'Prefer': 'resolution=merge-duplicates',
       },
-      body: JSON.stringify({ user_key: cfg.userKey, data: cloud, updated_at: new Date().toISOString() }),
+      body: JSON.stringify({ user_key: cfg.userKey, data: cloud, updated_at: S.lastModified || new Date().toISOString() }),
     });
     if (dot) dot.style.background = res.ok ? '#6EE7B7' : '#FCA5A5';
   } catch(e) {
@@ -2217,6 +2286,7 @@ function propDocsHtml(p) {
           <div style="flex:1;font-weight:700;font-size:13px;${d.done?'color:var(--green)':''}">${dt.name}</div>
           ${d.done?'<span class="badge badge-green">✓ เสร็จ</span>':'<span class="badge badge-gray">ยังไม่เสร็จ</span>'}
           <span style="font-size:11px;color:var(--gray)">${d.images.length} ไฟล์</span>
+          <button onclick="event.stopPropagation();deleteDocFromProp('${p.id}','${d.typeId}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:15px;padding:0 2px;line-height:1;flex-shrink:0" title="ลบ">✕</button>
           <span class="chevron" style="font-size:11px;color:var(--gray)">▼</span>
         </div>
         <div class="doc-body" style="padding:12px 14px;background:#FAFAFA;border-top:1px solid var(--border)">
@@ -2633,6 +2703,90 @@ function renderSummaryProp(pid) {
 }
 
 // ═══════════════════════════════════════════════
+//  P&L
+// ═══════════════════════════════════════════════
+function renderPnL() {
+  const el = document.getElementById('pnl-content');
+  const wonProps = S.props.filter(p => p.status === 'won');
+  if (!wonProps.length) {
+    el.innerHTML = `<div class="card"><div class="empty"><div class="empty-icon">💰</div><p>ยังไม่มีทรัพย์ที่ชนะประมูล</p></div></div>`;
+    return;
+  }
+
+  const rows = wonProps.map(p => {
+    const allExp = S.expenses.filter(e => e.propId === p.id).reduce((s, e) => s + Number(e.amount || 0), 0);
+    const sold   = Number(p.actualSell) || 0;
+    const gross  = sold ? sold - allExp : null;
+    const net    = gross !== null ? gross / 2 : null;
+    const isP    = net !== null && net >= 0;
+    return { p, allExp, sold, gross, net, isP };
+  });
+
+  const totalSold  = rows.reduce((s, r) => s + r.sold, 0);
+  const totalExp   = rows.reduce((s, r) => s + r.allExp, 0);
+  const totalGross = rows.filter(r => r.gross !== null).reduce((s, r) => s + r.gross, 0);
+  const totalNet   = totalGross / 2;
+  const hasSold    = rows.some(r => r.sold > 0);
+
+  el.innerHTML = `
+    ${hasSold ? `
+    <div class="card" style="margin-bottom:14px;background:linear-gradient(135deg,#1F3A5F,#2563EB);color:white;border-radius:14px;padding:20px">
+      <div style="font-size:13px;opacity:.8;margin-bottom:8px">กำไรสุทธิรวมทั้งหมด (÷2)</div>
+      <div style="font-size:36px;font-weight:800;color:${totalNet>=0?'#86EFAC':'#FCA5A5'}">${totalNet>=0?'+':''}${fmtNum(Math.round(totalNet))} ฿</div>
+      <div style="font-size:12px;opacity:.7;margin-top:4px">กำไรรวม ${fmtNum(Math.round(totalGross))} ฿ · ขายรวม ${fmtNum(totalSold)} ฿ · ค่าใช้จ่ายรวม ${fmtNum(Math.round(totalExp))} ฿</div>
+    </div>` : ''}
+
+    <div class="card">
+      <div class="card-title" style="margin-bottom:14px">📋 รายละเอียดกำไร/ขาดทุนรายหลัง</div>
+      ${rows.map(({ p, allExp, sold, gross, net, isP }) => {
+        const pct = sold > 0 && allExp > 0 ? ((sold - allExp) / allExp * 100) : null;
+        return `
+        <div style="background:${sold>0?'#F8FAFC':'#FFFBEB'};border:1.5px solid ${sold>0?(isP?'#BBF7D0':'#FCA5A5'):'#FDE68A'};border-radius:10px;padding:14px 16px;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+            ${p.code?`<span style="font-size:11px;background:var(--blue-lt);color:var(--blue);padding:1px 7px;border-radius:5px;font-weight:700">${p.code}</span>`:''}
+            <span style="font-size:14px;font-weight:800;color:var(--navy)">${p.name}</span>
+            ${!sold?`<span style="font-size:11px;background:#FEF3C7;color:#92400E;padding:1px 8px;border-radius:5px;font-weight:700">⏳ รอกรอกราคาขาย</span>`:''}
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;text-align:center">
+            <div style="background:white;border-radius:8px;padding:8px 4px">
+              <div style="font-size:13px;font-weight:800;color:var(--green)">${sold ? fmtNum(sold) : '—'}</div>
+              <div style="font-size:10px;color:var(--gray)">ราคาขาย (฿)</div>
+            </div>
+            <div style="background:white;border-radius:8px;padding:8px 4px">
+              <div style="font-size:13px;font-weight:700;color:var(--red)">${fmtNum(Math.round(allExp))}</div>
+              <div style="font-size:10px;color:var(--gray)">ค่าใช้จ่ายรวม (฿)</div>
+            </div>
+            <div style="background:white;border-radius:8px;padding:8px 4px">
+              <div style="font-size:13px;font-weight:800;color:${gross!==null?(isP?'var(--green)':'var(--red)'):'var(--gray)'}">${gross!==null?(isP?'+':'')+fmtNum(Math.round(gross)):'—'}</div>
+              <div style="font-size:10px;color:var(--gray)">กำไรรวม (฿)</div>
+            </div>
+            <div style="background:${net!==null?(isP?'#F0FDF4':'#FEF2F2'):'white'};border-radius:8px;padding:8px 4px;border:1.5px solid ${net!==null?(isP?'#86EFAC':'#FCA5A5'):'var(--border)'}">
+              <div style="font-size:15px;font-weight:800;color:${net!==null?(isP?'var(--green)':'var(--red)'):'var(--gray)'}">${net!==null?(isP?'+':'')+fmtNum(Math.round(net)):'—'}</div>
+              <div style="font-size:10px;color:var(--gray);font-weight:700">กำไรส่วนตัว (÷2)</div>
+            </div>
+          </div>
+          ${sold ? `
+          <div style="margin-top:10px;display:flex;align-items:center;gap:6px">
+            <div style="flex:1;background:#E5E7EB;border-radius:99px;height:6px;overflow:hidden">
+              <div style="width:${Math.min(100,Math.max(0,pct!==null?50+pct/2:0))}%;background:${isP?'#22C55E':'#EF4444'};height:100%;border-radius:99px;transition:width .3s"></div>
+            </div>
+            ${pct!==null?`<span style="font-size:11px;font-weight:700;color:${isP?'var(--green)':'var(--red)'}">${isP?'+':''}${pct.toFixed(1)}%</span>`:''}
+          </div>` : `
+          <div style="margin-top:10px">
+            <input type="text" inputmode="numeric"
+              value="${sold ? Number(sold).toLocaleString('th-TH') : ''}"
+              placeholder="กรอกราคาขายเพื่อดูกำไร (฿)"
+              oninput="fmtNumInput(this)"
+              onblur="savePropActualSell('${p.id}',this.value);renderPnL()"
+              style="width:100%;border:1.5px solid var(--amber);border-radius:7px;padding:7px 12px;font-size:13px;font-weight:700;color:var(--navy);background:white;box-sizing:border-box">
+          </div>`}
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════
 //  LIGHTBOX / MODAL
 // ═══════════════════════════════════════════════
 function showLightbox(src) {
@@ -2665,45 +2819,23 @@ renderDocTypes();
 renderProps();
 updateBadges();
 
-// auto-sync: เปรียบเทียบ timestamp — เครื่องไหนข้อมูลใหม่กว่าชนะ
+// auto-sync: local คือ source of truth เสมอ (ดึง cloud อัตโนมัติเฉพาะตอน local ว่าง)
 (async () => {
   const cfg = S.settings;
   if (!cfg?.supabaseUrl || !cfg?.supabaseKey || !cfg?.userKey) return;
   try {
-    const res = await fetch(
-      `${cfg.supabaseUrl}/rest/v1/auction_data?user_key=eq.${encodeURIComponent(cfg.userKey)}&select=updated_at`,
-      { headers: { 'apikey': cfg.supabaseKey, 'Authorization': 'Bearer ' + cfg.supabaseKey } }
-    );
-    const rows = await res.json();
-    if (!Array.isArray(rows)) return;
-
-    const localTime  = S.lastModified ? new Date(S.lastModified).getTime() : 0;
     const localItems = (S.props?.length || 0) + (S.expenses?.length || 0);
 
-    if (rows.length === 0) {
-      // Cloud ว่าง → push local ขึ้นเฉพาะเมื่อมีข้อมูลจริง
-      if (localItems > 0) {
-        await supabaseSave();
-        toast('☁️ อัปโหลดข้อมูลขึ้น Cloud สำเร็จ!', 'success');
+    if (localItems === 0) {
+      // Local ว่าง → ลอง pull จาก cloud (ปลอดภัย เพราะไม่มีข้อมูลท้องถิ่นที่จะสูญ)
+      const ok = await supabaseLoad();
+      if (ok) {
+        populateRenoProps(); renderDocTypes(); renderProps(); updateBadges(); calcPopulatePropSel();
+        toast('☁️ โหลดข้อมูลจาก Cloud แล้ว', '');
       }
     } else {
-      const cloudTime = new Date(rows[0].updated_at).getTime();
-
-      if (localItems > 0 && localTime === 0) {
-        // เครื่องเก่าไม่มี timestamp แต่มีข้อมูล → push ขึ้น cloud
-        await supabaseSave();
-        toast('☁️ อัปโหลดข้อมูลล่าสุดขึ้น Cloud แล้ว', 'success');
-      } else if (localTime > 0 && localTime >= cloudTime) {
-        // Local ใหม่กว่า (ต้องมี timestamp จริง) → push ขึ้น cloud
-        await supabaseSave();
-      } else {
-        // Cloud ใหม่กว่าหรือ local ไม่มี timestamp → pull ลงมา (ปลอดภัยกว่า)
-        const ok = await supabaseLoad();
-        if (ok) {
-          populateRenoProps(); renderDocTypes(); renderProps(); updateBadges(); calcPopulatePropSel();
-          toast('☁️ ซิงค์ข้อมูลล่าสุดจาก Cloud แล้ว', '');
-        }
-      }
+      // Local มีข้อมูล → push ขึ้น cloud เสมอ (local คือ source of truth)
+      await supabaseSave();
     }
   } catch(e) {}
 })();
@@ -2837,6 +2969,8 @@ function calcUpdate(skipFeeRows) {
   ];
 
   const totalCost = fees.filter(f=>!f.isHeader).reduce((s,f)=>s+f.val, 0);
+  window._calcSell = sell;
+  window._calcTotalCost = totalCost;
 
   const td = (txt, style='') => `<td style="padding:7px 10px;${style}">${txt}</td>`;
   if (!skipFeeRows) {
@@ -2873,11 +3007,11 @@ function calcUpdate(skipFeeRows) {
   const customBid = customBidInline || customBidStore;
 
   const levels = [
-    { label:'ปกติ (รอบ 1)',    disc:0,   roundIdx:0 },
-    { label:'ลด 10% (รอบ 2)', disc:0.1, roundIdx:1 },
-    { label:'ลด 20% (รอบ 3)', disc:0.2, roundIdx:2 },
-    { label:'ลด 30% (รอบ 4–6)',disc:0.3, roundIdx:3 },
-    { label:'ยกได้',            disc:null,roundIdx:-1, custom:true },
+    { label:'นัดที่ 1 — ราคาเต็ม', disc:0,   roundIdx:0 },
+    { label:'นัดที่ 2 — ลด 10%',   disc:0.1, roundIdx:1 },
+    { label:'นัดที่ 3 — ลด 20%',   disc:0.2, roundIdx:2 },
+    { label:'นัดที่ 4–6 — ลด 30%', disc:0.3, roundIdx:3 },
+    { label:'ยกได้',                disc:null,roundIdx:-1, custom:true },
   ];
 
   document.getElementById('calc-profit-rows').innerHTML = levels.map(lv => {
@@ -2890,7 +3024,7 @@ function calcUpdate(skipFeeRows) {
     const rowBg = isTarget ? '#FFFBEB' : (lv.custom ? '#F0FDF4' : '');
     const profColor = pctColor(profitPct);
     const buyCell = lv.custom
-      ? `<input type="text" inputmode="numeric" id="calc-custom-bid" value="${customBid ? Number(customBid).toLocaleString('th-TH') : ''}" placeholder="ใส่ราคา" style="width:100%;border:1.5px solid var(--green);border-radius:5px;padding:3px 6px;font-size:12px;text-align:right;color:var(--green);font-weight:700" oninput="fmtNumInput(this);document.getElementById('calc-custom-bid-store').value=this.value.replace(/[^0-9.]/g,'');calcUpdate()">`
+      ? `<input type="text" inputmode="numeric" id="calc-custom-bid" value="${customBid ? Number(customBid).toLocaleString('th-TH') : ''}" placeholder="ใส่ราคา" style="width:100%;border:1.5px solid var(--green);border-radius:5px;padding:3px 6px;font-size:12px;text-align:right;color:var(--green);font-weight:700" oninput="fmtNumInput(this);calcRefreshCustomRow()">`
       : fmtN(buyPrice);
     return `<tr style="border-bottom:1px solid var(--border);background:${rowBg}">
       <td style="padding:8px 10px;font-weight:700;color:${isTarget?'var(--amber)':lv.custom?'var(--green)':'var(--navy)'};white-space:nowrap">
@@ -2898,9 +3032,9 @@ function calcUpdate(skipFeeRows) {
       </td>
       <td style="padding:8px 10px;text-align:right;font-weight:${lv.custom?800:600}">${buyCell}</td>
       <td style="padding:8px 10px;text-align:right;color:var(--gray)">${fmtN(Math.round(totalCost))}</td>
-      <td style="padding:8px 10px;text-align:right;font-weight:600">${buyPrice ? fmtN(Math.round(totalInvest)) : '—'}</td>
-      <td style="padding:8px 10px;text-align:right;font-weight:800;color:${buyPrice?profColor:'var(--gray)'}">${buyPrice?(isP?'+':'')+fmtN(Math.round(profit)):'—'}</td>
-      <td style="padding:8px 6px;text-align:right;font-weight:700;color:${buyPrice?profColor:'var(--gray)'};white-space:nowrap">
+      <td style="padding:8px 10px;text-align:right;font-weight:600"${lv.custom?' id="calc-custom-invest"':''}>${buyPrice ? fmtN(Math.round(totalInvest)) : '—'}</td>
+      <td style="padding:8px 10px;text-align:right;font-weight:800;color:${buyPrice?profColor:'var(--gray)'}"${lv.custom?' id="calc-custom-profit"':''}>${buyPrice?(isP?'+':'')+fmtN(Math.round(profit)):'—'}</td>
+      <td style="padding:8px 6px;text-align:right;font-weight:700;color:${buyPrice?profColor:'var(--gray)'};white-space:nowrap"${lv.custom?' id="calc-custom-pct"':''}>
         ${buyPrice ? `<span style="background:${pctBg(profitPct)};padding:2px 6px;border-radius:4px">${(profitPct*100).toFixed(1)}%</span>` : '—'}
       </td>
     </tr>`;
@@ -2912,6 +3046,24 @@ function calcUpdate(skipFeeRows) {
     mortEl.style.display='';
     mortEl.innerHTML = `⚠️ ราคาติดจำนอง ${fmtB(mortgage)} — กำไรหลังหักจำนอง = ขาย ${fmtB(sell)} − รวมทุน − จำนอง`;
   } else if (mortEl) mortEl.style.display='none';
+}
+
+function calcRefreshCustomRow() {
+  const customBid = parseNumInput(document.getElementById('calc-custom-bid')?.value);
+  document.getElementById('calc-custom-bid-store').value = String(customBid || '');
+  const sell      = window._calcSell      || 0;
+  const totalCost = window._calcTotalCost || 0;
+  const totalInvest = customBid + totalCost;
+  const profit    = sell - totalInvest;
+  const profitPct = totalInvest > 0 ? profit / totalInvest : 0;
+  const isP       = profit >= 0;
+  const profColor = pctColor(profitPct);
+  const el_invest = document.getElementById('calc-custom-invest');
+  const el_profit = document.getElementById('calc-custom-profit');
+  const el_pct    = document.getElementById('calc-custom-pct');
+  if (el_invest) el_invest.textContent = customBid ? fmtN(Math.round(totalInvest)) : '—';
+  if (el_profit) { el_profit.textContent = customBid ? (isP?'+':'')+fmtN(Math.round(profit)) : '—'; el_profit.style.color = customBid ? profColor : 'var(--gray)'; }
+  if (el_pct)    { el_pct.innerHTML = customBid ? `<span style="background:${pctBg(profitPct)};padding:2px 6px;border-radius:4px">${(profitPct*100).toFixed(1)}%</span>` : '—'; el_pct.style.color = customBid ? profColor : 'var(--gray)'; }
 }
 
 function calcSaveToProperty() {
