@@ -1040,6 +1040,31 @@ function saveS() {
 
 function uid() { return '_'+Math.random().toString(36).slice(2,9)+Date.now().toString(36); }
 
+// คำนวณต้นทุนรวมของทรัพย์ สำหรับหน้ากำไร/ขาดทุน
+// กำไร = ราคาขาย − (ราคาซื้อ + ค่าธรรมเนียมจากหน้าคำนวณทุกตัวยกเว้นค่าซ่อม + ค่าใช้จ่ายจริง)
+function propCosts(p) {
+  const appr  = Number(p.appraisal) || 0;
+  const sell  = Number(p.actualSell) || 0;
+  const buy   = Number(p.actualBuy) || Number(p.calcCustomBid) || 0;
+  const broker = p.calcBrokerPct > 0 && sell > 0
+                   ? Math.round(sell * p.calcBrokerPct / 100)
+                   : (Number(p.calcBroker) || 0);
+  // ค่าธรรมเนียมจากหน้าคำนวณ (ยกเว้น calcRepair เพราะค่าซ่อมจริงอยู่ในแท็บค่าใช้จ่าย)
+  const fees = (appr && sell) ? (
+      appr * 0.01    // ค่าธรรมเนียมโอนเข้า 1%
+    + appr * 0.02    // ค่าภาษีเงินได้บุคคล (เข้า) 2%
+    + appr * 0.005   // ค่าอากร กรมบังคับคดี 0.5%
+    + sell * 0.01    // ค่าธรรมเนียมโอนออก 1%
+    + sell * 0.01    // ภาษีเงินได้ ณ ที่จ่าย 1%
+    + sell * 0.01    // ค่าจดจำนอง 1%
+    + sell * 0.033   // ค่าภาษีธุรกิจเฉพาะ 3.3%
+    + broker
+  ) : 0;
+  const expTotal = S.expenses.filter(e => e.propId === p.id).reduce((s, e) => s + Number(e.amount || 0), 0);
+  const totalCost = buy + fees + expTotal;
+  return { buy, fees, expTotal, totalCost };
+}
+
 // ═══════════════════════════════════════════════
 //  HELPERS
 // ═══════════════════════════════════════════════
@@ -1529,10 +1554,9 @@ function renderProps() {
                   style="flex:1;min-width:140px;border:1.5px solid var(--green);border-radius:7px;padding:6px 10px;font-size:14px;font-weight:700;color:var(--green);background:white;outline:none">
               </div>
               ${(()=>{
-                const _sell=Number(p.actualSell); const _buy=Number(p.actualBuy)||Number(p.calcCustomBid);
-                const _exp=renoItems.reduce((s,e)=>s+Number(e.amount||0),0);
+                const _sell=Number(p.actualSell); const {buy:_buy,totalCost:_tc}=propCosts(p);
                 if (!_sell || !_buy) return '';
-                const _gross=_sell-_buy-_exp; const _net=_gross/2;
+                const _gross=_sell-_tc; const _net=_gross/2;
                 const _gc=_gross>=0?'var(--green)':'var(--red)'; const _nc=_net>=0?'var(--green)':'var(--red)';
                 return '<div style="border-top:1px solid #BBF7D0;padding-top:8px;display:flex;gap:16px;flex-wrap:wrap">'
                   +'<span style="font-size:12px;color:var(--gray)">กำไรรวม: <strong style="color:'+_gc+'">'+(  _gross>=0?'+':'')+fmtNum(Math.round(_gross))+'</strong> ฿</span>'
@@ -2744,17 +2768,16 @@ function renderPnL() {
   }
 
   const rows = wonProps.map(p => {
-    const allExp = S.expenses.filter(e => e.propId === p.id).reduce((s, e) => s + Number(e.amount || 0), 0);
-    const sold   = Number(p.actualSell) || 0;
-    const bought = Number(p.actualBuy) || Number(p.calcCustomBid) || 0;
-    const gross  = (sold && bought) ? sold - bought - allExp : null;
-    const net    = gross !== null ? gross / 2 : null;
-    const isP    = net !== null && net >= 0;
-    return { p, allExp, sold, bought, gross, net, isP };
+    const sold  = Number(p.actualSell) || 0;
+    const costs = propCosts(p);
+    const gross = (sold && costs.buy) ? sold - costs.totalCost : null;
+    const net   = gross !== null ? gross / 2 : null;
+    const isP   = net !== null && net >= 0;
+    return { p, costs, sold, gross, net, isP };
   });
 
   const totalSold  = rows.reduce((s, r) => s + r.sold, 0);
-  const totalExp   = rows.reduce((s, r) => s + r.allExp, 0);
+  const totalCostAll = rows.reduce((s, r) => s + r.costs.totalCost, 0);
   const totalGross = rows.filter(r => r.gross !== null).reduce((s, r) => s + r.gross, 0);
   const totalNet   = totalGross / 2;
   const hasSold    = rows.some(r => r.sold > 0);
@@ -2764,7 +2787,7 @@ function renderPnL() {
     <div class="card" style="margin-bottom:14px;background:linear-gradient(135deg,#1F3A5F,#2563EB);color:white;border-radius:14px;padding:20px">
       <div style="font-size:13px;opacity:.8;margin-bottom:8px">กำไรสุทธิรวมทั้งหมด (÷2)</div>
       <div style="font-size:36px;font-weight:800;color:${totalNet>=0?'#86EFAC':'#FCA5A5'}">${totalNet>=0?'+':''}${fmtNum(Math.round(totalNet))} ฿</div>
-      <div style="font-size:12px;opacity:.7;margin-top:4px">กำไรรวม ${fmtNum(Math.round(totalGross))} ฿ · ขายรวม ${fmtNum(totalSold)} ฿ · ค่าใช้จ่ายรวม ${fmtNum(Math.round(totalExp))} ฿</div>
+      <div style="font-size:12px;opacity:.7;margin-top:4px">กำไรรวม ${fmtNum(Math.round(totalGross))} ฿ · ขายรวม ${fmtNum(totalSold)} ฿ · ต้นทุนรวม ${fmtNum(Math.round(totalCostAll))} ฿</div>
     </div>` : ''}
 
     <div class="card">
@@ -2777,16 +2800,20 @@ function renderPnL() {
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
             ${p.code?`<span style="font-size:11px;background:var(--blue-lt);color:var(--blue);padding:1px 7px;border-radius:5px;font-weight:700">${p.code}</span>`:''}
             <span style="font-size:14px;font-weight:800;color:var(--navy)">${p.name}</span>
-            ${!sold||!bought?`<span style="font-size:11px;background:#FEF3C7;color:#92400E;padding:1px 8px;border-radius:5px;font-weight:700">⏳ ${!bought?'รอกรอกราคาซื้อ':'รอกรอกราคาขาย'}</span>`:''}
+            ${!sold||!costs.buy?`<span style="font-size:11px;background:#FEF3C7;color:#92400E;padding:1px 8px;border-radius:5px;font-weight:700">⏳ ${!costs.buy?'รอกรอกราคาซื้อ':'รอกรอกราคาขาย'}</span>`:''}
           </div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;text-align:center">
             <div style="background:white;border-radius:8px;padding:8px 4px">
-              <div style="font-size:13px;font-weight:800;color:var(--navy)">${bought ? fmtNum(bought) : '—'}</div>
+              <div style="font-size:13px;font-weight:800;color:var(--navy)">${costs.buy ? fmtNum(costs.buy) : '—'}</div>
               <div style="font-size:10px;color:var(--gray)">ราคาซื้อ (฿)</div>
             </div>
             <div style="background:white;border-radius:8px;padding:8px 4px">
-              <div style="font-size:13px;font-weight:700;color:var(--red)">${fmtNum(Math.round(allExp))}</div>
-              <div style="font-size:10px;color:var(--gray)">ค่าใช้จ่ายรวม (฿)</div>
+              <div style="font-size:13px;font-weight:700;color:var(--red)">${fmtNum(Math.round(costs.fees))}</div>
+              <div style="font-size:10px;color:var(--gray)">ค่าธรรมเนียมรวม (฿)</div>
+            </div>
+            <div style="background:white;border-radius:8px;padding:8px 4px">
+              <div style="font-size:13px;font-weight:700;color:var(--red)">${fmtNum(Math.round(costs.expTotal))}</div>
+              <div style="font-size:10px;color:var(--gray)">ค่าใช้จ่ายจริง (฿)</div>
             </div>
             <div style="background:white;border-radius:8px;padding:8px 4px">
               <div style="font-size:13px;font-weight:800;color:var(--green)">${sold ? fmtNum(sold) : '—'}</div>
