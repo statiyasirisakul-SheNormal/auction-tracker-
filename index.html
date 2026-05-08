@@ -2819,7 +2819,7 @@ renderDocTypes();
 renderProps();
 updateBadges();
 
-// auto-sync: local คือ source of truth เสมอ (ดึง cloud อัตโนมัติเฉพาะตอน local ว่าง)
+// auto-sync: เปรียบเทียบ timestamp cloud vs local — ใหม่กว่า = ชนะ
 (async () => {
   const cfg = S.settings;
   if (!cfg?.supabaseUrl || !cfg?.supabaseKey || !cfg?.userKey) return;
@@ -2827,14 +2827,33 @@ updateBadges();
     const localItems = (S.props?.length || 0) + (S.expenses?.length || 0);
 
     if (localItems === 0) {
-      // Local ว่าง → ลอง pull จาก cloud (ปลอดภัย เพราะไม่มีข้อมูลท้องถิ่นที่จะสูญ)
+      // Local ว่างเปล่า → pull cloud ได้เลย ไม่มีความเสี่ยง
       const ok = await supabaseLoad();
       if (ok) {
         populateRenoProps(); renderDocTypes(); renderProps(); updateBadges(); calcPopulatePropSel();
         toast('☁️ โหลดข้อมูลจาก Cloud แล้ว', '');
       }
+      return;
+    }
+
+    // Local มีข้อมูล → ดู timestamp ว่าใครใหม่กว่า
+    const tsRes = await fetch(
+      `${cfg.supabaseUrl}/rest/v1/auction_data?user_key=eq.${cfg.userKey}&select=updated_at`,
+      { headers: { 'apikey': cfg.supabaseKey, 'Authorization': 'Bearer ' + cfg.supabaseKey } }
+    );
+    const tsRows = await tsRes.json();
+    const cloudTime = tsRows[0]?.updated_at ? new Date(tsRows[0].updated_at).getTime() : 0;
+    const localTime = S.lastModified    ? new Date(S.lastModified).getTime()    : 0;
+
+    if (cloudTime > localTime + 1000) {
+      // Cloud ใหม่กว่าเกิน 1 วินาที → เครื่องอื่นแก้ไข → pull มาแทน
+      const ok = await supabaseLoad();
+      if (ok) {
+        populateRenoProps(); renderDocTypes(); renderProps(); updateBadges(); calcPopulatePropSel();
+        toast('☁️ อัปเดตข้อมูลจากเครื่องอื่นแล้ว', '');
+      }
     } else {
-      // Local มีข้อมูล → push ขึ้น cloud เสมอ (local คือ source of truth)
+      // Local ใหม่กว่าหรือเท่ากัน → push ขึ้น cloud
       await supabaseSave();
     }
   } catch(e) {}
