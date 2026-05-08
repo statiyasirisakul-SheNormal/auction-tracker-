@@ -2795,11 +2795,13 @@ function renderPnL() {
     <div class="card" style="margin-bottom:14px">
       <div style="position:relative">
         <input type="text" id="pnl-search"
-          placeholder="🔍 ค้นหาทรัพย์เพื่อดูกำไร/ขาดทุน..."
+          placeholder="🔍 ค้นหาหรือเลือกทรัพย์..."
           value="${window._pnlSearch || ''}"
-          oninput="window._pnlSearch=this.value; window._pnlSelectedId=''; pnlFilterList()"
+          oninput="window._pnlSearch=this.value; window._pnlSelectedId=''; window._pnlOpen=true; pnlFilterList()"
+          onfocus="window._pnlOpen=true; pnlFilterList()"
           autocomplete="off"
-          style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;font-size:14px;font-family:inherit;box-sizing:border-box;outline:none">
+          style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:10px 40px 10px 14px;font-size:14px;font-family:inherit;box-sizing:border-box;outline:none">
+        <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--gray);pointer-events:none;font-size:16px">▾</span>
         <div id="pnl-list"></div>
       </div>
     </div>
@@ -2826,9 +2828,9 @@ function pnlFilterList() {
   }
   detailEl.innerHTML = '';
 
-  if (!term) { listEl.innerHTML = ''; return; }
+  if (!window._pnlOpen) { listEl.innerHTML = ''; return; }
 
-  const filtered = rows.filter(r =>
+  const filtered = !term ? rows : rows.filter(r =>
     r.p.name.toLowerCase().includes(term) || (r.p.code || '').toLowerCase().includes(term)
   );
 
@@ -2916,6 +2918,14 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
 
 document.querySelectorAll('.modal-overlay').forEach(el => {
   el.addEventListener('click', function(e) { if(e.target===this) { this.classList.remove('open'); clearRenoForm(); }});
+});
+document.addEventListener('click', e => {
+  const search = document.getElementById('pnl-search');
+  const list   = document.getElementById('pnl-list');
+  if (search && list && !search.contains(e.target) && !list.contains(e.target)) {
+    window._pnlOpen = false;
+    list.innerHTML = '';
+  }
 });
 document.addEventListener('keydown', e => {
   if (e.key==='Escape') {
