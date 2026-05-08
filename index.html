@@ -2783,6 +2783,13 @@ function renderPnL() {
   const hasSold    = rows.some(r => r.sold > 0);
 
   el.innerHTML = `
+    ${hasSold ? `
+    <div class="card" style="margin-bottom:14px;background:linear-gradient(135deg,#1F3A5F,#2563EB);color:white;border-radius:14px;padding:20px">
+      <div style="font-size:13px;opacity:.8;margin-bottom:8px">💰 กำไรสะสมทั้งหมด (ส่วนตัว ÷2)</div>
+      <div style="font-size:36px;font-weight:800;color:${totalNet>=0?'#86EFAC':'#FCA5A5'}">${totalNet>=0?'+':''}${fmtNum(Math.round(totalNet))} ฿</div>
+      <div style="font-size:12px;opacity:.7;margin-top:4px">กำไรก่อนหาร ${fmtNum(Math.round(totalGross))} ฿ · ขายรวม ${fmtNum(totalSold)} ฿ · ต้นทุนรวม ${fmtNum(Math.round(totalCostAll))} ฿</div>
+    </div>` : ''}
+
     <div class="card">
       <div class="card-title" style="margin-bottom:14px">📋 รายละเอียดกำไร/ขาดทุนรายหลัง</div>
       ${(() => {
@@ -2890,41 +2897,43 @@ renderDocTypes();
 renderProps();
 updateBadges();
 
-// auto-sync: เปรียบเทียบ timestamp cloud vs local — ใหม่กว่า = ชนะ
+// auto-sync: fetch cloud data ครั้งเดียว เปรียบเทียบทั้ง timestamp และจำนวนรายการ
 (async () => {
   const cfg = S.settings;
   if (!cfg?.supabaseUrl || !cfg?.supabaseKey || !cfg?.userKey) return;
   try {
     const localItems = (S.props?.length || 0) + (S.expenses?.length || 0);
+    const localTime  = S.lastModified ? new Date(S.lastModified).getTime() : 0;
 
-    if (localItems === 0) {
-      // Local ว่างเปล่า → pull cloud ได้เลย ไม่มีความเสี่ยง
-      const ok = await supabaseLoad();
-      if (ok) {
-        populateRenoProps(); renderDocTypes(); renderProps(); updateBadges(); calcPopulatePropSel();
-        toast('☁️ โหลดข้อมูลจาก Cloud แล้ว', '');
-      }
-      return;
-    }
-
-    // Local มีข้อมูล → ดู timestamp ว่าใครใหม่กว่า
-    const tsRes = await fetch(
-      `${cfg.supabaseUrl}/rest/v1/auction_data?user_key=eq.${cfg.userKey}&select=updated_at`,
+    const res = await fetch(
+      `${cfg.supabaseUrl}/rest/v1/auction_data?user_key=eq.${encodeURIComponent(cfg.userKey)}&select=data,updated_at`,
       { headers: { 'apikey': cfg.supabaseKey, 'Authorization': 'Bearer ' + cfg.supabaseKey } }
     );
-    const tsRows = await tsRes.json();
-    const cloudTime = tsRows[0]?.updated_at ? new Date(tsRows[0].updated_at).getTime() : 0;
-    const localTime = S.lastModified    ? new Date(S.lastModified).getTime()    : 0;
+    if (!res.ok) return;
+    const rows = await res.json();
+    const cloudRow   = rows[0];
+    const cloudData  = cloudRow?.data;
+    const cloudTime  = cloudRow?.updated_at ? new Date(cloudRow.updated_at).getTime() : 0;
+    const cloudItems = cloudData ? (cloudData.props?.length || 0) + (cloudData.expenses?.length || 0) : 0;
 
-    if (cloudTime > localTime + 1000) {
-      // Cloud ใหม่กว่าเกิน 1 วินาที → เครื่องอื่นแก้ไข → pull มาแทน
-      const ok = await supabaseLoad();
-      if (ok) {
-        populateRenoProps(); renderDocTypes(); renderProps(); updateBadges(); calcPopulatePropSel();
-        toast('☁️ อัปเดตข้อมูลจากเครื่องอื่นแล้ว', '');
-      }
-    } else {
-      // Local ใหม่กว่าหรือเท่ากัน → push ขึ้น cloud
+    const cloudIsNewer = cloudTime > localTime + 1000;
+    const cloudHasMore = cloudItems >= localItems;
+
+    if (cloudItems > 0 && (localItems === 0 || (cloudIsNewer && cloudHasMore))) {
+      // Cloud มีข้อมูลและปลอดภัยที่จะ pull (local ว่าง หรือ cloud ใหม่กว่าและมีข้อมูลมากกว่า)
+      const localSettings = S.settings;
+      S = cloudData;
+      S.settings = { ...S.settings, ...localSettings };
+      S._cloudUpdatedAt = cloudRow.updated_at;
+      if (!Array.isArray(S.expenses)) S.expenses = [];
+      if (!Array.isArray(S.props))    S.props    = [];
+      if (!Array.isArray(S.docTypes)) S.docTypes = [];
+      if (!S.notifLog) S.notifLog = {};
+      localStorage.setItem(KEY, JSON.stringify(S));
+      populateRenoProps(); renderDocTypes(); renderProps(); updateBadges(); calcPopulatePropSel();
+      toast(localItems === 0 ? '☁️ โหลดข้อมูลจาก Cloud แล้ว' : '☁️ อัปเดตข้อมูลจากเครื่องอื่นแล้ว', '');
+    } else if (localItems > 0) {
+      // Local มีข้อมูลมากกว่าหรือใหม่กว่า → push ขึ้น cloud
       await supabaseSave();
     }
   } catch(e) {}
