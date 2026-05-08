@@ -2784,13 +2784,20 @@ function renderPnL() {
 
   window._pnlRows = rows;
 
+  const soldCount = rows.filter(r => r.gross !== null).length;
+
   el.innerHTML = `
-    ${hasSold ? `
     <div class="card" style="margin-bottom:14px;background:linear-gradient(135deg,#1F3A5F,#2563EB);color:white;border-radius:14px;padding:20px">
       <div style="font-size:13px;opacity:.8;margin-bottom:8px">💰 กำไรสะสมทั้งหมด (ส่วนตัว ÷2)</div>
-      <div style="font-size:36px;font-weight:800;color:${totalNet>=0?'#86EFAC':'#FCA5A5'}">${totalNet>=0?'+':''}${fmtNum(Math.round(totalNet))} ฿</div>
-      <div style="font-size:12px;opacity:.7;margin-top:4px">กำไรก่อนหาร ${fmtNum(Math.round(totalGross))} ฿ · ขายรวม ${fmtNum(totalSold)} ฿ · ต้นทุนรวม ${fmtNum(Math.round(totalCostAll))} ฿</div>
-    </div>` : ''}
+      <div style="font-size:36px;font-weight:800;color:${soldCount?( totalNet>=0?'#86EFAC':'#FCA5A5'):'rgba(255,255,255,.4)'}">
+        ${soldCount ? (totalNet>=0?'+':'')+fmtNum(Math.round(totalNet))+' ฿' : '— ฿'}
+      </div>
+      <div style="font-size:12px;opacity:.7;margin-top:4px">
+        ${soldCount
+          ? `กำไรก่อนหาร ${fmtNum(Math.round(totalGross))} ฿ · ขายรวม ${fmtNum(totalSold)} ฿ · ต้นทุนรวม ${fmtNum(Math.round(totalCostAll))} ฿`
+          : `ทรัพย์ที่ชนะ ${rows.length} หลัง · ยังไม่มีราคาขาย`}
+      </div>
+    </div>
 
     <div class="card" style="margin-bottom:14px">
       <div style="position:relative">
