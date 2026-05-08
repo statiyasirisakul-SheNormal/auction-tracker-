@@ -1513,7 +1513,7 @@ function renderProps() {
               <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                 <span style="font-size:13px;font-weight:700;color:var(--navy);white-space:nowrap;min-width:160px">🏷 ราคาที่ซื้อทรัพย์ได้</span>
                 <input type="text" inputmode="numeric"
-                  value="${Number(p.actualBuy)>0 ? Number(p.actualBuy).toLocaleString('th-TH') : ''}"
+                  value="${(Number(p.actualBuy)||Number(p.calcCustomBid))>0 ? (Number(p.actualBuy)||Number(p.calcCustomBid)).toLocaleString('th-TH') : ''}"
                   placeholder="กรอกราคาที่ประมูลได้ (฿)"
                   oninput="fmtNumInput(this)"
                   onblur="savePropActualBuy('${p.id}',this.value)"
@@ -1529,7 +1529,7 @@ function renderProps() {
                   style="flex:1;min-width:140px;border:1.5px solid var(--green);border-radius:7px;padding:6px 10px;font-size:14px;font-weight:700;color:var(--green);background:white;outline:none">
               </div>
               ${(()=>{
-                const _sell=Number(p.actualSell); const _buy=Number(p.actualBuy);
+                const _sell=Number(p.actualSell); const _buy=Number(p.actualBuy)||Number(p.calcCustomBid);
                 const _exp=renoItems.reduce((s,e)=>s+Number(e.amount||0),0);
                 if (!_sell || !_buy) return '';
                 const _gross=_sell-_buy-_exp; const _net=_gross/2;
@@ -2547,9 +2547,9 @@ function renderSummary() {
   const watching= S.props.filter(p=>p.status==='watching').length;
   const totalExp= S.expenses.filter(e=>!e.reimbursed).reduce((s,e)=>s+Number(e.amount||0),0);
   const totalReimb = S.expenses.filter(e=>e.reimbursed).reduce((s,e)=>s+Number(e.amount||0),0);
-  const profitProps = S.props.filter(p=>p.status==='won'&&Number(p.actualSell)>0&&Number(p.actualBuy)>0).map(p=>{
+  const profitProps = S.props.filter(p=>p.status==='won'&&Number(p.actualSell)>0&&(Number(p.actualBuy)||Number(p.calcCustomBid))>0).map(p=>{
     const allExp = S.expenses.filter(e=>e.propId===p.id).reduce((s,e)=>s+Number(e.amount||0),0);
-    const gross  = Number(p.actualSell)-Number(p.actualBuy)-allExp;
+    const gross  = Number(p.actualSell)-(Number(p.actualBuy)||Number(p.calcCustomBid))-allExp;
     return { p, allExp, gross, net: gross/2 };
   });
   const wonDocs = S.props.filter(p=>p.status==='won').map(p=>{ syncPropDocs(p); return { total:p.docs.length, done:p.docs.filter(d=>d.done).length }; });
@@ -2670,8 +2670,9 @@ function renderSummaryProp(pid) {
   const sb      = p.status==='won'?'badge-green':p.status==='lost'?'badge-red':'badge-blue';
   const sl      = {watching:'👁 กำลังติดตาม',won:'✓ ชนะประมูล',lost:'✗ ไม่ได้ทรัพย์'}[p.status||'watching'];
   const docsTotal= p.docs.length; const docsDone = p.docs.filter(d=>d.done).length;
-  const hasSold = Number(p.actualSell)>0 && Number(p.actualBuy)>0;
-  const gross   = hasSold ? Number(p.actualSell)-Number(p.actualBuy)-expAll : null;
+  const _buyPrice = Number(p.actualBuy)||Number(p.calcCustomBid);
+  const hasSold = Number(p.actualSell)>0 && _buyPrice>0;
+  const gross   = hasSold ? Number(p.actualSell)-_buyPrice-expAll : null;
   const net     = hasSold ? gross/2 : null;
 
   document.getElementById('summary-content').innerHTML = `
@@ -2745,7 +2746,7 @@ function renderPnL() {
   const rows = wonProps.map(p => {
     const allExp = S.expenses.filter(e => e.propId === p.id).reduce((s, e) => s + Number(e.amount || 0), 0);
     const sold   = Number(p.actualSell) || 0;
-    const bought = Number(p.actualBuy)  || 0;
+    const bought = Number(p.actualBuy) || Number(p.calcCustomBid) || 0;
     const gross  = (sold && bought) ? sold - bought - allExp : null;
     const net    = gross !== null ? gross / 2 : null;
     const isP    = net !== null && net >= 0;
@@ -3130,7 +3131,8 @@ function calcSaveToProperty() {
   p.calcBroker    = Number(document.getElementById('calc-broker').value)    || 0;
   p.calcBrokerPct = parseFloat(document.getElementById('calc-broker-pct').value) || 0;
   p.calcMortgage  = Number(document.getElementById('calc-mortgage').value)  || 0;
-  p.calcCustomBid= parseNumInput(document.getElementById('calc-custom-bid')?.value);
+  p.calcCustomBid = parseNumInput(document.getElementById('calc-custom-bid')?.value);
+  if (p.calcCustomBid) p.actualBuy = p.calcCustomBid;
   saveS(); renderProps(); toast('✓ บันทึกข้อมูลการคำนวณกลับทรัพย์แล้ว');
 }
 </script>
