@@ -2783,69 +2783,77 @@ function renderPnL() {
   const hasSold    = rows.some(r => r.sold > 0);
 
   el.innerHTML = `
-    ${hasSold ? `
-    <div class="card" style="margin-bottom:14px;background:linear-gradient(135deg,#1F3A5F,#2563EB);color:white;border-radius:14px;padding:20px">
-      <div style="font-size:13px;opacity:.8;margin-bottom:8px">กำไรสุทธิรวมทั้งหมด (÷2)</div>
-      <div style="font-size:36px;font-weight:800;color:${totalNet>=0?'#86EFAC':'#FCA5A5'}">${totalNet>=0?'+':''}${fmtNum(Math.round(totalNet))} ฿</div>
-      <div style="font-size:12px;opacity:.7;margin-top:4px">กำไรรวม ${fmtNum(Math.round(totalGross))} ฿ · ขายรวม ${fmtNum(totalSold)} ฿ · ต้นทุนรวม ${fmtNum(Math.round(totalCostAll))} ฿</div>
-    </div>` : ''}
-
     <div class="card">
       <div class="card-title" style="margin-bottom:14px">📋 รายละเอียดกำไร/ขาดทุนรายหลัง</div>
-      ${rows.map(({ p, allExp, sold, bought, gross, net, isP }) => {
-        const totalCost = bought + allExp;
-        const pct = sold > 0 && totalCost > 0 ? ((sold - totalCost) / totalCost * 100) : null;
-        return `
-        <div style="background:${sold>0?'#F8FAFC':'#FFFBEB'};border:1.5px solid ${sold>0?(isP?'#BBF7D0':'#FCA5A5'):'#FDE68A'};border-radius:10px;padding:14px 16px;margin-bottom:10px">
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-            ${p.code?`<span style="font-size:11px;background:var(--blue-lt);color:var(--blue);padding:1px 7px;border-radius:5px;font-weight:700">${p.code}</span>`:''}
-            <span style="font-size:14px;font-weight:800;color:var(--navy)">${p.name}</span>
-            ${!sold||!costs.buy?`<span style="font-size:11px;background:#FEF3C7;color:#92400E;padding:1px 8px;border-radius:5px;font-weight:700">⏳ ${!costs.buy?'รอกรอกราคาซื้อ':'รอกรอกราคาขาย'}</span>`:''}
-          </div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;text-align:center">
-            <div style="background:white;border-radius:8px;padding:8px 4px">
-              <div style="font-size:13px;font-weight:800;color:var(--navy)">${costs.buy ? fmtNum(costs.buy) : '—'}</div>
-              <div style="font-size:10px;color:var(--gray)">ราคาซื้อ (฿)</div>
+      ${(() => {
+        let cumNet = 0;
+        return rows.map(({ p, costs, sold, gross, net, isP }) => {
+          if (net !== null) cumNet += net;
+          const pct = sold > 0 && costs.totalCost > 0 ? ((sold - costs.totalCost) / costs.totalCost * 100) : null;
+          const cumColor = cumNet >= 0 ? 'var(--green)' : 'var(--red)';
+          return `
+          <div style="background:${sold>0?'#F8FAFC':'#FFFBEB'};border:1.5px solid ${sold>0?(isP?'#BBF7D0':'#FCA5A5'):'#FDE68A'};border-radius:10px;padding:14px 16px;margin-bottom:10px">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+              ${p.code?`<span style="font-size:11px;background:var(--blue-lt);color:var(--blue);padding:1px 7px;border-radius:5px;font-weight:700">${p.code}</span>`:''}
+              <span style="font-size:14px;font-weight:800;color:var(--navy)">${p.name}</span>
+              ${!sold||!costs.buy?`<span style="font-size:11px;background:#FEF3C7;color:#92400E;padding:1px 8px;border-radius:5px;font-weight:700">⏳ ${!costs.buy?'รอกรอกราคาซื้อ':'รอกรอกราคาขาย'}</span>`:''}
             </div>
-            <div style="background:white;border-radius:8px;padding:8px 4px">
-              <div style="font-size:13px;font-weight:700;color:var(--red)">${fmtNum(Math.round(costs.fees))}</div>
-              <div style="font-size:10px;color:var(--gray)">ค่าธรรมเนียมรวม (฿)</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;text-align:center">
+              <div style="background:white;border-radius:8px;padding:8px 4px">
+                <div style="font-size:13px;font-weight:800;color:var(--navy)">${costs.buy ? fmtNum(costs.buy) : '—'}</div>
+                <div style="font-size:10px;color:var(--gray)">ราคาซื้อ (฿)</div>
+              </div>
+              <div style="background:white;border-radius:8px;padding:8px 4px">
+                <div style="font-size:13px;font-weight:700;color:var(--red)">${fmtNum(Math.round(costs.fees))}</div>
+                <div style="font-size:10px;color:var(--gray)">ค่าธรรมเนียม (฿)</div>
+              </div>
+              <div style="background:white;border-radius:8px;padding:8px 4px">
+                <div style="font-size:13px;font-weight:700;color:var(--red)">${fmtNum(Math.round(costs.expTotal))}</div>
+                <div style="font-size:10px;color:var(--gray)">ค่าใช้จ่ายจริง (฿)</div>
+              </div>
+              <div style="background:white;border-radius:8px;padding:8px 4px">
+                <div style="font-size:13px;font-weight:800;color:var(--green)">${sold ? fmtNum(sold) : '—'}</div>
+                <div style="font-size:10px;color:var(--gray)">ราคาขาย (฿)</div>
+              </div>
+              <div style="background:white;border-radius:8px;padding:8px 4px">
+                <div style="font-size:13px;font-weight:800;color:${gross!==null?(isP?'var(--green)':'var(--red)'):'var(--gray)'}">${gross!==null?(isP?'+':'')+fmtNum(Math.round(gross)):'—'}</div>
+                <div style="font-size:10px;color:var(--gray)">กำไรรวม (฿)</div>
+              </div>
+              <div style="background:${net!==null?(isP?'#F0FDF4':'#FEF2F2'):'white'};border-radius:8px;padding:8px 4px;border:1.5px solid ${net!==null?(isP?'#86EFAC':'#FCA5A5'):'var(--border)'}">
+                <div style="font-size:15px;font-weight:800;color:${net!==null?(isP?'var(--green)':'var(--red)'):'var(--gray)'}">${net!==null?(isP?'+':'')+fmtNum(Math.round(net)):'—'}</div>
+                <div style="font-size:10px;color:var(--gray);font-weight:700">กำไรส่วนตัว (÷2)</div>
+              </div>
             </div>
-            <div style="background:white;border-radius:8px;padding:8px 4px">
-              <div style="font-size:13px;font-weight:700;color:var(--red)">${fmtNum(Math.round(costs.expTotal))}</div>
-              <div style="font-size:10px;color:var(--gray)">ค่าใช้จ่ายจริง (฿)</div>
-            </div>
-            <div style="background:white;border-radius:8px;padding:8px 4px">
-              <div style="font-size:13px;font-weight:800;color:var(--green)">${sold ? fmtNum(sold) : '—'}</div>
-              <div style="font-size:10px;color:var(--gray)">ราคาขาย (฿)</div>
-            </div>
-            <div style="background:white;border-radius:8px;padding:8px 4px">
-              <div style="font-size:13px;font-weight:800;color:${gross!==null?(isP?'var(--green)':'var(--red)'):'var(--gray)'}">${gross!==null?(isP?'+':'')+fmtNum(Math.round(gross)):'—'}</div>
-              <div style="font-size:10px;color:var(--gray)">กำไรรวม (฿)</div>
-            </div>
-            <div style="background:${net!==null?(isP?'#F0FDF4':'#FEF2F2'):'white'};border-radius:8px;padding:8px 4px;border:1.5px solid ${net!==null?(isP?'#86EFAC':'#FCA5A5'):'var(--border)'}">
-              <div style="font-size:15px;font-weight:800;color:${net!==null?(isP?'var(--green)':'var(--red)'):'var(--gray)'}">${net!==null?(isP?'+':'')+fmtNum(Math.round(net)):'—'}</div>
-              <div style="font-size:10px;color:var(--gray);font-weight:700">กำไรส่วนตัว (÷2)</div>
-            </div>
-          </div>
-          ${sold ? `
-          <div style="margin-top:10px;display:flex;align-items:center;gap:6px">
-            <div style="flex:1;background:#E5E7EB;border-radius:99px;height:6px;overflow:hidden">
-              <div style="width:${Math.min(100,Math.max(0,pct!==null?50+pct/2:0))}%;background:${isP?'#22C55E':'#EF4444'};height:100%;border-radius:99px;transition:width .3s"></div>
-            </div>
-            ${pct!==null?`<span style="font-size:11px;font-weight:700;color:${isP?'var(--green)':'var(--red)'}">${isP?'+':''}${pct.toFixed(1)}%</span>`:''}
-          </div>` : `
-          <div style="margin-top:10px">
-            <input type="text" inputmode="numeric"
-              value="${sold ? Number(sold).toLocaleString('th-TH') : ''}"
-              placeholder="กรอกราคาขายเพื่อดูกำไร (฿)"
-              oninput="fmtNumInput(this)"
-              onblur="savePropActualSell('${p.id}',this.value);renderPnL()"
-              style="width:100%;border:1.5px solid var(--amber);border-radius:7px;padding:7px 12px;font-size:13px;font-weight:700;color:var(--navy);background:white;box-sizing:border-box">
-          </div>`}
-        </div>`;
-      }).join('')}
+            ${sold ? `
+            <div style="margin-top:10px;display:flex;align-items:center;gap:8px">
+              <div style="flex:1;background:#E5E7EB;border-radius:99px;height:6px;overflow:hidden">
+                <div style="width:${Math.min(100,Math.max(0,pct!==null?50+pct/2:0))}%;background:${isP?'#22C55E':'#EF4444'};height:100%;border-radius:99px;transition:width .3s"></div>
+              </div>
+              ${pct!==null?`<span style="font-size:11px;font-weight:700;color:${isP?'var(--green)':'var(--red)'}">${isP?'+':''}${pct.toFixed(1)}%</span>`:''}
+              ${net!==null?`<span style="font-size:11px;color:var(--gray)">สะสม:</span><span style="font-size:12px;font-weight:800;color:${cumColor}">${cumNet>=0?'+':''}${fmtNum(Math.round(cumNet))} ฿</span>`:''}
+            </div>` : `
+            <div style="margin-top:10px">
+              <input type="text" inputmode="numeric"
+                value="${sold ? Number(sold).toLocaleString('th-TH') : ''}"
+                placeholder="กรอกราคาขายเพื่อดูกำไร (฿)"
+                oninput="fmtNumInput(this)"
+                onblur="savePropActualSell('${p.id}',this.value);renderPnL()"
+                style="width:100%;border:1.5px solid var(--amber);border-radius:7px;padding:7px 12px;font-size:13px;font-weight:700;color:var(--navy);background:white;box-sizing:border-box">
+            </div>`}
+          </div>`;
+        }).join('');
+      })()}
     </div>
+
+    ${hasSold ? `
+    <div class="card" style="background:${totalNet>=0?'#F0FDF4':'#FEF2F2'};border:2px solid ${totalNet>=0?'#86EFAC':'#FCA5A5'}">
+      <div style="font-size:13px;color:var(--gray);margin-bottom:6px">💰 กำไรสะสมทั้งหมด (ส่วนตัว ÷2)</div>
+      <div style="font-size:32px;font-weight:800;color:${totalNet>=0?'var(--green)':'var(--red)'}">${totalNet>=0?'+':''}${fmtNum(Math.round(totalNet))} ฿</div>
+      <div style="font-size:12px;color:var(--gray);margin-top:4px">
+        จากทรัพย์ที่ขายแล้ว ${rows.filter(r=>r.gross!==null).length} หลัง
+        · กำไรก่อนหาร ${fmtNum(Math.round(totalGross))} ฿
+      </div>
+    </div>` : ''}
   `;
 }
 
