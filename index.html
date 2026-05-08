@@ -1061,7 +1061,7 @@ function propCosts(p) {
     + broker
   ) : 0;
   const expTotal = S.expenses.filter(e => e.propId === p.id).reduce((s, e) => s + Number(e.amount || 0), 0);
-  const totalCost = buy + fees + expTotal;
+  const totalCost = fees + expTotal;  // ไม่รวม buy เพราะ user กรอกเป็น expense เอง
   return { buy, fees, expTotal, totalCost };
 }
 
@@ -1554,8 +1554,8 @@ function renderProps() {
                   style="flex:1;min-width:140px;border:1.5px solid var(--green);border-radius:7px;padding:6px 10px;font-size:14px;font-weight:700;color:var(--green);background:white;outline:none">
               </div>
               ${(()=>{
-                const _sell=Number(p.actualSell); const {buy:_buy,totalCost:_tc}=propCosts(p);
-                if (!_sell || !_buy) return '';
+                const _sell=Number(p.actualSell); const {totalCost:_tc}=propCosts(p);
+                if (!_sell) return '';
                 const _gross=_sell-_tc; const _net=_gross/2;
                 const _gc=_gross>=0?'var(--green)':'var(--red)'; const _nc=_net>=0?'var(--green)':'var(--red)';
                 return '<div style="border-top:1px solid #BBF7D0;padding-top:8px;display:flex;gap:16px;flex-wrap:wrap">'
@@ -2770,7 +2770,7 @@ function renderPnL() {
   const rows = wonProps.map(p => {
     const sold  = Number(p.actualSell) || 0;
     const costs = propCosts(p);
-    const gross = (sold && costs.buy) ? sold - costs.totalCost : null;
+    const gross = sold ? sold - costs.totalCost : null;
     const net   = gross !== null ? gross / 2 : null;
     const isP   = net !== null && net >= 0;
     return { p, costs, sold, gross, net, isP };
@@ -2867,7 +2867,7 @@ function pnlDetailHTML({ p, costs, sold, gross, net, isP }) {
         style="background:none;border:1.5px solid var(--border);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:12px;color:var(--gray)">← กลับ</button>
       ${p.code?`<span style="font-size:11px;background:var(--blue-lt);color:var(--blue);padding:1px 7px;border-radius:5px;font-weight:700">${p.code}</span>`:''}
       <span style="font-size:16px;font-weight:800;color:var(--navy)">${p.name}</span>
-      ${!sold||!costs.buy?`<span style="font-size:11px;background:#FEF3C7;color:#92400E;padding:1px 8px;border-radius:5px;font-weight:700">⏳ ${!costs.buy?'รอกรอกราคาซื้อ':'รอกรอกราคาขาย'}</span>`:''}
+      ${!sold?`<span style="font-size:11px;background:#FEF3C7;color:#92400E;padding:1px 8px;border-radius:5px;font-weight:700">⏳ รอกรอกราคาขาย</span>`:''}
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;text-align:center;margin-bottom:14px">
       <div style="background:#F8FAFC;border-radius:8px;padding:10px 6px">
