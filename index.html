@@ -1964,26 +1964,100 @@ async function buildCloudData() {
   return cloud;
 }
 
+let _saveInFlight = false;
+let _savePending  = false;
+
+async function fetchCloudTimestamp() {
+  const cfg = S.settings;
+  if (!cfg?.supabaseUrl || !cfg?.supabaseKey || !cfg?.userKey) return null;
+  try {
+    const res = await fetch(
+      `${cfg.supabaseUrl}/rest/v1/auction_data?user_key=eq.${encodeURIComponent(cfg.userKey)}&select=updated_at`,
+      { headers: { 'apikey': cfg.supabaseKey, 'Authorization': 'Bearer ' + cfg.supabaseKey } }
+    );
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return rows[0]?.updated_at || null;
+  } catch(e) { return null; }
+}
+
 async function supabaseSave() {
   const cfg = S.settings;
   if (!cfg?.supabaseUrl || !cfg?.supabaseKey || !cfg?.userKey) return;
+  if (_saveInFlight) { _savePending = true; return; }
+  _saveInFlight = true;
   const dot = document.getElementById('sync-dot');
+  if (dot) dot.style.background = '#FCD34D';
   try {
-    const cloud = await buildCloudData();
+    // ก่อน push — ถ้า cloud ใหม่กว่าที่เรารู้ล่าสุด ให้รวมของ cloud เข้ามาก่อน (กันทับข้อมูลเครื่องอื่น)
+    const cloudTs   = await fetchCloudTimestamp();
+    const lastKnown = S._cloudUpdatedAt ? new Date(S._cloudUpdatedAt).getTime() : 0;
+    if (cloudTs && new Date(cloudTs).getTime() > lastKnown + 500) {
+      try {
+        const res0 = await fetch(
+          `${cfg.supabaseUrl}/rest/v1/auction_data?user_key=eq.${encodeURIComponent(cfg.userKey)}&select=data,updated_at`,
+          { headers: { 'apikey': cfg.supabaseKey, 'Authorization': 'Bearer ' + cfg.supabaseKey } }
+        );
+        if (res0.ok) {
+          const rows0 = await res0.json();
+          const cd = rows0[0]?.data;
+          if (cd) {
+            const mergeById = (loc, clo) => {
+              const m = new Map();
+              (clo || []).forEach(it => it?.id && m.set(it.id, it));
+              (loc || []).forEach(it => it?.id && m.set(it.id, it));
+              return [...m.values()];
+            };
+            S.props    = mergeById(S.props,    cd.props);
+            S.expenses = mergeById(S.expenses, cd.expenses);
+            S.docTypes = mergeById(S.docTypes, cd.docTypes);
+            if (cd.notifLog) S.notifLog = { ...cd.notifLog, ...(S.notifLog || {}) };
+          }
+        }
+      } catch(e) {}
+    }
+
+    const cloud  = await buildCloudData();
+    const nowIso = new Date().toISOString();
     const res = await fetch(`${cfg.supabaseUrl}/rest/v1/auction_data`, {
       method: 'POST',
       headers: {
         'apikey': cfg.supabaseKey,
         'Authorization': 'Bearer ' + cfg.supabaseKey,
         'Content-Type': 'application/json',
-        'Prefer': 'resolution=merge-duplicates',
+        'Prefer': 'resolution=merge-duplicates,return=representation',
       },
-      body: JSON.stringify({ user_key: cfg.userKey, data: cloud, updated_at: S.lastModified || new Date().toISOString() }),
+      body: JSON.stringify({ user_key: cfg.userKey, data: cloud, updated_at: nowIso }),
     });
+    if (res.ok) {
+      try {
+        const rows = await res.json();
+        S._cloudUpdatedAt = rows?.[0]?.updated_at || nowIso;
+      } catch(e) { S._cloudUpdatedAt = nowIso; }
+      localStorage.setItem(KEY, JSON.stringify(S));
+    }
     if (dot) dot.style.background = res.ok ? '#6EE7B7' : '#FCA5A5';
   } catch(e) {
     if (dot) dot.style.background = '#FCA5A5';
+  } finally {
+    _saveInFlight = false;
+    if (_savePending) { _savePending = false; supabaseSave(); }
   }
+}
+
+async function pullIfNewer() {
+  if (_saveInFlight) return false;
+  const cfg = S.settings;
+  if (!cfg?.supabaseUrl || !cfg?.supabaseKey || !cfg?.userKey) return false;
+  const cloudTs = await fetchCloudTimestamp();
+  if (!cloudTs) return false;
+  const lastKnown = S._cloudUpdatedAt ? new Date(S._cloudUpdatedAt).getTime() : 0;
+  if (new Date(cloudTs).getTime() <= lastKnown + 500) return false;
+  const ok = await supabaseLoad();
+  if (ok) {
+    populateRenoProps(); renderDocTypes(); renderProps(); updateBadges(); calcPopulatePropSel();
+  }
+  return ok;
 }
 
 async function pushToCloud() {
@@ -2978,46 +3052,33 @@ renderDocTypes();
 renderProps();
 updateBadges();
 
-// auto-sync: fetch cloud data ครั้งเดียว เปรียบเทียบทั้ง timestamp และจำนวนรายการ
+// auto-sync: เปิดมาดึงครั้งแรก + poll ทุก 5 วินาที + ดึงเมื่อกลับมาที่แท็บ — ไม่ต้องกดปุ่ม
 (async () => {
   const cfg = S.settings;
   if (!cfg?.supabaseUrl || !cfg?.supabaseKey || !cfg?.userKey) return;
-  try {
-    const localItems = (S.props?.length || 0) + (S.expenses?.length || 0);
-    const localTime  = S.lastModified ? new Date(S.lastModified).getTime() : 0;
 
-    const res = await fetch(
-      `${cfg.supabaseUrl}/rest/v1/auction_data?user_key=eq.${encodeURIComponent(cfg.userKey)}&select=data,updated_at`,
-      { headers: { 'apikey': cfg.supabaseKey, 'Authorization': 'Bearer ' + cfg.supabaseKey } }
-    );
-    if (!res.ok) return;
-    const rows = await res.json();
-    const cloudRow   = rows[0];
-    const cloudData  = cloudRow?.data;
-    const cloudTime  = cloudRow?.updated_at ? new Date(cloudRow.updated_at).getTime() : 0;
-    const cloudItems = cloudData ? (cloudData.props?.length || 0) + (cloudData.expenses?.length || 0) : 0;
-
-    const cloudIsNewer = cloudTime > localTime + 1000;
-    const cloudHasMore = cloudItems >= localItems;
-
-    if (cloudItems > 0 && (localItems === 0 || (cloudIsNewer && cloudHasMore))) {
-      // Cloud มีข้อมูลและปลอดภัยที่จะ pull (local ว่าง หรือ cloud ใหม่กว่าและมีข้อมูลมากกว่า)
-      const localSettings = S.settings;
-      S = cloudData;
-      S.settings = { ...S.settings, ...localSettings };
-      S._cloudUpdatedAt = cloudRow.updated_at;
-      if (!Array.isArray(S.expenses)) S.expenses = [];
-      if (!Array.isArray(S.props))    S.props    = [];
-      if (!Array.isArray(S.docTypes)) S.docTypes = [];
-      if (!S.notifLog) S.notifLog = {};
-      localStorage.setItem(KEY, JSON.stringify(S));
+  // ครั้งแรก: local ว่าง → ดึง cloud มาใส่; ไม่ว่างก็เช็คว่า cloud ใหม่กว่าหรือไม่
+  const localItems = (S.props?.length || 0) + (S.expenses?.length || 0);
+  if (localItems === 0) {
+    const ok = await supabaseLoad();
+    if (ok) {
       populateRenoProps(); renderDocTypes(); renderProps(); updateBadges(); calcPopulatePropSel();
-      toast(localItems === 0 ? '☁️ โหลดข้อมูลจาก Cloud แล้ว' : '☁️ อัปเดตข้อมูลจากเครื่องอื่นแล้ว', '');
-    } else if (localItems > 0) {
-      // Local มีข้อมูลมากกว่าหรือใหม่กว่า → push ขึ้น cloud
-      await supabaseSave();
+      toast('☁️ โหลดข้อมูลจาก Cloud แล้ว', '');
     }
-  } catch(e) {}
+  } else {
+    const got = await pullIfNewer();
+    if (got) toast('☁️ อัปเดตข้อมูลจากเครื่องอื่นแล้ว', '');
+  }
+
+  // Polling ทุก 5 วิ เฉพาะตอนแท็บเปิดอยู่
+  let pollTimer = null;
+  const startPoll = () => { if (!pollTimer) pollTimer = setInterval(pullIfNewer, 5000); };
+  const stopPoll  = () => { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } };
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopPoll();
+    else { pullIfNewer(); startPoll(); }
+  });
+  if (!document.hidden) startPoll();
 })();
 
 // auto notifications: ตรวจตอนโหลดและทุก 1 ชั่วโมง
