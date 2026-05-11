@@ -2084,6 +2084,13 @@ async function supabaseLoad() {
     if (!res.ok) return false;
     const rows = await res.json();
     if (rows.length && rows[0].data) {
+      // กันข้อมูลหาย: ถ้า cloud ว่าง แต่ local ยังมีของ — ห้ามทับ
+      const cloudItems = (rows[0].data.props?.length || 0) + (rows[0].data.expenses?.length || 0);
+      const localItems = (S.props?.length || 0) + (S.expenses?.length || 0);
+      if (cloudItems === 0 && localItems > 0) {
+        console.warn('[supabaseLoad] cloud ว่าง แต่ local มี', localItems, 'รายการ — ไม่ทับ');
+        return false;
+      }
       const localSettings = S.settings;
       S = rows[0].data;
       S.settings = { ...S.settings, ...localSettings };
