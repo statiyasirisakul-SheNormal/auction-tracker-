@@ -409,10 +409,13 @@ input, select, textarea { font-size: 16px !important; }
   <button onclick="pushToCloud()" title="Push รูปขึ้น Cloud ให้มือถือเห็น" style="background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.35);color:white;border-radius:9px;padding:8px 12px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0">
     ☁️
   </button>
+  <span id="sync-badge" title="สถานะการเชื่อม Cloud" style="font-size:11px;font-weight:700;padding:4px 9px;border-radius:10px;background:#FCD34D;color:#78350F;white-space:nowrap">⏳ เชื่อม...</span>
   <button onclick="openSettings()" style="background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.35);color:white;border-radius:9px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0">
-    ⚙️ <span id="sync-dot" style="width:8px;height:8px;border-radius:50%;background:#6EE7B7;display:inline-block" title="Sync status"></span>
+    ⚙️ <span id="sync-dot" style="width:8px;height:8px;border-radius:50%;background:#FCD34D;display:inline-block"></span>
   </button>
 </div>
+
+<div id="sync-banner" style="display:none;padding:10px 16px;font-size:13px;line-height:1.5;text-align:center;font-weight:600;border-bottom:1px solid"></div>
 
 <div class="tabs">
   <button class="tab-btn active" onclick="switchTab('props')">
@@ -981,6 +984,21 @@ create policy "open" on auction_data for all using (true) with check (true);</pr
       </div>
     </div>
 
+    <!-- Backup / Restore -->
+    <div style="background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:10px;padding:14px;margin-bottom:16px">
+      <div style="font-weight:800;color:var(--green);margin-bottom:8px">💾 สำรอง / กู้คืนข้อมูล</div>
+      <div style="font-size:12px;color:#374151;line-height:1.6;margin-bottom:10px">
+        ดาวน์โหลดไฟล์ JSON เก็บไว้เป็นเซฟตี้ ถ้า Cloud พัง — Import กลับได้
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-success btn-sm" onclick="exportToJson()">📥 Export JSON</button>
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer;margin:0">
+          📤 Import JSON
+          <input type="file" accept=".json,application/json" onchange="importFromJson(event)" style="display:none">
+        </label>
+      </div>
+    </div>
+
     <!-- Storage -->
     <div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:10px;padding:14px;margin-bottom:16px">
       <div style="font-weight:800;color:var(--amber);margin-bottom:10px">🗄️ พื้นที่จัดเก็บ</div>
@@ -1011,6 +1029,36 @@ create policy "open" on auction_data for all using (true) with check (true);</pr
 //  STATE
 // ═══════════════════════════════════════════════
 const KEY = 'acktion_v4';
+
+// Session-only gate: never push to cloud unless we have confirmed a successful pull
+// (or explicit user-initiated push). Prevents stale local data from wiping cloud.
+let cloudPullOK = false;
+let cloudPulling = false;
+
+function setSyncStatus(state, msg) {
+  const badge = document.getElementById('sync-badge');
+  const dot   = document.getElementById('sync-dot');
+  const banner= document.getElementById('sync-banner');
+  const cfg = {
+    syncing: { bg:'#FCD34D', fg:'#78350F', label:'⏳ เชื่อม...' },
+    ok:      { bg:'#6EE7B7', fg:'#065F46', label:'✅ Sync' },
+    error:   { bg:'#FCA5A5', fg:'#7F1D1D', label:'❌ Offline' },
+    warn:    { bg:'#FBBF24', fg:'#78350F', label:'⚠️ ดูเตือน' },
+  }[state] || { bg:'#9CA3AF', fg:'#1F2937', label:'?' };
+  if (badge) { badge.style.background = cfg.bg; badge.style.color = cfg.fg; badge.textContent = cfg.label; }
+  if (dot)   { dot.style.background   = cfg.bg; }
+  if (banner) {
+    if (!msg || state === 'ok' || state === 'syncing') {
+      banner.style.display = 'none';
+    } else {
+      banner.style.display    = 'block';
+      banner.style.background = state === 'error' ? '#FEE2E2' : '#FEF3C7';
+      banner.style.color      = state === 'error' ? '#991B1B' : '#92400E';
+      banner.style.borderColor= state === 'error' ? '#FCA5A5' : '#FCD34D';
+      banner.innerHTML        = msg;
+    }
+  }
+}
 
 let S = {
   settings: { lineToken:'', lineUserId:'', supabaseUrl:'', supabaseKey:'', userKey:'' },
@@ -1064,7 +1112,9 @@ function loadS() {
 function saveS() {
   S.lastModified = new Date().toISOString();
   localStorage.setItem(KEY, JSON.stringify(S));
-  supabaseSave(); // cloud sync (non-blocking)
+  // ONLY push to cloud if we've already pulled successfully this session.
+  // Without this gate, opening on a new/stale device could overwrite cloud with old local data.
+  if (cloudPullOK && !cloudPulling) supabaseSave();
 }
 
 function uid() { return '_'+Math.random().toString(36).slice(2,9)+Date.now().toString(36); }
@@ -1983,6 +2033,7 @@ async function fetchCloudTimestamp() {
 
 async function supabaseSave() {
   const cfg = S.settings;
+<<<<<<< HEAD
   if (!cfg?.supabaseUrl || !cfg?.supabaseKey || !cfg?.userKey) return;
   if (_saveInFlight) { _savePending = true; return; }
   _saveInFlight = true;
@@ -2019,6 +2070,16 @@ async function supabaseSave() {
 
     const cloud  = await buildCloudData();
     const nowIso = new Date().toISOString();
+=======
+  if (!cfg?.supabaseUrl || !cfg?.supabaseKey || !cfg?.userKey) {
+    setSyncStatus('error', '⚠️ ยังไม่ตั้งค่า Supabase — กด ⚙️ เพื่อตั้งค่า');
+    return false;
+  }
+  setSyncStatus('syncing', '');
+  try {
+    const cloud = await buildCloudData();
+    const stamp = S.lastModified || new Date().toISOString();
+>>>>>>> a21fd12 (fix(sync): make cloud the source of truth — auto-load on every page open)
     const res = await fetch(`${cfg.supabaseUrl}/rest/v1/auction_data`, {
       method: 'POST',
       headers: {
@@ -2027,6 +2088,7 @@ async function supabaseSave() {
         'Content-Type': 'application/json',
         'Prefer': 'resolution=merge-duplicates,return=representation',
       },
+<<<<<<< HEAD
       body: JSON.stringify({ user_key: cfg.userKey, data: cloud, updated_at: nowIso }),
     });
     if (res.ok) {
@@ -2060,27 +2122,140 @@ async function pullIfNewer() {
   return ok;
 }
 
-async function pushToCloud() {
-  if (!S.props?.length && !S.expenses?.length) {
-    toast('⚠️ ไม่มีทรัพย์ในเครื่องนี้ — กด Push จากคอมที่มีข้อมูล', '');
-    return;
+=======
+      body: JSON.stringify({ user_key: cfg.userKey, data: cloud, updated_at: stamp }),
+    });
+    if (res.ok) {
+      // Track the sync point so future pulls can tell "cloud changed since last sync"
+      S._cloudUpdatedAt = stamp;
+      try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
+      setSyncStatus('ok', '');
+      return true;
+    } else {
+      const errText = await res.text().catch(()=>'');
+      setSyncStatus('error', `❌ Sync ไม่สำเร็จ (HTTP ${res.status}) — ข้อมูลอยู่ในเครื่องนี้เท่านั้น <button onclick="runAutoSync()" style="margin-left:8px;padding:3px 10px;border-radius:6px;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;font:inherit;font-weight:700">🔄 ลองใหม่</button><br><small style="opacity:.7">${(errText||'').slice(0,200)}</small>`);
+      return false;
+    }
+  } catch(e) {
+    setSyncStatus('error', `❌ เชื่อม Cloud ไม่ได้: ${e.message} <button onclick="runAutoSync()" style="margin-left:8px;padding:3px 10px;border-radius:6px;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;font:inherit;font-weight:700">🔄 ลองใหม่</button>`);
+    return false;
   }
-  const dot = document.getElementById('sync-dot');
-  if (dot) dot.style.background = '#FCD34D';
-  toast('⏳ กำลังอัปโหลดรูปภาพขึ้น Cloud...', '');
-  await supabaseSave();
-  const ok = document.getElementById('sync-dot')?.style.background !== 'rgb(252, 165, 165)';
-  toast(ok ? '☁️ Push สำเร็จ! มือถือ Refresh แล้วจะเห็นข้อมูล' : '❌ Push ไม่สำเร็จ ลองใหม่', ok ? 'success' : 'error');
 }
 
-async function supabaseLoad() {
+function exportToJson() {
+  const blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `auction-backup-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  toast('💾 ดาวน์โหลด backup แล้ว', 'success');
+}
+
+function importFromJson(ev) {
+  const file = ev.target.files?.[0];
+  if (!file) return;
+  if (!confirm('การนำเข้าจะเขียนทับข้อมูลในเครื่องนี้ และจะ Push ขึ้น Cloud ด้วย — ดำเนินการต่อ?')) {
+    ev.target.value = ''; return;
+  }
+  const r = new FileReader();
+  r.onload = async e => {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (!imported || typeof imported !== 'object') throw new Error('Invalid JSON');
+      backupLocal();
+      const localSettings = S.settings;
+      S = imported;
+      S.settings = { ...(imported.settings||{}), ...localSettings };
+      if (!Array.isArray(S.expenses)) S.expenses = [];
+      if (!Array.isArray(S.props))    S.props    = [];
+      if (!Array.isArray(S.docTypes)) S.docTypes = [];
+      if (!S.notifLog) S.notifLog = {};
+      S.lastModified = new Date().toISOString();
+      try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
+      if (typeof populateRenoProps === 'function') populateRenoProps();
+      if (typeof renderDocTypes === 'function')   renderDocTypes();
+      if (typeof renderProps === 'function')      renderProps();
+      if (typeof updateBadges === 'function')     updateBadges();
+      if (typeof calcPopulatePropSel === 'function') calcPopulatePropSel();
+      // Force-push to cloud so all devices see imported data
+      cloudPullOK = true;
+      const ok = await supabaseSave();
+      toast(ok ? `✅ Import + Push สำเร็จ (${S.props.length} ทรัพย์, ${S.expenses.length} ค่าใช้จ่าย)` : '⚠️ Import แล้วแต่ Push Cloud ไม่สำเร็จ', ok ? 'success' : 'error');
+    } catch(err) {
+      toast('❌ ไฟล์ไม่ถูกต้อง: ' + err.message, 'error');
+    }
+    ev.target.value = '';
+  };
+  r.readAsText(file);
+}
+
+// Manual force-push: bypass cloudPullOK gate (used when user wants to overwrite cloud
+// with this device's data, e.g. after a wipe). Header ☁️ button calls this.
+>>>>>>> a21fd12 (fix(sync): make cloud the source of truth — auto-load on every page open)
+async function pushToCloud() {
+  if (!S.props?.length && !S.expenses?.length) {
+    if (!confirm('เครื่องนี้ไม่มีข้อมูล — Push จะทำให้ Cloud ว่างด้วย ต้องการดำเนินการ?')) return;
+  }
+  const prev = cloudPullOK;
+  cloudPullOK = true;
+  toast('⏳ กำลัง Push ขึ้น Cloud...', '');
+  const ok = await supabaseSave();
+  cloudPullOK = prev || ok;
+  toast(ok ? '☁️ Push สำเร็จ — เครื่องอื่น Refresh แล้วจะเห็น' : '❌ Push ไม่สำเร็จ ลองใหม่', ok ? 'success' : 'error');
+}
+
+// Take a snapshot of local state into a rolling backup slot before overwriting.
+// Keeps last 3 snapshots so user can recover if sync goes wrong.
+function backupLocal() {
+  try {
+    const snap = localStorage.getItem(KEY);
+    if (!snap) return;
+    localStorage.setItem(`${KEY}_backup_${Date.now()}`, snap);
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(`${KEY}_backup_`)) keys.push(k);
+    }
+    keys.sort();
+    while (keys.length > 3) localStorage.removeItem(keys.shift());
+  } catch(e) {}
+}
+
+function adoptCloud(cloudData, updatedAt) {
+  const localSettings = S.settings;
+  S = cloudData;
+  S.settings = { ...S.settings, ...localSettings };
+  S._cloudUpdatedAt = updatedAt;
+  if (!Array.isArray(S.expenses)) S.expenses = [];
+  if (!Array.isArray(S.props))    S.props    = [];
+  if (!Array.isArray(S.docTypes)) S.docTypes = [];
+  if (!S.notifLog) S.notifLog = {};
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
+  if (typeof populateRenoProps === 'function') populateRenoProps();
+  if (typeof renderDocTypes  === 'function') renderDocTypes();
+  if (typeof renderProps     === 'function') renderProps();
+  if (typeof updateBadges    === 'function') updateBadges();
+  if (typeof calcPopulatePropSel === 'function') calcPopulatePropSel();
+}
+
+// Single entry point for auto-sync. Called on page load + can be retried via banner button.
+async function runAutoSync() {
+  if (cloudPulling) return;
   const cfg = S.settings;
-  if (!cfg?.supabaseUrl || !cfg?.supabaseKey || !cfg?.userKey) return false;
+  if (!cfg?.supabaseUrl || !cfg?.supabaseKey || !cfg?.userKey) {
+    setSyncStatus('error', '⚠️ ยังไม่ตั้งค่า Supabase — ข้อมูลจะอยู่ในเครื่องนี้เท่านั้น (กด ⚙️ เพื่อตั้งค่า)');
+    return;
+  }
+  cloudPulling = true;
+  setSyncStatus('syncing', '');
   try {
     const res = await fetch(
       `${cfg.supabaseUrl}/rest/v1/auction_data?user_key=eq.${encodeURIComponent(cfg.userKey)}&select=data,updated_at`,
       { headers: { 'apikey': cfg.supabaseKey, 'Authorization': 'Bearer ' + cfg.supabaseKey } }
     );
+<<<<<<< HEAD
     if (!res.ok) return false;
     const rows = await res.json();
     if (rows.length && rows[0].data) {
@@ -2101,9 +2276,86 @@ async function supabaseLoad() {
       if (!S.notifLog) S.notifLog = {};
       localStorage.setItem(KEY, JSON.stringify(S));
       return true;
+=======
+    if (!res.ok) {
+      setSyncStatus('error', `❌ เชื่อม Cloud ไม่ได้ (HTTP ${res.status}) — ข้อมูลอยู่ในเครื่องนี้เท่านั้น <button onclick="runAutoSync()" style="margin-left:8px;padding:3px 10px;border-radius:6px;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;font:inherit;font-weight:700">🔄 ลองใหม่</button>`);
+      return;
+>>>>>>> a21fd12 (fix(sync): make cloud the source of truth — auto-load on every page open)
     }
-  } catch(e) {}
-  return false;
+    const rows = await res.json();
+    const cloudRow  = rows[0];
+    const cloudData = cloudRow?.data;
+    const cloudTime = cloudRow?.updated_at ? new Date(cloudRow.updated_at).getTime() : 0;
+    const cloudItems = cloudData ? ((cloudData.props?.length||0) + (cloudData.expenses?.length||0)) : 0;
+    const localItems = (S.props?.length||0) + (S.expenses?.length||0);
+    const localTime  = S.lastModified       ? new Date(S.lastModified).getTime()       : 0;
+    const knownTime  = S._cloudUpdatedAt    ? new Date(S._cloudUpdatedAt).getTime()    : 0;
+
+    const localChanged = localTime > knownTime + 1000;
+    const cloudChanged = cloudTime > knownTime + 1000;
+
+    // Snapshot local before any potential overwrite
+    if (localItems > 0) backupLocal();
+
+    // ── Decision matrix ──
+    if (cloudItems === 0 && localItems === 0) {
+      // Both empty — nothing to do
+      S._cloudUpdatedAt = cloudRow?.updated_at || S._cloudUpdatedAt;
+      cloudPullOK = true;
+      setSyncStatus('ok', '');
+    } else if (localItems === 0 && cloudItems > 0) {
+      // Local empty, cloud has data → adopt cloud (typical "open on new device")
+      adoptCloud(cloudData, cloudRow.updated_at);
+      cloudPullOK = true;
+      setSyncStatus('ok', '');
+      toast(`☁️ โหลดจาก Cloud (${cloudItems} รายการ)`, '');
+    } else if (cloudItems === 0 && localItems > 0) {
+      // Cloud empty, local has data → bootstrap push up
+      cloudPullOK = true;
+      const ok = await supabaseSave();
+      if (ok) toast(`☁️ บันทึก ${localItems} รายการขึ้น Cloud แล้ว`, 'success');
+    } else if (!localChanged && cloudChanged) {
+      // Cloud is ahead, local untouched since last sync → adopt cloud
+      adoptCloud(cloudData, cloudRow.updated_at);
+      cloudPullOK = true;
+      setSyncStatus('ok', '');
+      toast(`☁️ อัปเดตจาก Cloud (${cloudItems} รายการ)`, '');
+    } else if (localChanged && !cloudChanged) {
+      // Local has unpushed changes, cloud untouched → push local up
+      cloudPullOK = true;
+      await supabaseSave();
+    } else if (localChanged && cloudChanged) {
+      // Both sides changed since last known sync. Heuristic: the side with MORE items
+      // wins (preserve data over deletes). Fall back to newer timestamp on tie.
+      if (cloudItems > localItems || (cloudItems === localItems && cloudTime > localTime + 1000)) {
+        adoptCloud(cloudData, cloudRow.updated_at);
+        cloudPullOK = true;
+        setSyncStatus('ok', '');
+        toast(`☁️ อัปเดตจาก Cloud (${cloudItems} รายการ)`, '');
+      } else {
+        cloudPullOK = true;
+        const ok = await supabaseSave();
+        if (ok) toast(`☁️ อัปโหลด ${localItems} รายการขึ้น Cloud`, '');
+      }
+    } else {
+      // Neither changed since last sync
+      S._cloudUpdatedAt = cloudRow?.updated_at || S._cloudUpdatedAt;
+      cloudPullOK = true;
+      setSyncStatus('ok', '');
+    }
+  } catch(e) {
+    setSyncStatus('error', `❌ เชื่อม Cloud ไม่ได้: ${e.message} <button onclick="runAutoSync()" style="margin-left:8px;padding:3px 10px;border-radius:6px;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;font:inherit;font-weight:700">🔄 ลองใหม่</button>`);
+  } finally {
+    cloudPulling = false;
+  }
+}
+
+// Kept for the "⬇️ Sync จาก Cloud" button in Settings — force a re-pull.
+async function supabaseLoad() {
+  cloudPullOK = false;        // allow re-pull to overwrite
+  S._cloudUpdatedAt = undefined; // force the conflict branch to re-evaluate
+  await runAutoSync();
+  return cloudPullOK;
 }
 
 // ── Settings functions ─────────────────────────
@@ -3059,6 +3311,7 @@ renderDocTypes();
 renderProps();
 updateBadges();
 
+<<<<<<< HEAD
 // auto-sync: เปิดมาดึงครั้งแรก + poll ทุก 5 วินาที + ดึงเมื่อกลับมาที่แท็บ — ไม่ต้องกดปุ่ม
 (async () => {
   const cfg = S.settings;
@@ -3087,6 +3340,19 @@ updateBadges();
   });
   if (!document.hidden) startPoll();
 })();
+=======
+// Auto-sync on page load. runAutoSync() handles every case (empty/full, conflict, error)
+// and sets cloudPullOK appropriately so subsequent saveS() know whether to push.
+runAutoSync();
+
+// Re-sync when the tab regains focus — keeps multi-device data fresh without manual clicks.
+window.addEventListener('focus', () => {
+  if (!cloudPulling && S.settings?.supabaseUrl) runAutoSync();
+});
+window.addEventListener('online', () => {
+  if (!cloudPulling) runAutoSync();
+});
+>>>>>>> a21fd12 (fix(sync): make cloud the source of truth — auto-load on every page open)
 
 // auto notifications: ตรวจตอนโหลดและทุก 1 ชั่วโมง
 setTimeout(autoCheckNotifications, 1500);
