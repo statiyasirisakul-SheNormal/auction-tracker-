@@ -1030,11 +1030,6 @@ create policy "open" on auction_data for all using (true) with check (true);</pr
 // ═══════════════════════════════════════════════
 const KEY = 'acktion_v4';
 
-// Session-only gate: never push to cloud unless we have confirmed a successful pull
-// (or explicit user-initiated push). Prevents stale local data from wiping cloud.
-let cloudPullOK = false;
-let cloudPulling = false;
-
 function setSyncStatus(state, msg) {
   const badge = document.getElementById('sync-badge');
   const dot   = document.getElementById('sync-dot');
@@ -1111,10 +1106,165 @@ function loadS() {
 }
 function saveS() {
   S.lastModified = new Date().toISOString();
-  localStorage.setItem(KEY, JSON.stringify(S));
-  // ONLY push to cloud if we've already pulled successfully this session.
-  // Without this gate, opening on a new/stale device could overwrite cloud with old local data.
-  if (cloudPullOK && !cloudPulling) supabaseSave();
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
+  // Sync to per-entity tables (clock-in pattern). Non-blocking; queued if a sync is in flight.
+  scheduleSync();
+}
+
+// ── Supabase client (per-entity tables, mirrors ระบบตอกบัตร pattern) ──
+let sb = null;
+function initSb() {
+  const cfg = S.settings;
+  if (!cfg?.supabaseUrl || !cfg?.supabaseKey) return null;
+  if (sb) return sb;
+  if (typeof supabase === 'undefined') return null;
+  sb = supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey);
+  return sb;
+}
+
+// Coalescing sync: if one is in flight, queue at most one re-run.
+let _syncing = false, _syncQueued = false;
+function scheduleSync() {
+  if (_syncing) { _syncQueued = true; return; }
+  _syncing = true;
+  syncToCloud()
+    .catch(err => setSyncStatus('error', `❌ Sync ไม่สำเร็จ: ${err.message}`))
+    .finally(() => {
+      _syncing = false;
+      if (_syncQueued) { _syncQueued = false; scheduleSync(); }
+    });
+}
+
+async function syncToCloud() {
+  const client = initSb();
+  const uk = S.settings?.userKey;
+  if (!client || !uk) return;
+  setSyncStatus('syncing', '');
+  const stamp = new Date().toISOString();
+
+  // Upsert all local entities (one row per entity, like clock_records / leaves / withdrawals)
+  if (S.props?.length) {
+    const { error } = await client.from('auction_props').upsert(
+      S.props.map(p => ({ id: p.id, user_key: uk, data: p, updated_at: stamp }))
+    );
+    if (error) throw error;
+  }
+  if (S.expenses?.length) {
+    const { error } = await client.from('auction_expenses').upsert(
+      S.expenses.map(e => ({ id: e.id, user_key: uk, prop_id: e.propId || null, data: e, updated_at: stamp }))
+    );
+    if (error) throw error;
+  }
+  if (S.docTypes?.length) {
+    const { error } = await client.from('auction_doc_types').upsert(
+      S.docTypes.map(d => ({ id: d.id, user_key: uk, name: d.name }))
+    );
+    if (error) throw error;
+  }
+
+  // Detect deletes: list cloud IDs for this user, remove rows not present locally.
+  const [propIds, expIds, dtIds] = await Promise.all([
+    client.from('auction_props').select('id').eq('user_key', uk),
+    client.from('auction_expenses').select('id').eq('user_key', uk),
+    client.from('auction_doc_types').select('id').eq('user_key', uk),
+  ]);
+  const localPropIds = new Set((S.props||[]).map(p => p.id));
+  const localExpIds  = new Set((S.expenses||[]).map(e => e.id));
+  const localDtIds   = new Set((S.docTypes||[]).map(d => d.id));
+  const toDelP = (propIds.data||[]).filter(r => !localPropIds.has(r.id)).map(r => r.id);
+  const toDelE = (expIds.data ||[]).filter(r => !localExpIds.has(r.id)).map(r => r.id);
+  const toDelD = (dtIds.data  ||[]).filter(r => !localDtIds.has(r.id)).map(r => r.id);
+  if (toDelP.length) await client.from('auction_props').delete().in('id', toDelP);
+  if (toDelE.length) await client.from('auction_expenses').delete().in('id', toDelE);
+  if (toDelD.length) await client.from('auction_doc_types').delete().in('id', toDelD);
+
+  setSyncStatus('ok', '');
+}
+
+// Initial cloud load — fetch all entities from per-entity tables and adopt.
+async function loadFromCloud() {
+  const client = initSb();
+  const uk = S.settings?.userKey;
+  if (!client || !uk) {
+    setSyncStatus('error', '⚠️ ยังไม่ตั้งค่า Supabase (กด ⚙️ เพื่อตั้งค่า)');
+    return false;
+  }
+  setSyncStatus('syncing', '');
+  try {
+    const [propsRes, expRes, dtRes] = await Promise.all([
+      client.from('auction_props').select('*').eq('user_key', uk),
+      client.from('auction_expenses').select('*').eq('user_key', uk),
+      client.from('auction_doc_types').select('*').eq('user_key', uk),
+    ]);
+    const firstErr = propsRes.error || expRes.error || dtRes.error;
+    if (firstErr) {
+      // Likely cause: tables not yet created. Show actionable banner.
+      setSyncStatus('error', `❌ โหลด Cloud ไม่ได้: ${firstErr.message} — ${firstErr.code === '42P01' ? 'ตารางยังไม่ถูกสร้าง — รัน migration.sql ใน Supabase SQL Editor ก่อน' : 'ลองใหม่อีกครั้ง'} <button onclick="loadFromCloud().then(ok=>{if(ok){renderAll()}})" style="margin-left:8px;padding:3px 10px;border-radius:6px;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;font:inherit;font-weight:700">🔄 ลองใหม่</button>`);
+      return false;
+    }
+    const cloudProps = (propsRes.data||[]).map(r => r.data);
+    const cloudExps  = (expRes.data ||[]).map(r => r.data);
+    const cloudDts   = (dtRes.data  ||[]).map(r => ({ id: r.id, name: r.name }));
+    const cloudHasData = cloudProps.length > 0 || cloudExps.length > 0;
+    const localHasData = (S.props?.length||0) + (S.expenses?.length||0) > 0;
+
+    if (cloudHasData) {
+      // Cloud has data → adopt it
+      S.props    = cloudProps;
+      S.expenses = cloudExps;
+      if (cloudDts.length) S.docTypes = cloudDts;
+      try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
+    } else if (localHasData) {
+      // Cloud empty, local has data → migrate up (first-time setup or recovery)
+      await syncToCloud();
+    }
+    setSyncStatus('ok', '');
+    return true;
+  } catch (e) {
+    setSyncStatus('error', `❌ เชื่อม Cloud ไม่ได้: ${e.message} <button onclick="loadFromCloud().then(ok=>{if(ok){renderAll()}})" style="margin-left:8px;padding:3px 10px;border-radius:6px;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;font:inherit;font-weight:700">🔄 ลองใหม่</button>`);
+    return false;
+  }
+}
+
+function renderAll() {
+  if (typeof populateRenoProps    === 'function') populateRenoProps();
+  if (typeof renderDocTypes       === 'function') renderDocTypes();
+  if (typeof renderProps          === 'function') renderProps();
+  if (typeof renderReno           === 'function') renderReno();
+  if (typeof updateBadges         === 'function') updateBadges();
+  if (typeof calcPopulatePropSel  === 'function') calcPopulatePropSel();
+}
+
+// Realtime subscription — auto-update on any change in any device (clock-in pattern).
+let _rtChannel = null;
+function setupRealtime() {
+  const client = initSb();
+  const uk = S.settings?.userKey;
+  if (!client || !uk) return;
+  if (_rtChannel) { try { client.removeChannel(_rtChannel); } catch(e) {} }
+  _rtChannel = client.channel('auction-sync-' + uk)
+    .on('postgres_changes', { event:'*', schema:'public', table:'auction_props',     filter:`user_key=eq.${uk}` }, () => refetchTable('props'))
+    .on('postgres_changes', { event:'*', schema:'public', table:'auction_expenses',  filter:`user_key=eq.${uk}` }, () => refetchTable('expenses'))
+    .on('postgres_changes', { event:'*', schema:'public', table:'auction_doc_types', filter:`user_key=eq.${uk}` }, () => refetchTable('docTypes'))
+    .subscribe();
+}
+
+async function refetchTable(which) {
+  const client = initSb();
+  const uk = S.settings?.userKey;
+  if (!client || !uk || _syncing) return; // skip while our own sync is in flight
+  if (which === 'props') {
+    const { data } = await client.from('auction_props').select('*').eq('user_key', uk);
+    if (data) S.props = data.map(r => r.data);
+  } else if (which === 'expenses') {
+    const { data } = await client.from('auction_expenses').select('*').eq('user_key', uk);
+    if (data) S.expenses = data.map(r => r.data);
+  } else if (which === 'docTypes') {
+    const { data } = await client.from('auction_doc_types').select('*').eq('user_key', uk);
+    if (data) S.docTypes = data.map(r => ({ id: r.id, name: r.name }));
+  }
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
+  renderAll();
 }
 
 function uid() { return '_'+Math.random().toString(36).slice(2,9)+Date.now().toString(36); }
@@ -2014,134 +2164,8 @@ async function buildCloudData() {
   return cloud;
 }
 
-let _saveInFlight = false;
-let _savePending  = false;
 
-async function fetchCloudTimestamp() {
-  const cfg = S.settings;
-  if (!cfg?.supabaseUrl || !cfg?.supabaseKey || !cfg?.userKey) return null;
-  try {
-    const res = await fetch(
-      `${cfg.supabaseUrl}/rest/v1/auction_data?user_key=eq.${encodeURIComponent(cfg.userKey)}&select=updated_at`,
-      { headers: { 'apikey': cfg.supabaseKey, 'Authorization': 'Bearer ' + cfg.supabaseKey } }
-    );
-    if (!res.ok) return null;
-    const rows = await res.json();
-    return rows[0]?.updated_at || null;
-  } catch(e) { return null; }
-}
-
-async function supabaseSave() {
-  const cfg = S.settings;
-<<<<<<< HEAD
-  if (!cfg?.supabaseUrl || !cfg?.supabaseKey || !cfg?.userKey) return;
-  if (_saveInFlight) { _savePending = true; return; }
-  _saveInFlight = true;
-  const dot = document.getElementById('sync-dot');
-  if (dot) dot.style.background = '#FCD34D';
-  try {
-    // ก่อน push — ถ้า cloud ใหม่กว่าที่เรารู้ล่าสุด ให้รวมของ cloud เข้ามาก่อน (กันทับข้อมูลเครื่องอื่น)
-    const cloudTs   = await fetchCloudTimestamp();
-    const lastKnown = S._cloudUpdatedAt ? new Date(S._cloudUpdatedAt).getTime() : 0;
-    if (cloudTs && new Date(cloudTs).getTime() > lastKnown + 500) {
-      try {
-        const res0 = await fetch(
-          `${cfg.supabaseUrl}/rest/v1/auction_data?user_key=eq.${encodeURIComponent(cfg.userKey)}&select=data,updated_at`,
-          { headers: { 'apikey': cfg.supabaseKey, 'Authorization': 'Bearer ' + cfg.supabaseKey } }
-        );
-        if (res0.ok) {
-          const rows0 = await res0.json();
-          const cd = rows0[0]?.data;
-          if (cd) {
-            const mergeById = (loc, clo) => {
-              const m = new Map();
-              (clo || []).forEach(it => it?.id && m.set(it.id, it));
-              (loc || []).forEach(it => it?.id && m.set(it.id, it));
-              return [...m.values()];
-            };
-            S.props    = mergeById(S.props,    cd.props);
-            S.expenses = mergeById(S.expenses, cd.expenses);
-            S.docTypes = mergeById(S.docTypes, cd.docTypes);
-            if (cd.notifLog) S.notifLog = { ...cd.notifLog, ...(S.notifLog || {}) };
-          }
-        }
-      } catch(e) {}
-    }
-
-    const cloud  = await buildCloudData();
-    const nowIso = new Date().toISOString();
-=======
-  if (!cfg?.supabaseUrl || !cfg?.supabaseKey || !cfg?.userKey) {
-    setSyncStatus('error', '⚠️ ยังไม่ตั้งค่า Supabase — กด ⚙️ เพื่อตั้งค่า');
-    return false;
-  }
-  setSyncStatus('syncing', '');
-  try {
-    const cloud = await buildCloudData();
-    const stamp = S.lastModified || new Date().toISOString();
->>>>>>> a21fd12 (fix(sync): make cloud the source of truth — auto-load on every page open)
-    const res = await fetch(`${cfg.supabaseUrl}/rest/v1/auction_data`, {
-      method: 'POST',
-      headers: {
-        'apikey': cfg.supabaseKey,
-        'Authorization': 'Bearer ' + cfg.supabaseKey,
-        'Content-Type': 'application/json',
-        'Prefer': 'resolution=merge-duplicates,return=representation',
-      },
-<<<<<<< HEAD
-      body: JSON.stringify({ user_key: cfg.userKey, data: cloud, updated_at: nowIso }),
-    });
-    if (res.ok) {
-      try {
-        const rows = await res.json();
-        S._cloudUpdatedAt = rows?.[0]?.updated_at || nowIso;
-      } catch(e) { S._cloudUpdatedAt = nowIso; }
-      localStorage.setItem(KEY, JSON.stringify(S));
-    }
-    if (dot) dot.style.background = res.ok ? '#6EE7B7' : '#FCA5A5';
-  } catch(e) {
-    if (dot) dot.style.background = '#FCA5A5';
-  } finally {
-    _saveInFlight = false;
-    if (_savePending) { _savePending = false; supabaseSave(); }
-  }
-}
-
-async function pullIfNewer() {
-  if (_saveInFlight) return false;
-  const cfg = S.settings;
-  if (!cfg?.supabaseUrl || !cfg?.supabaseKey || !cfg?.userKey) return false;
-  const cloudTs = await fetchCloudTimestamp();
-  if (!cloudTs) return false;
-  const lastKnown = S._cloudUpdatedAt ? new Date(S._cloudUpdatedAt).getTime() : 0;
-  if (new Date(cloudTs).getTime() <= lastKnown + 500) return false;
-  const ok = await supabaseLoad();
-  if (ok) {
-    populateRenoProps(); renderDocTypes(); renderProps(); updateBadges(); calcPopulatePropSel();
-  }
-  return ok;
-}
-
-=======
-      body: JSON.stringify({ user_key: cfg.userKey, data: cloud, updated_at: stamp }),
-    });
-    if (res.ok) {
-      // Track the sync point so future pulls can tell "cloud changed since last sync"
-      S._cloudUpdatedAt = stamp;
-      try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
-      setSyncStatus('ok', '');
-      return true;
-    } else {
-      const errText = await res.text().catch(()=>'');
-      setSyncStatus('error', `❌ Sync ไม่สำเร็จ (HTTP ${res.status}) — ข้อมูลอยู่ในเครื่องนี้เท่านั้น <button onclick="runAutoSync()" style="margin-left:8px;padding:3px 10px;border-radius:6px;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;font:inherit;font-weight:700">🔄 ลองใหม่</button><br><small style="opacity:.7">${(errText||'').slice(0,200)}</small>`);
-      return false;
-    }
-  } catch(e) {
-    setSyncStatus('error', `❌ เชื่อม Cloud ไม่ได้: ${e.message} <button onclick="runAutoSync()" style="margin-left:8px;padding:3px 10px;border-radius:6px;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;font:inherit;font-weight:700">🔄 ลองใหม่</button>`);
-    return false;
-  }
-}
-
+// ── Backup / Restore JSON (safety net) ──
 function exportToJson() {
   const blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
   const url  = URL.createObjectURL(blob);
@@ -2164,7 +2188,6 @@ function importFromJson(ev) {
     try {
       const imported = JSON.parse(e.target.result);
       if (!imported || typeof imported !== 'object') throw new Error('Invalid JSON');
-      backupLocal();
       const localSettings = S.settings;
       S = imported;
       S.settings = { ...(imported.settings||{}), ...localSettings };
@@ -2174,15 +2197,9 @@ function importFromJson(ev) {
       if (!S.notifLog) S.notifLog = {};
       S.lastModified = new Date().toISOString();
       try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
-      if (typeof populateRenoProps === 'function') populateRenoProps();
-      if (typeof renderDocTypes === 'function')   renderDocTypes();
-      if (typeof renderProps === 'function')      renderProps();
-      if (typeof updateBadges === 'function')     updateBadges();
-      if (typeof calcPopulatePropSel === 'function') calcPopulatePropSel();
-      // Force-push to cloud so all devices see imported data
-      cloudPullOK = true;
-      const ok = await supabaseSave();
-      toast(ok ? `✅ Import + Push สำเร็จ (${S.props.length} ทรัพย์, ${S.expenses.length} ค่าใช้จ่าย)` : '⚠️ Import แล้วแต่ Push Cloud ไม่สำเร็จ', ok ? 'success' : 'error');
+      renderAll();
+      scheduleSync();
+      toast(`✅ Import แล้ว — กำลัง sync ขึ้น Cloud (${S.props.length} ทรัพย์, ${S.expenses.length} ค่าใช้จ่าย)`, 'success');
     } catch(err) {
       toast('❌ ไฟล์ไม่ถูกต้อง: ' + err.message, 'error');
     }
@@ -2191,172 +2208,20 @@ function importFromJson(ev) {
   r.readAsText(file);
 }
 
-// Manual force-push: bypass cloudPullOK gate (used when user wants to overwrite cloud
-// with this device's data, e.g. after a wipe). Header ☁️ button calls this.
->>>>>>> a21fd12 (fix(sync): make cloud the source of truth — auto-load on every page open)
+// Header ☁️ button — trigger an immediate cloud sync
 async function pushToCloud() {
   if (!S.props?.length && !S.expenses?.length) {
     if (!confirm('เครื่องนี้ไม่มีข้อมูล — Push จะทำให้ Cloud ว่างด้วย ต้องการดำเนินการ?')) return;
   }
-  const prev = cloudPullOK;
-  cloudPullOK = true;
-  toast('⏳ กำลัง Push ขึ้น Cloud...', '');
-  const ok = await supabaseSave();
-  cloudPullOK = prev || ok;
-  toast(ok ? '☁️ Push สำเร็จ — เครื่องอื่น Refresh แล้วจะเห็น' : '❌ Push ไม่สำเร็จ ลองใหม่', ok ? 'success' : 'error');
+  scheduleSync();
+  toast('☁️ กำลัง sync ขึ้น Cloud...', '');
 }
 
-// Take a snapshot of local state into a rolling backup slot before overwriting.
-// Keeps last 3 snapshots so user can recover if sync goes wrong.
-function backupLocal() {
-  try {
-    const snap = localStorage.getItem(KEY);
-    if (!snap) return;
-    localStorage.setItem(`${KEY}_backup_${Date.now()}`, snap);
-    const keys = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.startsWith(`${KEY}_backup_`)) keys.push(k);
-    }
-    keys.sort();
-    while (keys.length > 3) localStorage.removeItem(keys.shift());
-  } catch(e) {}
-}
+// Legacy aliases — Settings "⬇️ Sync จาก Cloud" button and any leftover onclick handlers
+async function supabaseSave() { scheduleSync(); }
+async function supabaseLoad() { const ok = await loadFromCloud(); if (ok) renderAll(); return ok; }
+async function runAutoSync()  { const ok = await loadFromCloud(); if (ok) renderAll(); }
 
-function adoptCloud(cloudData, updatedAt) {
-  const localSettings = S.settings;
-  S = cloudData;
-  S.settings = { ...S.settings, ...localSettings };
-  S._cloudUpdatedAt = updatedAt;
-  if (!Array.isArray(S.expenses)) S.expenses = [];
-  if (!Array.isArray(S.props))    S.props    = [];
-  if (!Array.isArray(S.docTypes)) S.docTypes = [];
-  if (!S.notifLog) S.notifLog = {};
-  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
-  if (typeof populateRenoProps === 'function') populateRenoProps();
-  if (typeof renderDocTypes  === 'function') renderDocTypes();
-  if (typeof renderProps     === 'function') renderProps();
-  if (typeof updateBadges    === 'function') updateBadges();
-  if (typeof calcPopulatePropSel === 'function') calcPopulatePropSel();
-}
-
-// Single entry point for auto-sync. Called on page load + can be retried via banner button.
-async function runAutoSync() {
-  if (cloudPulling) return;
-  const cfg = S.settings;
-  if (!cfg?.supabaseUrl || !cfg?.supabaseKey || !cfg?.userKey) {
-    setSyncStatus('error', '⚠️ ยังไม่ตั้งค่า Supabase — ข้อมูลจะอยู่ในเครื่องนี้เท่านั้น (กด ⚙️ เพื่อตั้งค่า)');
-    return;
-  }
-  cloudPulling = true;
-  setSyncStatus('syncing', '');
-  try {
-    const res = await fetch(
-      `${cfg.supabaseUrl}/rest/v1/auction_data?user_key=eq.${encodeURIComponent(cfg.userKey)}&select=data,updated_at`,
-      { headers: { 'apikey': cfg.supabaseKey, 'Authorization': 'Bearer ' + cfg.supabaseKey } }
-    );
-<<<<<<< HEAD
-    if (!res.ok) return false;
-    const rows = await res.json();
-    if (rows.length && rows[0].data) {
-      // กันข้อมูลหาย: ถ้า cloud ว่าง แต่ local ยังมีของ — ห้ามทับ
-      const cloudItems = (rows[0].data.props?.length || 0) + (rows[0].data.expenses?.length || 0);
-      const localItems = (S.props?.length || 0) + (S.expenses?.length || 0);
-      if (cloudItems === 0 && localItems > 0) {
-        console.warn('[supabaseLoad] cloud ว่าง แต่ local มี', localItems, 'รายการ — ไม่ทับ');
-        return false;
-      }
-      const localSettings = S.settings;
-      S = rows[0].data;
-      S.settings = { ...S.settings, ...localSettings };
-      S._cloudUpdatedAt = rows[0].updated_at;
-      if (!Array.isArray(S.expenses)) S.expenses = [];
-      if (!Array.isArray(S.props))    S.props    = [];
-      if (!Array.isArray(S.docTypes)) S.docTypes = [];
-      if (!S.notifLog) S.notifLog = {};
-      localStorage.setItem(KEY, JSON.stringify(S));
-      return true;
-=======
-    if (!res.ok) {
-      setSyncStatus('error', `❌ เชื่อม Cloud ไม่ได้ (HTTP ${res.status}) — ข้อมูลอยู่ในเครื่องนี้เท่านั้น <button onclick="runAutoSync()" style="margin-left:8px;padding:3px 10px;border-radius:6px;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;font:inherit;font-weight:700">🔄 ลองใหม่</button>`);
-      return;
->>>>>>> a21fd12 (fix(sync): make cloud the source of truth — auto-load on every page open)
-    }
-    const rows = await res.json();
-    const cloudRow  = rows[0];
-    const cloudData = cloudRow?.data;
-    const cloudTime = cloudRow?.updated_at ? new Date(cloudRow.updated_at).getTime() : 0;
-    const cloudItems = cloudData ? ((cloudData.props?.length||0) + (cloudData.expenses?.length||0)) : 0;
-    const localItems = (S.props?.length||0) + (S.expenses?.length||0);
-    const localTime  = S.lastModified       ? new Date(S.lastModified).getTime()       : 0;
-    const knownTime  = S._cloudUpdatedAt    ? new Date(S._cloudUpdatedAt).getTime()    : 0;
-
-    const localChanged = localTime > knownTime + 1000;
-    const cloudChanged = cloudTime > knownTime + 1000;
-
-    // Snapshot local before any potential overwrite
-    if (localItems > 0) backupLocal();
-
-    // ── Decision matrix ──
-    if (cloudItems === 0 && localItems === 0) {
-      // Both empty — nothing to do
-      S._cloudUpdatedAt = cloudRow?.updated_at || S._cloudUpdatedAt;
-      cloudPullOK = true;
-      setSyncStatus('ok', '');
-    } else if (localItems === 0 && cloudItems > 0) {
-      // Local empty, cloud has data → adopt cloud (typical "open on new device")
-      adoptCloud(cloudData, cloudRow.updated_at);
-      cloudPullOK = true;
-      setSyncStatus('ok', '');
-      toast(`☁️ โหลดจาก Cloud (${cloudItems} รายการ)`, '');
-    } else if (cloudItems === 0 && localItems > 0) {
-      // Cloud empty, local has data → bootstrap push up
-      cloudPullOK = true;
-      const ok = await supabaseSave();
-      if (ok) toast(`☁️ บันทึก ${localItems} รายการขึ้น Cloud แล้ว`, 'success');
-    } else if (!localChanged && cloudChanged) {
-      // Cloud is ahead, local untouched since last sync → adopt cloud
-      adoptCloud(cloudData, cloudRow.updated_at);
-      cloudPullOK = true;
-      setSyncStatus('ok', '');
-      toast(`☁️ อัปเดตจาก Cloud (${cloudItems} รายการ)`, '');
-    } else if (localChanged && !cloudChanged) {
-      // Local has unpushed changes, cloud untouched → push local up
-      cloudPullOK = true;
-      await supabaseSave();
-    } else if (localChanged && cloudChanged) {
-      // Both sides changed since last known sync. Heuristic: the side with MORE items
-      // wins (preserve data over deletes). Fall back to newer timestamp on tie.
-      if (cloudItems > localItems || (cloudItems === localItems && cloudTime > localTime + 1000)) {
-        adoptCloud(cloudData, cloudRow.updated_at);
-        cloudPullOK = true;
-        setSyncStatus('ok', '');
-        toast(`☁️ อัปเดตจาก Cloud (${cloudItems} รายการ)`, '');
-      } else {
-        cloudPullOK = true;
-        const ok = await supabaseSave();
-        if (ok) toast(`☁️ อัปโหลด ${localItems} รายการขึ้น Cloud`, '');
-      }
-    } else {
-      // Neither changed since last sync
-      S._cloudUpdatedAt = cloudRow?.updated_at || S._cloudUpdatedAt;
-      cloudPullOK = true;
-      setSyncStatus('ok', '');
-    }
-  } catch(e) {
-    setSyncStatus('error', `❌ เชื่อม Cloud ไม่ได้: ${e.message} <button onclick="runAutoSync()" style="margin-left:8px;padding:3px 10px;border-radius:6px;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;font:inherit;font-weight:700">🔄 ลองใหม่</button>`);
-  } finally {
-    cloudPulling = false;
-  }
-}
-
-// Kept for the "⬇️ Sync จาก Cloud" button in Settings — force a re-pull.
-async function supabaseLoad() {
-  cloudPullOK = false;        // allow re-pull to overwrite
-  S._cloudUpdatedAt = undefined; // force the conflict branch to re-evaluate
-  await runAutoSync();
-  return cloudPullOK;
-}
 
 // ── Settings functions ─────────────────────────
 function openSettings() {
@@ -3311,48 +3176,15 @@ renderDocTypes();
 renderProps();
 updateBadges();
 
-<<<<<<< HEAD
-// auto-sync: เปิดมาดึงครั้งแรก + poll ทุก 5 วินาที + ดึงเมื่อกลับมาที่แท็บ — ไม่ต้องกดปุ่ม
-(async () => {
-  const cfg = S.settings;
-  if (!cfg?.supabaseUrl || !cfg?.supabaseKey || !cfg?.userKey) return;
-
-  // ครั้งแรก: local ว่าง → ดึง cloud มาใส่; ไม่ว่างก็เช็คว่า cloud ใหม่กว่าหรือไม่
-  const localItems = (S.props?.length || 0) + (S.expenses?.length || 0);
-  if (localItems === 0) {
-    const ok = await supabaseLoad();
-    if (ok) {
-      populateRenoProps(); renderDocTypes(); renderProps(); updateBadges(); calcPopulatePropSel();
-      toast('☁️ โหลดข้อมูลจาก Cloud แล้ว', '');
-    }
-  } else {
-    const got = await pullIfNewer();
-    if (got) toast('☁️ อัปเดตข้อมูลจากเครื่องอื่นแล้ว', '');
-  }
-
-  // Polling ทุก 5 วิ เฉพาะตอนแท็บเปิดอยู่
-  let pollTimer = null;
-  const startPoll = () => { if (!pollTimer) pollTimer = setInterval(pullIfNewer, 5000); };
-  const stopPoll  = () => { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } };
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) stopPoll();
-    else { pullIfNewer(); startPoll(); }
-  });
-  if (!document.hidden) startPoll();
-})();
-=======
-// Auto-sync on page load. runAutoSync() handles every case (empty/full, conflict, error)
-// and sets cloudPullOK appropriately so subsequent saveS() know whether to push.
-runAutoSync();
-
-// Re-sync when the tab regains focus — keeps multi-device data fresh without manual clicks.
-window.addEventListener('focus', () => {
-  if (!cloudPulling && S.settings?.supabaseUrl) runAutoSync();
+// Cloud sync (clock-in pattern): load from per-entity tables, then subscribe to realtime.
+// Other devices' changes flow back via realtime — no polling, no manual refresh.
+loadFromCloud().then(ok => {
+  if (ok) { renderAll(); setupRealtime(); }
 });
-window.addEventListener('online', () => {
-  if (!cloudPulling) runAutoSync();
-});
->>>>>>> a21fd12 (fix(sync): make cloud the source of truth — auto-load on every page open)
+
+// Re-pull on tab focus / online — covers cases where the realtime socket dropped.
+window.addEventListener('focus',  () => { loadFromCloud().then(ok => ok && renderAll()); });
+window.addEventListener('online', () => { loadFromCloud().then(ok => ok && renderAll()); });
 
 // auto notifications: ตรวจตอนโหลดและทุก 1 ชั่วโมง
 setTimeout(autoCheckNotifications, 1500);
