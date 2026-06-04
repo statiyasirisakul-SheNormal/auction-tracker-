@@ -965,6 +965,47 @@ input, select, textarea { font-size: 16px !important; }
   </div>
 </div>
 
+<!-- บันทึกยอดโอนคืน (ตัดบัญชีเป็นยอด) -->
+<div class="modal-overlay" id="modal-settle">
+  <div class="modal">
+    <h3>🔄 บันทึกยอดโอนคืนระหว่างกัน</h3>
+    <input type="hidden" id="settle-prop-id" />
+    <div id="settle-info" style="font-size:13px;color:#374151;background:#FFFBEB;border:1.5px solid #FCD34D;border-radius:9px;padding:10px 12px;margin-bottom:14px;line-height:1.7"></div>
+    <div class="form-group">
+      <label class="form-label">ใครเป็นคนโอนคืน *</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <label style="flex:1;min-width:150px;display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;font-size:14px;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;background:#FAFAFA">
+          <input type="radio" name="settle-from" value="me" id="settle-from-me" checked style="width:16px;height:16px;accent-color:var(--green);cursor:pointer">
+          <span>👤 ฉันโอนคืนหุ้นส่วน</span>
+        </label>
+        <label style="flex:1;min-width:150px;display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;font-size:14px;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;background:#FAFAFA">
+          <input type="radio" name="settle-from" value="partner" id="settle-from-partner" style="width:16px;height:16px;accent-color:var(--blue);cursor:pointer">
+          <span>🤝 หุ้นส่วนโอนคืนฉัน</span>
+        </label>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">จำนวนเงินที่โอนคืน (บาท) *</label>
+        <input class="form-input" type="text" inputmode="decimal" id="settle-amount" placeholder="0.00" oninput="fmtMoneyInput(this)" />
+        <div style="font-size:11px;color:var(--gray);margin-top:5px">💡 ใส่ยอดเท่าไหร่ก็ได้ — โอนคืนบางส่วนได้ ระบบจะหักออกจากยอดค้างให้</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">วันที่ *</label>
+        <input class="form-input" type="date" id="settle-date" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">หมายเหตุ</label>
+      <input class="form-input" id="settle-note" placeholder="เช่น โอนผ่านธนาคาร / เคลียร์รอบเดือน" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-settle')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveSettle()">บันทึกยอดโอนคืน</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── Settings Modal ── -->
 <div class="modal-overlay" id="modal-settings">
   <div class="modal" style="max-width:540px">
@@ -1379,6 +1420,26 @@ function expenseStats(items) {
   const balance     = (unsetMy - unsetP) / 2;
   return { total, myPaid, partnerPaid, myShare: total/2, partnerShare: total/2, balance, count: arr.length };
 }
+
+// ── ยอดโอนคืนระหว่างกัน (ตัดบัญชีเป็นยอด ไม่ต้องตัดทีละบิล) — เก็บไว้ในตัวทรัพย์ p.settlements ──
+// from:'partner' = หุ้นส่วนโอนคืนฉัน (ลดยอดที่หุ้นส่วนติดฉัน) | from:'me' = ฉันโอนคืนหุ้นส่วน
+function propSettlements(propId) {
+  const p = S.props.find(x => x.id === propId);
+  return (p && Array.isArray(p.settlements)) ? p.settlements : [];
+}
+// ผลรวมแบบมีเครื่องหมาย: + = หุ้นส่วนโอนคืนฉัน, − = ฉันโอนคืนหุ้นส่วน
+function settlementSigned(propId) {
+  return propSettlements(propId).reduce((s, x) =>
+    s + (x.from === 'partner' ? Number(x.amount||0) : -Number(x.amount||0)), 0);
+}
+// ยอดค้างสุทธิหลังหักยอดโอนคืนแล้ว (+ = หุ้นส่วนติดฉัน, − = ฉันติดหุ้นส่วน)
+function netBalanceForProps(propIds) {
+  const idset = new Set(propIds);
+  const rawBalance = expenseStats(S.expenses.filter(e => idset.has(e.propId))).balance;
+  const settled    = propIds.reduce((s, id) => s + settlementSigned(id), 0);
+  return rawBalance - settled;
+}
+
 function fmtPrice(n) { return fmtNum(n)+' ฿'; }
 function fmtDate(d)  { if (!d) return ''; return new Date(d+'T00:00:00').toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'}); }
 
@@ -2793,6 +2854,51 @@ function toggleExpensePayer(id) {
   saveS(); renderReno(); renderProps();
 }
 
+// ── ยอดโอนคืน (ตัดบัญชีเป็นยอด) ──
+function openSettle(propId) {
+  const prop = S.props.find(p=>p.id===propId);
+  if (!prop) return;
+  document.getElementById('settle-prop-id').value = propId;
+  const rawBal   = expenseStats(S.expenses.filter(e=>e.propId===propId)).balance;
+  const netOwe   = rawBal - settlementSigned(propId);
+  // ตั้งค่าเริ่มต้น: ทิศทาง + จำนวน ตามยอดค้างสุทธิ
+  const fromMe = netOwe < 0;  // ติดลบ = ฉันติดหุ้นส่วน → ฉันโอนคืน
+  document.getElementById(fromMe ? 'settle-from-me' : 'settle-from-partner').checked = true;
+  document.getElementById('settle-amount').value = Math.abs(netOwe) >= 0.5
+    ? Math.abs(Math.round(netOwe*100)/100).toLocaleString('th-TH', { minimumFractionDigits: (Math.abs(netOwe)%1?2:0), maximumFractionDigits: 2 })
+    : '';
+  document.getElementById('settle-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('settle-note').value = '';
+  document.getElementById('settle-info').innerHTML = Math.abs(netOwe) < 0.5
+    ? `🏠 <b>${prop.name}</b><br>✓ ยอดเคลียร์กันแล้ว — บันทึกเพิ่มได้ถ้ามีการโอนคืนรอบใหม่`
+    : `🏠 <b>${prop.name}</b><br>ยอดค้างสุทธิตอนนี้: <b style="color:${netOwe>0?'var(--green)':'var(--red)'}">${netOwe>0?'หุ้นส่วนติดฉัน ':'ฉันติดหุ้นส่วน '}${fmtPrice(Math.abs(netOwe))}</b>`;
+  openModal('modal-settle');
+}
+
+function saveSettle() {
+  const propId = document.getElementById('settle-prop-id').value;
+  const prop   = S.props.find(p=>p.id===propId);
+  if (!prop) { alert('ไม่พบทรัพย์'); return; }
+  const amount = parseNumInput(document.getElementById('settle-amount').value);
+  const dateISO = document.getElementById('settle-date').value;
+  if (!amount || amount <= 0) { alert('กรุณากรอกจำนวนเงินที่โอนคืน'); return; }
+  if (!dateISO) { alert('กรุณากรอกวันที่'); return; }
+  const from = (document.querySelector('input[name="settle-from"]:checked')||{}).value || 'me';
+  if (!Array.isArray(prop.settlements)) prop.settlements = [];
+  prop.settlements.push({ id: uid(), date: dateISO, amount, from, note: document.getElementById('settle-note').value.trim() });
+  renoActiveProp = propId;
+  saveS(); renderReno(); renderProps(); closeModal('modal-settle');
+  toast('✓ บันทึกยอดโอนคืนแล้ว','success');
+}
+
+function deleteSettlement(propId, sid) {
+  const prop = S.props.find(p=>p.id===propId);
+  if (!prop || !Array.isArray(prop.settlements)) return;
+  if (!confirm('ลบรายการโอนคืนนี้?')) return;
+  prop.settlements = prop.settlements.filter(s=>s.id!==sid);
+  saveS(); renderReno(); renderProps();
+}
+
 function editExpense(id) {
   const e = S.expenses.find(x=>x.id===id);
   if (!e) return;
@@ -2842,6 +2948,7 @@ function renderReno() {
   const activeIds = new Set(activeProps.map(p=>p.id));
   const activeExp = S.expenses.filter(e => activeIds.has(e.propId));
   const st        = expenseStats(activeExp);
+  const netBal    = netBalanceForProps(activeProps.map(p=>p.id));  // ค้างสุทธิหลังหักยอดโอนคืน
 
   document.getElementById('reno-summary-bar').innerHTML = `
     <div class="reno-summary-bar">
@@ -2857,9 +2964,9 @@ function renderReno() {
         <div class="reno-stat-num" style="color:var(--blue)">${fmtNum(st.partnerPaid)}</div>
         <div class="reno-stat-label">🤝 หุ้นส่วนจ่าย (฿)</div>
       </div>
-      <div class="reno-stat" title="+ = หุ้นส่วนต้องคืนฉัน, − = ฉันต้องคืนหุ้นส่วน">
-        <div class="reno-stat-num" style="color:${st.balance>=0?'var(--green)':'var(--red)'}">${st.balance>=0?'+':''}${fmtNum(st.balance)}</div>
-        <div class="reno-stat-label">🔄 ค้างชำระระหว่างกัน (฿)</div>
+      <div class="reno-stat" title="+ = หุ้นส่วนต้องคืนฉัน, − = ฉันต้องคืนหุ้นส่วน (หลังหักยอดโอนคืนแล้ว)">
+        <div class="reno-stat-num" style="color:${netBal>=0?'var(--green)':'var(--red)'}">${netBal>=0?'+':''}${fmtNum(netBal)}</div>
+        <div class="reno-stat-label">🔄 ค้างชำระสุทธิ (฿)<br><span style="font-size:9px;opacity:.75">หลังหักยอดโอนคืน</span></div>
       </div>
       <div class="reno-stat">
         <div class="reno-stat-num">${activeExp.length}</div>
@@ -2910,9 +3017,41 @@ function renderReno() {
     return;
   }
 
+  // ── แผงยอดค้าง + ยอดโอนคืน (ตัดบัญชีเป็นยอด) ──
+  const rawBal   = expenseStats(S.expenses.filter(e=>e.propId===filterPropId)).balance;
+  const paidBack = settlementSigned(filterPropId);      // + = หุ้นส่วนโอนคืนแล้ว, − = ฉันโอนคืนแล้ว
+  const netOwe   = rawBal - paidBack;                    // ค้างสุทธิ
+  const settles  = [...propSettlements(filterPropId)].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const oweTxt = Math.abs(netOwe) < 0.5
+    ? `✓ เคลียร์ยอดกันเรียบร้อยแล้ว`
+    : (netOwe > 0 ? `🤝 หุ้นส่วนต้องโอนคืนฉันอีก <b>${fmtPrice(netOwe)}</b>` : `👤 ฉันต้องโอนคืนหุ้นส่วนอีก <b>${fmtPrice(-netOwe)}</b>`);
   headEl.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;margin:22px 0 6px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:22px 0 8px">
+      <div style="font-size:15px;font-weight:800;color:var(--navy)">🧾 ค่าใช้จ่ายบ้านนี้</div>
       <button class="btn btn-success btn-sm" onclick="openRenoForProp('${filterPropId}')">+ เพิ่มค่าใช้จ่ายบ้านนี้</button>
+    </div>
+    <div style="border:1.5px solid ${Math.abs(netOwe)<0.5?'#86EFAC':'#FCD34D'};border-radius:12px;padding:14px 16px;margin-bottom:14px;background:${Math.abs(netOwe)<0.5?'#F0FDF4':'#FFFBEB'}">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+        <div style="font-size:13px;font-weight:800;color:var(--navy)">🔄 ยอดค้างชำระระหว่างกัน (บ้านนี้)</div>
+        <button class="btn btn-primary btn-sm" onclick="openSettle('${filterPropId}')">+ บันทึกยอดโอนคืน</button>
+      </div>
+      <div style="font-size:13px;color:#374151;line-height:1.9">
+        ค้างจากบิล (ยังไม่ตัด): <b style="color:${rawBal>=0?'var(--green)':'var(--red)'}">${rawBal>=0?'+':''}${fmtPrice(rawBal)}</b>
+        · โอนคืนแล้ว: <b>${fmtPrice(Math.abs(paidBack))}</b>
+        <span style="font-size:11px;color:var(--gray)">${paidBack>0?'(หุ้นส่วนโอนคืน)':paidBack<0?'(ฉันโอนคืน)':''}</span>
+        <div style="margin-top:4px;font-size:14px">${oweTxt}</div>
+      </div>
+      ${settles.length ? `
+      <div style="margin-top:10px;border-top:1px dashed #E5E7EB;padding-top:8px">
+        <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:4px">ประวัติยอดโอนคืน</div>
+        ${settles.map(s=>`
+          <div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:4px 0;border-bottom:1px dashed #F3F4F6">
+            <span style="color:var(--gray);min-width:78px">${fmtDate(s.date)}</span>
+            <span style="flex:1">${s.from==='partner'?'🤝 หุ้นส่วนโอนคืนฉัน':'👤 ฉันโอนคืนหุ้นส่วน'}${s.note?` <span style="color:var(--gray)">· ${s.note}</span>`:''}</span>
+            <b style="color:${s.from==='partner'?'var(--blue)':'var(--green)'}">${fmtPrice(s.amount)}</b>
+            <button onclick="deleteSettlement('${filterPropId}','${s.id}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:13px;padding:0 2px" title="ลบ">✕</button>
+          </div>`).join('')}
+      </div>` : ''}
     </div>`;
 
   let list = S.expenses.filter(e=>e.propId===filterPropId);
@@ -2936,7 +3075,8 @@ function renderReno() {
   Object.entries(byProp).forEach(([pid,items]) => {
     const prop = S.props.find(p=>p.id===pid);
     const ps   = expenseStats(items);
-    html += `<div class="section-title">🏠 ${prop?prop.name:'(ทรัพย์ถูกลบ)'} — รวม ${fmtPrice(ps.total)} <span style="color:var(--gray);font-size:12px;font-weight:400">(ฉัน ${fmtPrice(ps.myPaid)} / หุ้นส่วน ${fmtPrice(ps.partnerPaid)} · ค้างชำระ <span style="color:${ps.balance>=0?'var(--green)':'var(--red)'};font-weight:700">${ps.balance>=0?'+':''}${fmtPrice(ps.balance)}</span>)</span></div>`;
+    const netB = netBalanceForProps([pid]);
+    html += `<div class="section-title">🏠 ${prop?prop.name:'(ทรัพย์ถูกลบ)'} — รวม ${fmtPrice(ps.total)} <span style="color:var(--gray);font-size:12px;font-weight:400">(ฉัน ${fmtPrice(ps.myPaid)} / หุ้นส่วน ${fmtPrice(ps.partnerPaid)} · ค้างสุทธิ <span style="color:${netB>=0?'var(--green)':'var(--red)'};font-weight:700">${netB>=0?'+':''}${fmtPrice(netB)}</span>)</span></div>`;
     html += items.map(e=>{
       const isP = e.payer === 'partner';
       const payerBadge = isP
