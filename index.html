@@ -38,16 +38,17 @@ body { font-family:'Sarabun','Segoe UI',sans-serif; background:var(--bg); color:
 
 .tabs {
   background:white; border-bottom:2px solid var(--border);
-  display:flex; overflow-x:auto; padding:0 20px;
+  display:flex; flex-wrap:wrap; padding:0 12px;
   box-shadow:0 1px 4px rgba(0,0,0,.05);
   position:sticky; top:64px; z-index:90;
 }
 .tabs::-webkit-scrollbar { height:0; }
 .tab-btn {
-  padding:16px 22px; border:none; background:none; cursor:pointer;
+  flex:1 1 auto; justify-content:center;
+  padding:14px 14px; border:none; background:none; cursor:pointer;
   font-family:inherit; font-size:14px; font-weight:600; color:var(--gray);
   white-space:nowrap; border-bottom:3px solid transparent; margin-bottom:-2px;
-  transition:all .2s; display:flex; align-items:center; gap:7px;
+  transition:all .2s; display:flex; align-items:center; gap:6px;
 }
 .tab-btn.active { color:var(--navy); border-bottom-color:var(--blue); }
 .tab-btn:hover:not(.active) { color:#374151; background:#F9FAFB; }
@@ -304,8 +305,8 @@ input, select, textarea { font-size: 16px !important; }
   .header h1 { font-size: 15px; }
   .header p  { display: none; }
 
-  .tabs { padding: 0 6px; top: 56px; }
-  .tab-btn { padding: 12px 14px; font-size: 12px; gap: 4px; }
+  .tabs { padding: 0 4px; top: 56px; }
+  .tab-btn { flex: 1 1 30%; padding: 10px 4px; font-size: 12px; gap: 4px; }
 
   .content { padding: 10px 10px; }
 
