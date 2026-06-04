@@ -3035,6 +3035,9 @@ function renderReno() {
         <div style="font-size:13px;font-weight:800;color:var(--navy)">🔄 ยอดค้างชำระระหว่างกัน (บ้านนี้)</div>
         <button class="btn btn-primary btn-sm" onclick="openSettle('${filterPropId}')">+ บันทึกยอดโอนคืน</button>
       </div>
+      <div style="font-size:11px;color:var(--gray);background:#fff;border:1px dashed var(--border);border-radius:7px;padding:6px 9px;margin-bottom:8px;line-height:1.6">
+        💡 ตัดบัญชีได้ 2 แบบ — <b>① ตัดทีละบิล:</b> กดปุ่ม "ตัดบิล" ที่แต่ละรายการด้านล่าง · <b>② ชำระเป็นยอดรวม:</b> กด "+ บันทึกยอดโอนคืน" ใส่ยอดเดียวจบ (ไม่ต้องแตะบิล) — ใช้แบบใดแบบหนึ่งต่อบ้านจะไม่งง
+      </div>
       <div style="font-size:13px;color:#374151;line-height:1.9">
         ค้างจากบิล (ยังไม่ตัด): <b style="color:${rawBal>=0?'var(--green)':'var(--red)'}">${rawBal>=0?'+':''}${fmtPrice(rawBal)}</b>
         · โอนคืนแล้ว: <b>${fmtPrice(Math.abs(paidBack))}</b>
@@ -3100,7 +3103,8 @@ function renderReno() {
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
           <div class="expense-amount" style="color:${isP?'var(--blue)':'var(--navy)'}">${fmtPrice(e.amount)}</div>
-          <div style="display:flex;gap:4px;">
+          <div style="display:flex;gap:4px;align-items:center;">
+            <button onclick="toggleExpenseSettled('${e.id}')" title="ตัดบัญชีบิลนี้ / ยกเลิก" style="background:${e.settled?'#DCFCE7':'#F3F4F6'};border:1px solid ${e.settled?'#86EFAC':'var(--border)'};border-radius:6px;cursor:pointer;color:${e.settled?'var(--green)':'var(--gray)'};font-size:11px;padding:3px 8px;font-weight:700;white-space:nowrap">${e.settled?'✓ ตัดแล้ว':'ตัดบิล'}</button>
             <button class="icon-btn btn-xs" onclick="editExpense('${e.id}')" title="แก้ไข">✏️</button>
             <button class="icon-btn del btn-xs" onclick="deleteExpense('${e.id}')" title="ลบ">🗑</button>
           </div>
