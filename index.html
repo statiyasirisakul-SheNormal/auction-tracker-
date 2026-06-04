@@ -38,18 +38,19 @@ body { font-family:'Sarabun','Segoe UI',sans-serif; background:var(--bg); color:
 
 .tabs {
   background:white; border-bottom:2px solid var(--border);
-  display:flex; flex-wrap:wrap; padding:0 12px;
+  display:flex; flex-wrap:nowrap; padding:0 8px;
   box-shadow:0 1px 4px rgba(0,0,0,.05);
   position:sticky; top:64px; z-index:90;
 }
 .tabs::-webkit-scrollbar { height:0; }
 .tab-btn {
-  flex:1 1 auto; justify-content:center;
-  padding:14px 14px; border:none; background:none; cursor:pointer;
+  flex:1 1 0; min-width:0; justify-content:center; overflow:hidden;
+  padding:14px 10px; border:none; background:none; cursor:pointer;
   font-family:inherit; font-size:14px; font-weight:600; color:var(--gray);
   white-space:nowrap; border-bottom:3px solid transparent; margin-bottom:-2px;
   transition:all .2s; display:flex; align-items:center; gap:6px;
 }
+.t-short { display:none; }
 .tab-btn.active { color:var(--navy); border-bottom-color:var(--blue); }
 .tab-btn:hover:not(.active) { color:#374151; background:#F9FAFB; }
 .tab-badge {
@@ -305,8 +306,11 @@ input, select, textarea { font-size: 16px !important; }
   .header h1 { font-size: 15px; }
   .header p  { display: none; }
 
-  .tabs { padding: 0 4px; top: 56px; }
-  .tab-btn { flex: 1 1 30%; padding: 10px 4px; font-size: 12px; gap: 4px; }
+  .tabs { padding: 0 2px; top: 56px; }
+  .tab-btn { padding: 10px 3px; font-size: 11px; gap: 3px; }
+  .tab-btn .t-full { display: none; }
+  .tab-btn .t-short { display: inline; }
+  .tabs .tab-badge { display: none; }
 
   .content { padding: 10px 10px; }
 
@@ -436,22 +440,22 @@ input, select, textarea { font-size: 16px !important; }
 
 <div class="tabs">
   <button class="tab-btn active" onclick="switchTab('props')">
-    🏠 ทรัพย์ <span class="tab-badge" id="badge-props">0</span>
+    🏠 <span class="t-full">ทรัพย์</span><span class="t-short">ทรัพย์</span> <span class="tab-badge" id="badge-props">0</span>
   </button>
   <button class="tab-btn" onclick="switchTab('reno')">
-    🔨 ค่าใช้จ่าย <span class="tab-badge" id="badge-reno">0</span>
+    🔨 <span class="t-full">ค่าใช้จ่าย</span><span class="t-short">รายจ่าย</span> <span class="tab-badge" id="badge-reno">0</span>
   </button>
   <button class="tab-btn" onclick="switchTab('summary')">
-    📊 สรุปภาพรวม
+    📊 <span class="t-full">สรุปภาพรวม</span><span class="t-short">สรุป</span>
   </button>
   <button class="tab-btn" onclick="switchTab('calc')">
-    🧮 คำนวณทรัพย์
+    🧮 <span class="t-full">คำนวณทรัพย์</span><span class="t-short">คำนวณ</span>
   </button>
   <button class="tab-btn" onclick="switchTab('pnl')">
-    💰 กำไร/ขาดทุน
+    💰 <span class="t-full">กำไร/ขาดทุน</span><span class="t-short">กำไร</span>
   </button>
   <button class="tab-btn" onclick="switchTab('sold')">
-    ✅ ขายแล้ว <span class="tab-badge" id="badge-sold">0</span>
+    ✅ <span class="t-full">ขายแล้ว</span><span class="t-short">ขายแล้ว</span> <span class="tab-badge" id="badge-sold">0</span>
   </button>
 </div>
 
