@@ -3025,34 +3025,30 @@ function renderReno() {
   const oweTxt = Math.abs(netOwe) < 0.5
     ? `✓ เคลียร์ยอดกันเรียบร้อยแล้ว`
     : (netOwe > 0 ? `🤝 หุ้นส่วนต้องโอนคืนฉันอีก <b>${fmtPrice(netOwe)}</b>` : `👤 ฉันต้องโอนคืนหุ้นส่วนอีก <b>${fmtPrice(-netOwe)}</b>`);
+  const oweShort = Math.abs(netOwe) < 0.5
+    ? `<span style="color:var(--green)">✓ เคลียร์แล้ว</span>`
+    : (netOwe > 0 ? `<span style="color:var(--green)">หุ้นส่วนติดฉัน ${fmtPrice(netOwe)}</span>` : `<span style="color:var(--red)">ฉันติดหุ้นส่วน ${fmtPrice(-netOwe)}</span>`);
   headEl.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:22px 0 8px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:20px 0 8px">
       <div style="font-size:15px;font-weight:800;color:var(--navy)">🧾 ค่าใช้จ่ายบ้านนี้</div>
       <button class="btn btn-success btn-sm" onclick="openRenoForProp('${filterPropId}')">+ เพิ่มค่าใช้จ่ายบ้านนี้</button>
     </div>
-    <div style="border:1.5px solid ${Math.abs(netOwe)<0.5?'#86EFAC':'#FCD34D'};border-radius:12px;padding:14px 16px;margin-bottom:14px;background:${Math.abs(netOwe)<0.5?'#F0FDF4':'#FFFBEB'}">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px">
-        <div style="font-size:13px;font-weight:800;color:var(--navy)">🔄 ยอดค้างชำระระหว่างกัน (บ้านนี้)</div>
-        <button class="btn btn-primary btn-sm" onclick="openSettle('${filterPropId}')">+ บันทึกยอดโอนคืน</button>
-      </div>
-      <div style="font-size:11px;color:var(--gray);background:#fff;border:1px dashed var(--border);border-radius:7px;padding:6px 9px;margin-bottom:8px;line-height:1.6">
-        💡 ตัดบัญชีได้ 2 แบบ — <b>① ตัดทีละบิล:</b> กดปุ่ม "ตัดบิล" ที่แต่ละรายการด้านล่าง · <b>② ชำระเป็นยอดรวม:</b> กด "+ บันทึกยอดโอนคืน" ใส่ยอดเดียวจบ (ไม่ต้องแตะบิล) — ใช้แบบใดแบบหนึ่งต่อบ้านจะไม่งง
-      </div>
-      <div style="font-size:13px;color:#374151;line-height:1.9">
-        ค้างจากบิล (ยังไม่ตัด): <b style="color:${rawBal>=0?'var(--green)':'var(--red)'}">${rawBal>=0?'+':''}${fmtPrice(rawBal)}</b>
-        · โอนคืนแล้ว: <b>${fmtPrice(Math.abs(paidBack))}</b>
-        <span style="font-size:11px;color:var(--gray)">${paidBack>0?'(หุ้นส่วนโอนคืน)':paidBack<0?'(ฉันโอนคืน)':''}</span>
-        <div style="margin-top:4px;font-size:14px">${oweTxt}</div>
+    <div style="border:1px solid ${Math.abs(netOwe)<0.5?'#86EFAC':'#FCD34D'};border-radius:9px;padding:8px 11px;margin-bottom:12px;background:${Math.abs(netOwe)<0.5?'#F0FDF4':'#FFFBEB'}">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <div style="font-size:12px;color:#374151">
+          🔄 ค้างสุทธิ: <b style="font-size:13px">${oweShort}</b>
+          <span style="color:var(--gray);font-size:10px">· บิล ${rawBal>=0?'+':''}${fmtNum(rawBal)} − โอนคืน ${fmtNum(Math.abs(paidBack))}</span>
+        </div>
+        <button class="btn btn-primary btn-xs" onclick="openSettle('${filterPropId}')">+ บันทึกยอดโอนคืน</button>
       </div>
       ${settles.length ? `
-      <div style="margin-top:10px;border-top:1px dashed #E5E7EB;padding-top:8px">
-        <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:4px">ประวัติยอดโอนคืน</div>
+      <div style="margin-top:6px;border-top:1px dashed #E5E7EB;padding-top:5px">
         ${settles.map(s=>`
-          <div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:4px 0;border-bottom:1px dashed #F3F4F6">
-            <span style="color:var(--gray);min-width:78px">${fmtDate(s.date)}</span>
-            <span style="flex:1">${s.from==='partner'?'🤝 หุ้นส่วนโอนคืนฉัน':'👤 ฉันโอนคืนหุ้นส่วน'}${s.note?` <span style="color:var(--gray)">· ${s.note}</span>`:''}</span>
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;padding:2px 0">
+            <span style="color:var(--gray);min-width:66px">${fmtDate(s.date)}</span>
+            <span style="flex:1">${s.from==='partner'?'🤝 หุ้นส่วนโอนคืน':'👤 ฉันโอนคืน'}${s.note?` <span style="color:var(--gray)">· ${s.note}</span>`:''}</span>
             <b style="color:${s.from==='partner'?'var(--blue)':'var(--green)'}">${fmtPrice(s.amount)}</b>
-            <button onclick="deleteSettlement('${filterPropId}','${s.id}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:13px;padding:0 2px" title="ลบ">✕</button>
+            <button onclick="deleteSettlement('${filterPropId}','${s.id}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:12px;padding:0 2px" title="ลบ">✕</button>
           </div>`).join('')}
       </div>` : ''}
     </div>`;
