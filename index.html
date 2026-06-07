@@ -1392,7 +1392,13 @@ function addRoundToCalendar(propId, roundIdx) {
     reminder: '1440',   // 1 วันล่วงหน้า (นาที)
   });
 
-  window.open(`https://calendar.google.com/calendar/render?${params}`, '_blank');
+  const a = document.createElement('a');
+  a.href = `https://calendar.google.com/calendar/render?${params}`;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
   localStorage.setItem(`cal-${propId}-${roundIdx}-${rDate}`, '1');
   renderProps();
 }
