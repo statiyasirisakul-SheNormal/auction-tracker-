@@ -1367,38 +1367,22 @@ function beToISO(str) {
   if (isNaN(ce)||isNaN(parseInt(m))||isNaN(parseInt(d))) return '';
   return `${ce}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
 }
-function addRoundToCalendar(propId, roundIdx) {
-  const p = S.props.find(x => x.id === propId); if (!p) return;
+function calendarUrl(propId, roundIdx) {
+  const p = S.props.find(x => x.id === propId); if (!p) return '#';
   const rObj = (p.rounds || [])[roundIdx];
   const rDate = typeof rObj === 'object' ? rObj.date : '';
-  if (!rDate) { toast('⚠️ กรุณากรอกวันที่นัดก่อน', 'error'); return; }
-
+  if (!rDate) return '#';
   const ROUND_DISC = ['ราคาเต็ม (รอบ 1)','ลด 10% (รอบ 2)','ลด 20% (รอบ 3)','ลด 30% (รอบ 4)','ลด 30% (รอบ 5)','ลด 30% (รอบ 6)'];
   const propLabel = [p.code, p.name].filter(Boolean).join(' — ');
   const roundLabel = `นัดที่ ${roundIdx + 1} ${ROUND_DISC[roundIdx] || ''}`;
   const note = typeof rObj === 'object' ? (rObj.note || '') : '';
-
   const [y, m, d] = rDate.split('-');
   const dtStart = `${y}${m}${d}`;
-  const dtEnd   = dtStart;
-
   const details = [`ทรัพย์: ${propLabel}`, roundLabel, note ? `หมายเหตุ: ${note}` : ''].filter(Boolean).join('\n');
-
-  const params = new URLSearchParams({
-    action:   'TEMPLATE',
-    text:     `🏛️ ${propLabel} ${roundLabel}`,
-    dates:    `${dtStart}/${dtEnd}`,
-    details,
-    reminder: '1440',   // 1 วันล่วงหน้า (นาที)
-  });
-
-  const a = document.createElement('a');
-  a.href = `https://calendar.google.com/calendar/render?${params}`;
-  a.target = '_blank';
-  a.rel = 'noopener noreferrer';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  const params = new URLSearchParams({ action:'TEMPLATE', text:`🏛️ ${propLabel} ${roundLabel}`, dates:`${dtStart}/${dtStart}`, details, reminder:'1440' });
+  return `https://calendar.google.com/calendar/render?${params}`;
+}
+function markCalSaved(propId, roundIdx, rDate) {
   localStorage.setItem(`cal-${propId}-${roundIdx}-${rDate}`, '1');
   renderProps();
 }
@@ -1697,7 +1681,8 @@ function renderProps() {
       const calKey = `cal-${p.id}-${ri}-${rDate}`;
       const calSaved = !!localStorage.getItem(calKey);
       const lineCtrl = '';
-      const calBtn = rDate ? `<div onclick="event.stopPropagation()" style="margin-top:3px;text-align:center"><button onclick="addRoundToCalendar('${p.id}',${ri})" style="font-size:10px;background:${calSaved?'#F0FDF4':'#EFF6FF'};color:${calSaved?'#15803D':'#1D4ED8'};border:1px solid ${calSaved?'#86EFAC':'#BFDBFE'};border-radius:4px;padding:1px 6px;cursor:pointer;font-weight:700" title="${calSaved?'บันทึกแล้ว — คลิกเปิดอีกครั้ง':'เพิ่มในปฏิทิน'}">${calSaved?'✓ บันทึกแล้ว':'📅 ปฏิทิน'}</button></div>` : '';
+      const calUrl = rDate ? calendarUrl(p.id, ri) : '';
+      const calBtn = rDate ? `<div onclick="event.stopPropagation()" style="margin-top:3px;text-align:center"><a href="${calUrl}" target="_blank" rel="noopener noreferrer" onclick="markCalSaved('${p.id}',${ri},'${rDate}')" style="display:inline-block;font-size:10px;background:${calSaved?'#F0FDF4':'#EFF6FF'};color:${calSaved?'#15803D':'#1D4ED8'};border:1px solid ${calSaved?'#86EFAC':'#BFDBFE'};border-radius:4px;padding:2px 6px;font-weight:700;text-decoration:none">${calSaved?'✓ บันทึกแล้ว':'📅 ปฏิทิน'}</a></div>` : '';
       return `
         <div class="round-tile ${cls}" onclick="cycleRound('${p.id}',${ri})" title="${rNote||'คลิกเปลี่ยนสถานะ'}">
           <div class="round-num">นัดที่ ${ri+1}</div>
