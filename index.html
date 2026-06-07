@@ -428,7 +428,7 @@ input, select, textarea { font-size: 16px !important; }
   <div style="font-size:30px">🏛️</div>
   <div style="flex:1;min-width:0">
     <h1>ระบบจัดการทรัพย์ กรมบังคับคดี <span style="font-size:10px;font-weight:600;opacity:.6;white-space:nowrap">v.2026.06.04-1</span></h1>
-    <p>บริหารเอกสาร · ติดตามประมูล · บันทึกค่าใช้จ่าย · แจ้งเตือน ntfy / Telegram</p>
+    <p>บริหารเอกสาร · ติดตามประมูล · บันทึกค่าใช้จ่าย · ปฏิทิน Google</p>
   </div>
   <button onclick="pushToCloud()" title="Push รูปขึ้น Cloud ให้มือถือเห็น" style="background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.35);color:white;border-radius:9px;padding:8px 12px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0">
     ☁️
@@ -754,19 +754,13 @@ input, select, textarea { font-size: 16px !important; }
 
     <!-- ── Auction Rounds ── -->
     <div class="section-title" style="margin-top:14px;margin-bottom:6px">📅 ตารางนัด 6 รอบ</div>
-    <div style="background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:8px;padding:9px 12px;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      <span style="font-size:12px;font-weight:700;color:var(--green)">🔔 ntfy Topic:</span>
-      <span id="form-ntfy-status" style="font-size:12px;color:var(--gray);flex:1"></span>
-      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-prop');openSettings()">⚙️ ตั้งค่าแจ้งเตือน</button>
-    </div>
     <div style="overflow-x:auto;margin-bottom:4px">
-      <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:480px">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:380px">
         <thead>
-          <tr style="background:#F1F5F9;border-radius:8px">
-            <th style="padding:8px 8px;text-align:left;font-weight:700;color:var(--navy);white-space:nowrap;border-bottom:2px solid var(--border)">นัดที่</th>
-            <th style="padding:8px 8px;text-align:left;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">วันที่</th>
-            <th style="padding:8px 8px;text-align:left;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">หมายเหตุ</th>
-            <th style="padding:8px 8px;text-align:center;font-weight:700;color:var(--green);border-bottom:2px solid var(--border);white-space:nowrap">🔔 แจ้งเตือน</th>
+          <tr style="background:#F1F5F9">
+            <th style="padding:8px;text-align:left;font-weight:700;color:var(--navy);white-space:nowrap;border-bottom:2px solid var(--border)">นัดที่</th>
+            <th style="padding:8px;text-align:left;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">วันที่</th>
+            <th style="padding:8px;text-align:left;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">หมายเหตุ</th>
           </tr>
         </thead>
         <tbody id="prop-rounds-tbody"></tbody>
@@ -819,69 +813,6 @@ input, select, textarea { font-size: 16px !important; }
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-prop')">ยกเลิก</button>
       <button class="btn btn-primary" onclick="saveProp()">💾 บันทึก</button>
-    </div>
-  </div>
-</div>
-
-<!-- Notification Settings -->
-<div class="modal-overlay" id="modal-notif">
-  <div class="modal">
-    <h3>🔔 ตั้งค่าการแจ้งเตือน</h3>
-    <input type="hidden" id="notif-prop-id" />
-
-    <div class="notif-method-tabs">
-      <div class="notif-method-tab active" id="tab-tg-btn"   onclick="switchNotifTab('tg')">✈️ Telegram</div>
-      <div class="notif-method-tab"        id="tab-browser-btn" onclick="switchNotifTab('browser')">🖥 Browser</div>
-    </div>
-
-    <!-- Telegram -->
-    <div id="notif-tg-section">
-      <div style="background:var(--tg-lt);border:1.5px solid var(--tg);border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#1a3a52;">
-        <strong>วิธีตั้งค่า Telegram Bot:</strong><br>
-        1. แชทกับ <strong>@BotFather</strong> → พิมพ์ <code>/newbot</code> → ตั้งชื่อ → รับ <strong>Token</strong><br>
-        2. แชทกับ Bot ของคุณก่อน 1 ครั้ง (เพื่อให้ระบบรู้จัก Chat ID)<br>
-        3. เปิด <code>https://api.telegram.org/bot<strong>[TOKEN]</strong>/getUpdates</code> แล้วดู <strong>chat.id</strong>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Bot Token *</label>
-          <input class="form-input" type="password" id="tg-token" placeholder="1234567890:AAF..." />
-        </div>
-        <div class="form-group">
-          <label class="form-label">Chat ID *</label>
-          <input class="form-input" id="tg-chat-id" placeholder="เช่น 123456789" />
-        </div>
-      </div>
-      <button class="btn btn-tg btn-sm" onclick="testTelegram()" style="margin-bottom:14px;">📨 ส่งทดสอบ</button>
-    </div>
-
-    <!-- Browser -->
-    <div id="notif-browser-section" style="display:none;">
-      <div style="background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#1a4731;">
-        แจ้งเตือนผ่าน <strong>การแจ้งเตือนของ Browser</strong> — ไม่ต้องสมัครอะไร<br>
-        กด "ขอสิทธิ์แจ้งเตือน" แล้ว Allow ที่ Browser จะแจ้งเตือนผ่าน OS อัตโนมัติ
-      </div>
-      <button class="btn btn-success btn-sm" onclick="requestBrowserNotif()" id="browser-perm-btn" style="margin-bottom:14px;">
-        🔔 ขอสิทธิ์แจ้งเตือน Browser
-      </button>
-      <div id="browser-perm-status" style="font-size:13px;color:var(--gray);"></div>
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">แจ้งเตือนล่วงหน้า (วัน)</label>
-      <select class="form-select" id="notif-days">
-        <option value="0">วันเดียวกัน</option>
-        <option value="1" selected>1 วันก่อน</option>
-        <option value="2">2 วันก่อน</option>
-        <option value="3">3 วันก่อน</option>
-        <option value="5">5 วันก่อน</option>
-        <option value="7">7 วันก่อน</option>
-      </select>
-    </div>
-
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeModal('modal-notif')">ยกเลิก</button>
-      <button class="btn btn-tg" onclick="saveNotif()">💾 บันทึกการตั้งค่า</button>
     </div>
   </div>
 </div>
@@ -1018,33 +949,6 @@ input, select, textarea { font-size: 16px !important; }
 <div class="modal-overlay" id="modal-settings">
   <div class="modal" style="max-width:540px">
     <h3>⚙️ ตั้งค่าระบบ</h3>
-
-    <!-- LINE Messaging API -->
-    <div style="background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:10px;padding:14px;margin-bottom:16px">
-      <div style="font-weight:800;color:var(--green);margin-bottom:8px">💬 การแจ้งเตือน — LINE Messaging API (ฟรี 200 ข้อความ/เดือน)</div>
-      <div style="font-size:12px;color:#374151;line-height:1.8;margin-bottom:12px;background:white;border-radius:8px;padding:10px;border:1px solid var(--border)">
-        <strong>วิธีตั้งค่า (ทำครั้งเดียว ~15 นาที):</strong><br>
-        1. เปิด <strong>developers.line.biz</strong> → Log in ด้วย LINE<br>
-        2. กด <strong>Create a new provider</strong> → ตั้งชื่อ → Create<br>
-        3. กด <strong>Create a new channel</strong> → เลือก <strong>Messaging API</strong><br>
-        4. กรอกข้อมูล channel → Create → ยืนยัน email<br>
-        5. แท็บ <strong>Messaging API</strong> → เลื่อนลงหา <strong>Channel access token</strong> → กด <strong>Issue</strong> → Copy<br>
-        6. แท็บ <strong>Basic settings</strong> → เลื่อนลงหา <strong>Your user ID</strong> → Copy (ขึ้นต้น U...)<br>
-        7. เปิด LINE → Add เพื่อน OA ที่สร้างขึ้น (scan QR ในหน้า Messaging API)
-      </div>
-      <div class="form-group" style="margin-bottom:8px">
-        <label class="form-label">Channel Access Token *</label>
-        <input class="form-input" type="password" id="set-line-token" placeholder="วาง token ที่ได้จาก Issue">
-      </div>
-      <div class="form-group" style="margin-bottom:10px">
-        <label class="form-label">Your User ID * <span style="font-weight:400;color:var(--gray)">(ขึ้นต้น U เช่น Uxxxxxxxx)</span></label>
-        <div style="display:flex;gap:8px">
-          <input class="form-input" id="set-line-uid" placeholder="U1234567890abcdef" style="flex:1">
-          <button class="btn btn-success btn-sm" onclick="testLineMsg()">ทดสอบ</button>
-        </div>
-      </div>
-    </div>
-
     <!-- Supabase -->
     <div style="background:var(--blue-lt);border:1.5px solid #93C5FD;border-radius:10px;padding:14px;margin-bottom:16px">
       <div style="font-weight:800;color:var(--blue);margin-bottom:8px">☁️ Cloud Sync — Supabase (ฟรี)</div>
@@ -1153,14 +1057,13 @@ function setSyncStatus(state, msg) {
 }
 
 let S = {
-  settings: { lineToken:'', lineUserId:'', supabaseUrl:'', supabaseKey:'', userKey:'' },
+  settings: { supabaseUrl:'', supabaseKey:'', userKey:'' },
   docTypes: [
     { id: uid(), name: 'ใบมอบอำนาจการประมูลทรัพย์' },
     { id: uid(), name: 'ใบอนุมัติคำร้องขอขายเวลา' },
   ],
   props: [],
   expenses: [],
-  notifLog:  {},
   notifSent: {},
 };
 
@@ -1201,11 +1104,8 @@ function loadS() {
       e.settled = false;
     }
   });
-  if (!S.notifLog)  S.notifLog  = {};
   if (!S.settings)  S.settings  = {};
   // pre-fill credentials (local device only — not uploaded to GitHub)
-  if (!S.settings.lineToken)   S.settings.lineToken   = '1J5ZqLl2Vjmnkg588P18+y5Bn//UpjO83fMycumFc7Dhjib70cr+9VLXe4i/4uLvvZNUe5SJUTiKLD6ZkbZhYizofHXHi89AMjfiYKNpJp+ZvvOJqGD9z9yx8HH9Uyd4N6RxjuZUlg06Hzk5ruSq2wdB04t89/1O/w1cDnyilFU=';
-  if (!S.settings.lineUserId)  S.settings.lineUserId  = 'U0d5170057f3ed5465b05b5ada360f36f';
   if (!S.settings.supabaseUrl) S.settings.supabaseUrl = 'https://rjpzmaeiopiqtsjaksed.supabase.co';
   if (!S.settings.supabaseKey) S.settings.supabaseKey = 'sb_publishable_-5eRFVpav1DpEbgKSV_zmA_AHTH2XFt';
   if (!S.settings.userKey)     S.settings.userKey     = 'sirikul_auction_2026';
@@ -1782,8 +1682,6 @@ function renderProps() {
       const rSt  = typeof rObj==='object' ? (rObj.status||'pending') : (rObj||'pending');
       const rDate= typeof rObj==='object' ? rObj.date : '';
       const rNote= typeof rObj==='object' ? rObj.note : '';
-      const lineOn   = typeof rObj==='object' && !!rObj.lineNotif;
-      const hasLine  = !!(S.settings?.lineToken && S.settings?.lineUserId);
       const isTarget = ri === (p.targetRound||0);
       const cls  = rSt==='joined'?'joined': rSt==='skipped'?'skipped': isTarget?'target':'';
       const icon = rSt==='joined'?'✓': rSt==='skipped'?'—': isTarget?'🎯':'';
@@ -1811,10 +1709,6 @@ function renderProps() {
     const renoTotal = renoStats.total;
 
     // Notif status
-    const hasTg      = !!(p.notif && p.notif.tgToken && p.notif.tgChatId);
-    const hasBrowser = !!(p.notif && p.notif.browser);
-    const hasNotif   = hasTg || hasBrowser;
-    const notifLog   = (S.notifLog[p.id]||[]).slice(-3).reverse();
 
     return `
       <div class="prop-card ${p.status||'watching'}" id="pp-${p.id}">
@@ -1829,8 +1723,6 @@ function renderProps() {
           <div class="prop-badges" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
             ${dateChip}
             <span class="badge ${statusMap[p.status||'watching']}">${statusLabel[p.status||'watching']}</span>
-            ${hasTg?'<span class="badge badge-tg">✈️ Telegram</span>':''}
-            ${hasBrowser?'<span class="badge badge-green">🔔 Browser</span>':''}
           </div>
           <div class="prop-actions" onclick="event.stopPropagation()" style="display:flex;gap:5px;">
             <button class="icon-btn" onclick="editProp('${p.id}')" title="แก้ไข">✏️</button>
@@ -1918,40 +1810,6 @@ function renderProps() {
             </div>` : `<div style="font-size:12px;color:var(--gray)">ยังไม่มีรายการ</div>`}
           </div>
 
-          <!-- NOTIFICATION BOX -->
-          <div class="notif-box">
-            <div class="notif-box-header">
-              <span style="font-size:22px;">🔔</span>
-              <span class="notif-box-title">การแจ้งเตือน</span>
-              <span class="notif-dot ${hasNotif?'ok':''}"></span>
-              <span style="font-size:12px;color:var(--tg);">
-                ${hasTg&&hasBrowser?'Telegram + Browser':hasTg?'Telegram':hasBrowser?'Browser':'ยังไม่ได้ตั้งค่า'}
-              </span>
-            </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button class="btn btn-tg btn-sm" onclick="openNotifModal('${p.id}')">
-                ⚙️ ${hasNotif?'แก้ไขการตั้งค่า':'ตั้งค่าการแจ้งเตือน'}
-              </button>
-              ${hasNotif?`
-              <button class="btn btn-ghost btn-sm" onclick="sendNotifNow('${p.id}')">
-                📨 ส่งการแจ้งเตือนตอนนี้
-              </button>`:''}
-            </div>
-            ${hasNotif&&p.notif?`
-            <div style="margin-top:10px;font-size:12px;color:var(--gray);">
-              แจ้งเตือนล่วงหน้า <strong>${p.notif.days||1} วัน</strong>
-              ${p.date?' · วันประมูล '+fmtDate(p.date):''}
-            </div>`:''}
-            ${notifLog.length?`
-            <div class="notif-log" style="margin-top:10px;max-height:120px;overflow-y:auto;">
-              <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:4px;">ประวัติการแจ้งเตือน</div>
-              ${notifLog.map(l=>`
-                <div class="notif-log-item">
-                  <span class="notif-time">${fmtDateTime(l.time)}</span>
-                  <span>${l.msg}</span>
-                </div>`).join('')}
-            </div>`:''}
-          </div>
 
           ${p.notes?`
           <div style="margin-top:16px;">
@@ -2017,7 +1875,7 @@ function toggleProp(id) { document.getElementById('pp-'+id).classList.toggle('ex
 
 function cycleRound(propId, ri) {
   const p = S.props.find(x=>x.id===propId); if (!p) return;
-  if (!p.rounds) p.rounds = Array(6).fill({status:'pending',date:'',note:'',lineNotif:false,isTarget:false});
+  if (!p.rounds) p.rounds = Array(6).fill({status:'pending',date:'',note:'',isTarget:false});
   const seq = ['pending','joined','skipped'];
   const cur = p.rounds[ri];
   const curStatus = typeof cur==='object' ? (cur.status||'pending') : (cur||'pending');
@@ -2030,20 +1888,6 @@ function cycleRound(propId, ri) {
   saveS(); renderProps();
 }
 
-function toggleRoundLine(propId, ri) {
-  const p = S.props.find(x=>x.id===propId); if (!p) return;
-  if (!p.rounds) p.rounds = Array(6).fill(null).map((_,i)=>({status:'pending',date:'',note:'',lineNotif:false,isTarget:false}));
-  const cur = p.rounds[ri];
-  if (typeof cur==='object') {
-    p.rounds[ri] = {...cur, lineNotif: !cur.lineNotif};
-  } else {
-    p.rounds[ri] = {status: cur||'pending', date:'', note:'', lineNotif: true, isTarget: false};
-  }
-  if (!S.settings?.lineToken || !S.settings?.lineUserId) {
-    toast('ยังไม่ได้ตั้งค่า LINE — กด ⚙️ มุมบนขวาก่อน','error');
-  }
-  saveS(); renderProps();
-}
 
 function setTargetRound(propId, ri) {
   const p = S.props.find(x=>x.id===propId); if (!p) return;
@@ -2090,8 +1934,6 @@ function editProp(id) {
   setNumInput('prop-actual-sell', p.actualSell||0);
   document.getElementById('prop-notes').value       = p.notes||'';
   document.getElementById('prop-map').value         = p.mapUrl||'';
-  const st = document.getElementById('form-ntfy-status');
-  if (st) st.textContent = S.settings?.ntfyTopic ? `Topic: ${S.settings.ntfyTopic}` : 'ยังไม่ได้ตั้งค่า';
   clearPropImgAll();
   if (p.imgProp)   { document.getElementById('img-prop-thumb').src=p.imgProp; document.getElementById('img-prop-preview').style.display=''; }
   if (p.imgDetail) { document.getElementById('img-detail-thumb').src=p.imgDetail; document.getElementById('img-detail-preview').style.display=''; }
@@ -2173,7 +2015,7 @@ function renderPropRoundsTable(rounds, targetRound) {
   if (!tbody) return;
   const getR = (i) => {
     const r = rounds[i];
-    if (!r || typeof r === 'string') return { status: r||'pending', date:'', note:'', lineNotif:false, isTarget: i===(targetRound||0) };
+    if (!r || typeof r === 'string') return { status: r||'pending', date:'', note:'', isTarget: i===(targetRound||0) };
     return { ...r, isTarget: r.isTarget !== undefined ? r.isTarget : i===(targetRound||0) };
   };
   tbody.innerHTML = Array.from({length:6},(_,i)=>{
@@ -2191,11 +2033,6 @@ function renderPropRoundsTable(rounds, targetRound) {
       <td style="padding:7px 8px">
         <input type="text" class="form-input" id="round-note-${i}" value="${(r.note||'').replace(/"/g,'&quot;')}" placeholder="เช่น งดขาย" style="font-size:12px;padding:5px 8px">
       </td>
-      <td style="padding:7px 8px;text-align:center">
-        <label style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">
-          <input type="checkbox" id="round-line-${i}" ${r.lineNotif?'checked':''} style="width:16px;height:16px;cursor:pointer">
-        </label>
-      </td>
     </tr>`;
   }).join('');
 }
@@ -2206,7 +2043,6 @@ function collectPropRounds() {
     status:    'pending',
     date:      beToISO(document.getElementById(`round-date-${i}`)?.value||''),
     note:      document.getElementById(`round-note-${i}`)?.value||'',
-    lineNotif: document.getElementById(`round-line-${i}`)?.checked||false,
     isTarget:  i === target,
   }));
 }
@@ -2259,38 +2095,6 @@ function goCalcFromPropForm() {
     const found = S.props.find(p=>(p.code&&p.code===(code||name))||(p.name===name));
     if (found) { sel.value = found.id; calcFillFromProp(); }
   }, 100);
-}
-
-// ── LINE Messaging API ────────────────────────
-async function sendLineMessage(token, userId, message) {
-  if (!token || !userId) return false;
-  try {
-    const res = await fetch('https://api.line.me/v2/bot/message/push', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + token,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        to: userId,
-        messages: [{ type: 'text', text: message }]
-      }),
-    });
-    return res.ok;
-  } catch(e) { return false; }
-}
-
-async function sendNtfyForRound(propId, roundIdx) {
-  const { lineToken, lineUserId } = S.settings || {};
-  const p = S.props.find(x=>x.id===propId);
-  if (!p || !lineToken || !lineUserId) { toast('ยังไม่ได้ตั้งค่า LINE — กด ⚙️','error'); return; }
-  const r     = (p.rounds||[])[roundIdx]||{};
-  const base  = Number(p.appraisal)||Number(p.price)||0;
-  const discs = [0, 0.1, 0.2, 0.3, 0.3, 0.3];
-  const bidPr = base ? Math.floor(base*(1-discs[roundIdx])) : 0;
-  const msg   = `🏛️ แจ้งเตือนนัดประมูล\n━━━━━━━━━━━━━━\n🏠 ${p.code?p.code+' — ':''}${p.name}\n📅 นัดที่ ${roundIdx+1}: ${r.date ? fmtDate(r.date) : 'ไม่ระบุ'}${bidPr?'\n💰 ราคาประมูล: '+fmtNum(bidPr)+' บาท':''}${r.note?'\n📝 '+r.note:''}\n━━━━━━━━━━━━━━`;
-  const ok = await sendLineMessage(lineToken, lineUserId, msg);
-  toast(ok ? '✓ ส่ง LINE สำเร็จ!' : '❌ ส่งไม่สำเร็จ — ตรวจสอบ Token/User ID', ok?'success':'error');
 }
 
 // ── Supabase ──────────────────────────────────
@@ -2403,8 +2207,7 @@ function importFromJson(ev) {
       if (!Array.isArray(S.expenses)) S.expenses = [];
       if (!Array.isArray(S.props))    S.props    = [];
       if (!Array.isArray(S.docTypes)) S.docTypes = [];
-      if (!S.notifLog) S.notifLog = {};
-      S.lastModified = new Date().toISOString();
+          S.lastModified = new Date().toISOString();
       try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
       renderAll();
       scheduleSync();
@@ -2435,20 +2238,14 @@ async function runAutoSync()  { const ok = await loadFromCloud(); if (ok) render
 // ── Settings functions ─────────────────────────
 function openSettings() {
   const g = id => document.getElementById(id);
-  g('set-line-token').value  = S.settings?.lineToken   || '';
-  g('set-line-uid').value    = S.settings?.lineUserId  || '';
   g('set-sb-url').value      = S.settings?.supabaseUrl || '';
   g('set-sb-key').value      = S.settings?.supabaseKey || '';
   g('set-sb-userkey').value  = S.settings?.userKey     || '';
-  const st = document.getElementById('form-ntfy-status');
-  if (st) st.textContent = S.settings?.lineToken ? 'ตั้งค่าแล้ว ✓' : 'ยังไม่ได้ตั้งค่า';
   openModal('modal-settings');
 }
 
 function saveSettings() {
   if (!S.settings) S.settings = {};
-  S.settings.lineToken   = document.getElementById('set-line-token').value.trim();
-  S.settings.lineUserId  = document.getElementById('set-line-uid').value.trim();
   S.settings.supabaseUrl = document.getElementById('set-sb-url').value.trim().replace(/\/$/,'');
   S.settings.supabaseKey = document.getElementById('set-sb-key').value.trim();
   S.settings.userKey     = document.getElementById('set-sb-userkey').value.trim();
@@ -2461,14 +2258,6 @@ function genUserKey() {
     'u_' + Math.random().toString(36).slice(2,9) + Date.now().toString(36);
 }
 
-async function testLineMsg() {
-  const token  = document.getElementById('set-line-token').value.trim();
-  const userId = document.getElementById('set-line-uid').value.trim();
-  if (!token || !userId) { toast('กรุณากรอก Token และ User ID ก่อน','error'); return; }
-  toast('⏳ กำลังทดสอบ LINE...','');
-  const ok = await sendLineMessage(token, userId, '🔔 [ทดสอบ] ระบบจัดการทรัพย์กรมบังคับคดี\nการแจ้งเตือน LINE ทำงานปกติ ✓');
-  toast(ok ? '✓ ส่ง LINE สำเร็จ! เช็ค LINE ได้เลย' : '❌ ส่งไม่สำเร็จ — ตรวจสอบ Token/User ID', ok?'success':'error');
-}
 
 async function testSupabase() {
   const url = document.getElementById('set-sb-url').value.trim().replace(/\/$/,'');
@@ -2515,7 +2304,6 @@ function confirmClearProps() {
   if (!confirm(`ลบทรัพย์ทั้งหมด ${S.props.length} รายการ?\nรวมถึงรายการค่าใช้จ่ายที่เกี่ยวข้องด้วย\n\nไม่สามารถกู้คืนได้!`)) return;
   S.props    = [];
   S.expenses = [];
-  S.notifLog = {};
   saveS(); renderProps(); renderReno(); updateBadges(); populateRenoProps(); calcPopulatePropSel();
   calcStorageUsage();
   toast('✓ ลบทรัพย์ทั้งหมดแล้ว', 'success');
@@ -2544,200 +2332,6 @@ async function syncFromSupabase() {
   }
 }
 
-// ═══════════════════════════════════════════════
-//  NOTIFICATIONS (Telegram + Browser)
-// ═══════════════════════════════════════════════
-let _notifTab = 'tg';
-
-function switchNotifTab(tab) {
-  _notifTab = tab;
-  document.getElementById('notif-tg-section').style.display      = tab==='tg'      ? '' : 'none';
-  document.getElementById('notif-browser-section').style.display = tab==='browser' ? '' : 'none';
-  document.getElementById('tab-tg-btn').classList.toggle('active',      tab==='tg');
-  document.getElementById('tab-browser-btn').classList.toggle('active', tab==='browser');
-  if (tab==='browser') updateBrowserPermStatus();
-}
-
-function updateBrowserPermStatus() {
-  const perm = Notification.permission;
-  const btn  = document.getElementById('browser-perm-btn');
-  const st   = document.getElementById('browser-perm-status');
-  if (perm==='granted') {
-    btn.textContent = '✓ ได้รับสิทธิ์แล้ว'; btn.disabled = true;
-    st.innerHTML = '<span style="color:var(--green);font-weight:700;">✓ Browser จะแจ้งเตือนอัตโนมัติ</span>';
-  } else if (perm==='denied') {
-    st.innerHTML = '<span style="color:var(--red);">❌ ถูกบล็อก — เปิดสิทธิ์ที่ไอคอนรูปกุญแจใน address bar</span>';
-  } else {
-    btn.textContent = '🔔 ขอสิทธิ์แจ้งเตือน Browser'; btn.disabled = false;
-    st.innerHTML = '<span style="color:var(--gray);">กด Allow เมื่อ Browser ถามสิทธิ์</span>';
-  }
-}
-
-async function requestBrowserNotif() {
-  const perm = await Notification.requestPermission();
-  updateBrowserPermStatus();
-  if (perm==='granted') toast('✓ ได้รับสิทธิ์แจ้งเตือน Browser แล้ว','success');
-  else toast('❌ ไม่ได้รับสิทธิ์ ลองเปิดจาก Settings ของ Browser','error');
-}
-
-function openNotifModal(propId) {
-  document.getElementById('notif-prop-id').value = propId;
-  const p = S.props.find(x=>x.id===propId); if (!p) return;
-  const n = p.notif || {};
-  document.getElementById('tg-token').value   = n.tgToken||'';
-  document.getElementById('tg-chat-id').value = n.tgChatId||'';
-  document.getElementById('notif-days').value = n.days||1;
-  switchNotifTab('tg');
-  openModal('modal-notif');
-}
-
-function saveNotif() {
-  const propId = document.getElementById('notif-prop-id').value;
-  const p = S.props.find(x=>x.id===propId); if (!p) return;
-  const tgToken  = document.getElementById('tg-token').value.trim();
-  const tgChatId = document.getElementById('tg-chat-id').value.trim();
-  const browser  = Notification.permission==='granted';
-  const days     = Number(document.getElementById('notif-days').value);
-  if (!tgToken && !tgChatId && !browser) {
-    alert('กรุณากรอก Telegram Token + Chat ID หรือขอสิทธิ์ Browser Notification ก่อน'); return;
-  }
-  p.notif = { tgToken, tgChatId, browser, days };
-  saveS(); renderProps(); closeModal('modal-notif');
-  toast('✓ บันทึกการตั้งค่าแจ้งเตือนแล้ว','success');
-}
-
-// ── Telegram ──────────────────────────────────
-async function sendTelegram(token, chatId, text) {
-  try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ chat_id: chatId, text, parse_mode:'HTML' }),
-    });
-    return res.ok;
-  } catch(e) { return false; }
-}
-
-async function testTelegram() {
-  const token  = document.getElementById('tg-token').value.trim();
-  const chatId = document.getElementById('tg-chat-id').value.trim();
-  if (!token||!chatId) { alert('กรุณากรอก Token และ Chat ID ก่อน'); return; }
-  toast('⏳ กำลังส่งทดสอบ...','');
-  const ok = await sendTelegram(token, chatId,
-    '🔔 <b>[ทดสอบ]</b> ระบบจัดการทรัพย์กรมบังคับคดี\nการแจ้งเตือนทำงานปกติ ✓');
-  toast(ok ? '✓ ส่งสำเร็จ! เช็ค Telegram ได้เลย' : '❌ ส่งไม่สำเร็จ ตรวจสอบ Token / Chat ID', ok?'tg':'error');
-}
-
-// ── Build message ─────────────────────────────
-function buildNotifMsg(p, html=false) {
-  const daysLeft   = daysUntil(p.date);
-  const dateStr    = p.date ? fmtDate(p.date) : 'ไม่ระบุ';
-  const base       = Number(p.appraisal)||Number(p.price)||0;
-  const tRound     = ROUNDS[p.targetRound||0]||ROUNDS[0];
-  const targetPrice= base ? Math.floor(base*(1-tRound.disc)) : 0;
-  const b  = s => html ? `<b>${s}</b>` : s;
-  const nl = '\n';
-  let msg = `🏛️ ${b('แจ้งเตือนประมูลทรัพย์ กรมบังคับคดี')}${nl}`;
-  msg += `━━━━━━━━━━━━━━━━━${nl}`;
-  msg += `🏠 ${b(p.name)}${nl}`;
-  if (p.loc)   msg += `📍 ${p.loc}${nl}`;
-  msg += `📅 วันประมูล: ${b(dateStr)}${nl}`;
-  if (daysLeft===0)       msg += `⚡ ${b('วันนี้เลย!')}${nl}`;
-  else if (daysLeft>0)    msg += `⏰ อีก ${b(daysLeft+' วัน')}${nl}`;
-  else if (daysLeft<0)    msg += `(ผ่านมาแล้ว ${Math.abs(daysLeft)} วัน)${nl}`;
-  msg += `🎯 รอบเป้าหมาย: ${b(tRound.label+' '+tRound.discLabel)}${nl}`;
-  if (targetPrice) msg += `💰 ราคาที่คาด: ${b(fmtNum(targetPrice)+' บาท')}${nl}`;
-  if (p.deed)  msg += `📄 โฉนด: ${p.deed}${nl}`;
-  if (p.case)  msg += `⚖️ คดี: ${p.case}${nl}`;
-  msg += `━━━━━━━━━━━━━━━━━`;
-  return msg;
-}
-
-// ── Send now (manual) ─────────────────────────
-async function sendNotifNow(propId) {
-  const p = S.props.find(x=>x.id===propId);
-  if (!p||!p.notif) { toast('ยังไม่ได้ตั้งค่าการแจ้งเตือน','error'); return; }
-  toast('⏳ กำลังส่งแจ้งเตือน...','');
-  let ok = false;
-  if (p.notif.tgToken && p.notif.tgChatId) {
-    ok = await sendTelegram(p.notif.tgToken, p.notif.tgChatId, buildNotifMsg(p, true));
-  }
-  if (p.notif.browser && Notification.permission==='granted') {
-    const daysLeft = daysUntil(p.date);
-    new Notification('🏛️ แจ้งเตือนประมูล', {
-      body: `${p.name}\nวันประมูล: ${fmtDate(p.date)}${daysLeft>=0?' (อีก '+daysLeft+' วัน)':''}`,
-      icon: 'https://cdn-icons-png.flaticon.com/512/1040/1040993.png',
-    });
-    ok = true;
-  }
-  if (ok) {
-    logNotif(propId, '📨 ส่งแจ้งเตือนด้วยตนเอง');
-    saveS(); renderProps();
-    toast('✓ ส่งแจ้งเตือนสำเร็จ!','tg');
-  } else {
-    toast('❌ ส่งไม่สำเร็จ ตรวจสอบการตั้งค่า','error');
-  }
-}
-
-// ── Log ───────────────────────────────────────
-function logNotif(propId, msg) {
-  if (!S.notifLog[propId]) S.notifLog[propId] = [];
-  S.notifLog[propId].push({ msg, time: new Date().toISOString() });
-  if (S.notifLog[propId].length > 20) S.notifLog[propId].splice(0, S.notifLog[propId].length-20);
-}
-
-// ── Auto-check on load + hourly ──────────────
-async function autoCheckNotifications() {
-  const today = todayISO();
-
-  for (const p of S.props) {
-    // ── Telegram / Browser (ใช้ p.date เดิม) ──
-    if (p.notif && p.date) {
-      const daysLeft = daysUntil(p.date);
-      if (daysLeft !== null && daysLeft >= 0) {
-        const key = p.id+'_'+today;
-        if (!S.notifSent[key] && daysLeft <= (p.notif.days||1)) {
-          let sent = false;
-          if (p.notif.tgToken && p.notif.tgChatId)
-            sent = await sendTelegram(p.notif.tgToken, p.notif.tgChatId, buildNotifMsg(p, true));
-          if (p.notif.browser && Notification.permission==='granted') {
-            new Notification('🏛️ แจ้งเตือนประมูล', {
-              body: `${p.name}\nวันประมูล: ${fmtDate(p.date)} (อีก ${daysLeft} วัน)`,
-              icon: 'https://cdn-icons-png.flaticon.com/512/1040/1040993.png',
-            });
-            sent = true;
-          }
-          if (sent) { S.notifSent[key] = true; logNotif(p.id, `🔔 แจ้งเตือนอัตโนมัติ (อีก ${daysLeft} วัน)`); }
-        }
-      }
-    }
-
-    // ── LINE อัตโนมัติ ต่อ Round ─────────────
-    const { lineToken, lineUserId } = S.settings || {};
-    if (!lineToken || !lineUserId || !p.rounds) continue;
-    for (let ri = 0; ri < p.rounds.length; ri++) {
-      const r = p.rounds[ri];
-      if (typeof r !== 'object' || !r.lineNotif || !r.date) continue;
-      const dL = daysUntil(r.date);
-      if (dL === null || dL < 0 || dL > 7) continue;
-      const key = `line_${p.id}_${ri}_${today}`;
-      if (S.notifSent[key]) continue;
-      const base  = Number(p.appraisal)||Number(p.price)||0;
-      const discs = [0, 0.1, 0.2, 0.3, 0.3, 0.3];
-      const bidPr = base ? Math.floor(base*(1-discs[ri])) : 0;
-      const urgency = dL === 0 ? '🔴 วันนี้!' : `⏰ อีก ${dL} วัน`;
-      const msg = `🏛️ แจ้งเตือนนัดประมูล\n━━━━━━━━━━━━━━\n🏠 ${p.code?p.code+' — ':''}${p.name}\n📅 นัดที่ ${ri+1}: ${fmtDate(r.date)}\n${urgency}${bidPr?'\n💰 '+fmtNum(bidPr)+' บาท':''}${r.note?'\n📝 '+r.note:''}\n━━━━━━━━━━━━━━`;
-      const ok = await sendLineMessage(lineToken, lineUserId, msg);
-      if (ok) {
-        S.notifSent[key] = true;
-        logNotif(p.id, `💬 LINE อัตโนมัติ นัดที่${ri+1} (อีก ${dL} วัน)`);
-      }
-    }
-  }
-  saveS();
-}
-
-// ═══════════════════════════════════════════════
 //  RENOVATION
 // ═══════════════════════════════════════════════
 let renoTmpImgs = [];
@@ -3679,9 +3273,6 @@ loadFromCloud().then(ok => {
 window.addEventListener('focus',  () => { loadFromCloud().then(ok => ok && renderAll()); });
 window.addEventListener('online', () => { loadFromCloud().then(ok => ok && renderAll()); });
 
-// auto notifications: ตรวจตอนโหลดและทุก 1 ชั่วโมง
-setTimeout(autoCheckNotifications, 1500);
-setInterval(autoCheckNotifications, 60 * 60 * 1000);
 
 // ═══════════════════════════════════════════════
 //  CALC TAB
