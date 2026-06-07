@@ -1493,6 +1493,8 @@ function addRoundToCalendar(propId, roundIdx) {
   });
 
   window.open(`https://calendar.google.com/calendar/render?${params}`, '_blank');
+  localStorage.setItem(`cal-${propId}-${roundIdx}-${rDate}`, '1');
+  renderProps();
 }
 
 function validateBEInput(el) {
@@ -1788,13 +1790,10 @@ function renderProps() {
       const price = base ? fmtNum(Math.floor(base*(1-r.disc)))+' ฿' : '—';
       const dL = rDate ? Math.round((new Date(rDate).setHours(0,0,0,0)-today.getTime())/86400000) : null;
       const dateLabel = rDate ? `<div style="font-size:9px;color:var(--gray);margin-top:3px">${fmtDate(rDate)}${dL===0?' 🔴':dL>0&&dL<=3?' ⚠️':''}</div>` : '';
-      const bellColor = lineOn && hasLine ? '#06C755' : lineOn ? '#F59E0B' : '#D1D5DB';
-      const bellTitle = lineOn ? (hasLine ? 'LINE🔔 เปิดอยู่ — คลิกปิด' : 'เปิดแต่ยังไม่ตั้งค่า LINE') : 'คลิกเปิดแจ้งเตือน LINE';
-      const lineCtrl = `<div onclick="event.stopPropagation()" style="margin-top:4px;display:flex;align-items:center;gap:2px;justify-content:center">
-        <button onclick="toggleRoundLine('${p.id}',${ri})" style="font-size:13px;background:none;border:none;cursor:pointer;color:${bellColor};padding:0;line-height:1;transition:color .15s" title="${bellTitle}">🔔</button>
-        ${lineOn && hasLine ? `<button onclick="sendNtfyForRound('${p.id}',${ri})" style="font-size:9px;background:#06C755;color:white;border:none;border-radius:3px;padding:1px 5px;cursor:pointer;font-weight:700" title="ส่ง LINE ตอนนี้">ส่ง</button>` : ''}
-      </div>`;
-      const calBtn = rDate ? `<div onclick="event.stopPropagation()" style="margin-top:3px;text-align:center"><button onclick="addRoundToCalendar('${p.id}',${ri})" style="font-size:10px;background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;border-radius:4px;padding:1px 6px;cursor:pointer;font-weight:700" title="เพิ่มในปฏิทิน">📅 ปฏิทิน</button></div>` : '';
+      const calKey = `cal-${p.id}-${ri}-${rDate}`;
+      const calSaved = !!localStorage.getItem(calKey);
+      const lineCtrl = '';
+      const calBtn = rDate ? `<div onclick="event.stopPropagation()" style="margin-top:3px;text-align:center"><button onclick="addRoundToCalendar('${p.id}',${ri})" style="font-size:10px;background:${calSaved?'#F0FDF4':'#EFF6FF'};color:${calSaved?'#15803D':'#1D4ED8'};border:1px solid ${calSaved?'#86EFAC':'#BFDBFE'};border-radius:4px;padding:1px 6px;cursor:pointer;font-weight:700" title="${calSaved?'บันทึกแล้ว — คลิกเปิดอีกครั้ง':'เพิ่มในปฏิทิน'}">${calSaved?'✓ บันทึกแล้ว':'📅 ปฏิทิน'}</button></div>` : '';
       return `
         <div class="round-tile ${cls}" onclick="cycleRound('${p.id}',${ri})" title="${rNote||'คลิกเปลี่ยนสถานะ'}">
           <div class="round-num">นัดที่ ${ri+1}</div>
@@ -3431,7 +3430,7 @@ function renderPnL() {
           oninput="window._pnlSearch=this.value; window._pnlSelectedId=''; window._pnlOpen=true; pnlFilterList()"
           onfocus="window._pnlOpen=true; pnlFilterList()"
           autocomplete="off"
-          style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:10px 40px 10px 14px;font-size:14px;font-family:inherit;box-sizing:border-box;outline:none">
+          style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:10px 40px 10px 14px;font-size:14px;font-family:inherit;box-sizing:border-box;outline:none;background:#fff;color:#1F2937">
         <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--gray);pointer-events:none;font-size:16px">▾</span>
         <div id="pnl-list"></div>
       </div>
