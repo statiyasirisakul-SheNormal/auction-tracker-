@@ -1467,6 +1467,56 @@ function beToISO(str) {
   if (isNaN(ce)||isNaN(parseInt(m))||isNaN(parseInt(d))) return '';
   return `${ce}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
 }
+function addRoundToCalendar(propId, roundIdx) {
+  const p = S.props.find(x => x.id === propId); if (!p) return;
+  const rObj = (p.rounds || [])[roundIdx];
+  const rDate = typeof rObj === 'object' ? rObj.date : '';
+  if (!rDate) { toast('⚠️ กรุณากรอกวันที่นัดก่อน', 'error'); return; }
+
+  const ROUND_DISC = ['ราคาเต็ม (รอบ 1)','ลด 10% (รอบ 2)','ลด 20% (รอบ 3)','ลด 30% (รอบ 4)','ลด 30% (รอบ 5)','ลด 30% (รอบ 6)'];
+  const propLabel = [p.code, p.name].filter(Boolean).join(' — ');
+  const roundLabel = `นัดที่ ${roundIdx + 1} ${ROUND_DISC[roundIdx] || ''}`;
+  const note = typeof rObj === 'object' ? (rObj.note || '') : '';
+
+  // date → yyyymmdd
+  const [y, m, d] = rDate.split('-');
+  const dtStart = `${y}${m}${d}`;
+  // alarm day before = dtStart - 1 day
+  const prevDate = new Date(rDate);
+  prevDate.setDate(prevDate.getDate() - 1);
+  const alarmDt = prevDate.toISOString().replace(/[-:]/g, '').slice(0, 8) + 'T090000';
+
+  const description = [`ทรัพย์: ${propLabel}`, roundLabel, note ? `หมายเหตุ: ${note}` : ''].filter(Boolean).join('\\n');
+
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//AuctionTracker//TH',
+    'BEGIN:VEVENT',
+    `UID:${propId}-round${roundIdx}-${dtStart}@auction`,
+    `DTSTART;VALUE=DATE:${dtStart}`,
+    `DTEND;VALUE=DATE:${dtStart}`,
+    `SUMMARY:🏛️ ${propLabel} ${roundLabel}`,
+    `DESCRIPTION:${description}`,
+    'BEGIN:VALARM',
+    'TRIGGER;VALUE=DATE-TIME:' + alarmDt,
+    'ACTION:DISPLAY',
+    `DESCRIPTION:พรุ่งนี้มีนัดประมูล — ${propLabel} ${roundLabel}`,
+    'END:VALARM',
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ].join('\r\n');
+
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `นัด${roundIdx + 1}-${propLabel}.ics`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('📅 ดาวน์โหลดไฟล์ปฏิทินแล้ว — เปิดไฟล์เพื่อเพิ่มในปฏิทิน', 'success');
+}
+
 function validateBEInput(el) {
   const raw = el.value.replace(/[^0-9/]/g, '');
   const parts = raw.split('/');
@@ -1766,6 +1816,7 @@ function renderProps() {
         <button onclick="toggleRoundLine('${p.id}',${ri})" style="font-size:13px;background:none;border:none;cursor:pointer;color:${bellColor};padding:0;line-height:1;transition:color .15s" title="${bellTitle}">🔔</button>
         ${lineOn && hasLine ? `<button onclick="sendNtfyForRound('${p.id}',${ri})" style="font-size:9px;background:#06C755;color:white;border:none;border-radius:3px;padding:1px 5px;cursor:pointer;font-weight:700" title="ส่ง LINE ตอนนี้">ส่ง</button>` : ''}
       </div>`;
+      const calBtn = rDate ? `<div onclick="event.stopPropagation()" style="margin-top:3px;text-align:center"><button onclick="addRoundToCalendar('${p.id}',${ri})" style="font-size:10px;background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;border-radius:4px;padding:1px 6px;cursor:pointer;font-weight:700" title="เพิ่มในปฏิทิน">📅 ปฏิทิน</button></div>` : '';
       return `
         <div class="round-tile ${cls}" onclick="cycleRound('${p.id}',${ri})" title="${rNote||'คลิกเปลี่ยนสถานะ'}">
           <div class="round-num">นัดที่ ${ri+1}</div>
@@ -1773,6 +1824,7 @@ function renderProps() {
           <div class="round-disc ${r.cls}">${r.discLabel}</div>
           ${dateLabel}
           ${lineCtrl}
+          ${calBtn}
           <span class="round-status">${icon}</span>
         </div>`;
     }).join('');
