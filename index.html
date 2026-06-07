@@ -1478,43 +1478,21 @@ function addRoundToCalendar(propId, roundIdx) {
   const roundLabel = `นัดที่ ${roundIdx + 1} ${ROUND_DISC[roundIdx] || ''}`;
   const note = typeof rObj === 'object' ? (rObj.note || '') : '';
 
-  // date → yyyymmdd
   const [y, m, d] = rDate.split('-');
   const dtStart = `${y}${m}${d}`;
-  // alarm day before = dtStart - 1 day
-  const prevDate = new Date(rDate);
-  prevDate.setDate(prevDate.getDate() - 1);
-  const alarmDt = prevDate.toISOString().replace(/[-:]/g, '').slice(0, 8) + 'T090000';
+  const dtEnd   = dtStart;
 
-  const description = [`ทรัพย์: ${propLabel}`, roundLabel, note ? `หมายเหตุ: ${note}` : ''].filter(Boolean).join('\\n');
+  const details = [`ทรัพย์: ${propLabel}`, roundLabel, note ? `หมายเหตุ: ${note}` : ''].filter(Boolean).join('\n');
 
-  const ics = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//AuctionTracker//TH',
-    'BEGIN:VEVENT',
-    `UID:${propId}-round${roundIdx}-${dtStart}@auction`,
-    `DTSTART;VALUE=DATE:${dtStart}`,
-    `DTEND;VALUE=DATE:${dtStart}`,
-    `SUMMARY:🏛️ ${propLabel} ${roundLabel}`,
-    `DESCRIPTION:${description}`,
-    'BEGIN:VALARM',
-    'TRIGGER;VALUE=DATE-TIME:' + alarmDt,
-    'ACTION:DISPLAY',
-    `DESCRIPTION:พรุ่งนี้มีนัดประมูล — ${propLabel} ${roundLabel}`,
-    'END:VALARM',
-    'END:VEVENT',
-    'END:VCALENDAR'
-  ].join('\r\n');
+  const params = new URLSearchParams({
+    action:   'TEMPLATE',
+    text:     `🏛️ ${propLabel} ${roundLabel}`,
+    dates:    `${dtStart}/${dtEnd}`,
+    details,
+    reminder: '1440',   // 1 วันล่วงหน้า (นาที)
+  });
 
-  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `นัด${roundIdx + 1}-${propLabel}.ics`;
-  a.click();
-  URL.revokeObjectURL(url);
-  toast('📅 ดาวน์โหลดไฟล์ปฏิทินแล้ว — เปิดไฟล์เพื่อเพิ่มในปฏิทิน', 'success');
+  window.open(`https://calendar.google.com/calendar/render?${params}`, '_blank');
 }
 
 function validateBEInput(el) {
