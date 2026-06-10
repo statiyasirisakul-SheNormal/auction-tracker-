@@ -2591,15 +2591,15 @@ function renderReno() {
         <div class="reno-stat-label">รวมทั้งหมด (฿)<br><span style="font-size:9px;opacity:.75">ไม่รวมบ้านที่ขายแล้ว</span></div>
       </div>
       <div class="reno-stat">
-        <div class="reno-stat-num" style="color:var(--green)">${fmtNum(st.myPaid)}</div>
+        <div class="reno-stat-num" style="color:#6EE7B7">${fmtNum(st.myPaid)}</div>
         <div class="reno-stat-label">👤 ฉันจ่าย (฿)</div>
       </div>
       <div class="reno-stat">
-        <div class="reno-stat-num" style="color:var(--blue)">${fmtNum(st.partnerPaid)}</div>
+        <div class="reno-stat-num" style="color:#93C5FD">${fmtNum(st.partnerPaid)}</div>
         <div class="reno-stat-label">🤝 หุ้นส่วนจ่าย (฿)</div>
       </div>
       <div class="reno-stat" title="+ = หุ้นส่วนต้องคืนฉัน, − = ฉันต้องคืนหุ้นส่วน (หลังหักยอดโอนคืนแล้ว)">
-        <div class="reno-stat-num" style="color:${netBal>=0?'var(--green)':'var(--red)'}">${netBal>=0?'+':''}${fmtNum(netBal)}</div>
+        <div class="reno-stat-num" style="color:${netBal>=0?'#6EE7B7':'#FCA5A5'}">${netBal>=0?'+':''}${fmtNum(netBal)}</div>
         <div class="reno-stat-label">🔄 ค้างชำระสุทธิ (฿)<br><span style="font-size:9px;opacity:.75">หลังหักยอดโอนคืน</span></div>
       </div>
       <div class="reno-stat">
