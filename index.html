@@ -430,12 +430,8 @@ input, select, textarea { font-size: 16px !important; }
     <h1>ระบบจัดการทรัพย์ กรมบังคับคดี <span style="font-size:10px;font-weight:600;opacity:.6;white-space:nowrap">v.2026.06.04-1</span></h1>
     <p>บริหารเอกสาร · ติดตามประมูล · บันทึกค่าใช้จ่าย · ปฏิทิน Google</p>
   </div>
-  <button onclick="pushToCloud()" title="Push รูปขึ้น Cloud ให้มือถือเห็น" style="background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.35);color:white;border-radius:9px;padding:8px 12px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0">
-    ☁️
-  </button>
-  <span id="sync-badge" title="สถานะการเชื่อม Cloud" style="font-size:11px;font-weight:700;padding:4px 9px;border-radius:10px;background:#FCD34D;color:#78350F;white-space:nowrap">⏳ เชื่อม...</span>
   <button onclick="openSettings()" style="background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.35);color:white;border-radius:9px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0">
-    ⚙️ <span id="sync-dot" style="width:8px;height:8px;border-radius:50%;background:#FCD34D;display:inline-block"></span>
+    ⚙️
   </button>
 </div>
 
@@ -1032,27 +1028,16 @@ create policy "open" on auction_data for all using (true) with check (true);</pr
 const KEY = 'acktion_v4';
 
 function setSyncStatus(state, msg) {
-  const badge = document.getElementById('sync-badge');
-  const dot   = document.getElementById('sync-dot');
-  const banner= document.getElementById('sync-banner');
-  const cfg = {
-    syncing: { bg:'#FCD34D', fg:'#78350F', label:'⏳ เชื่อม...' },
-    ok:      { bg:'#6EE7B7', fg:'#065F46', label:'✅ Sync' },
-    error:   { bg:'#FCA5A5', fg:'#7F1D1D', label:'❌ Offline' },
-    warn:    { bg:'#FBBF24', fg:'#78350F', label:'⚠️ ดูเตือน' },
-  }[state] || { bg:'#9CA3AF', fg:'#1F2937', label:'?' };
-  if (badge) { badge.style.background = cfg.bg; badge.style.color = cfg.fg; badge.textContent = cfg.label; }
-  if (dot)   { dot.style.background   = cfg.bg; }
-  if (banner) {
-    if (!msg || state === 'ok' || state === 'syncing') {
-      banner.style.display = 'none';
-    } else {
-      banner.style.display    = 'block';
-      banner.style.background = state === 'error' ? '#FEE2E2' : '#FEF3C7';
-      banner.style.color      = state === 'error' ? '#991B1B' : '#92400E';
-      banner.style.borderColor= state === 'error' ? '#FCA5A5' : '#FCD34D';
-      banner.innerHTML        = msg;
-    }
+  const banner = document.getElementById('sync-banner');
+  if (!banner) return;
+  if (!msg || state === 'ok' || state === 'syncing') {
+    banner.style.display = 'none';
+  } else {
+    banner.style.display    = 'block';
+    banner.style.background = state === 'error' ? '#FEE2E2' : '#FEF3C7';
+    banner.style.color      = state === 'error' ? '#991B1B' : '#92400E';
+    banner.style.borderColor= state === 'error' ? '#FCA5A5' : '#FCD34D';
+    banner.innerHTML        = msg;
   }
 }
 
@@ -1167,22 +1152,6 @@ async function syncToCloud() {
     );
     if (error) throw error;
   }
-
-  // Detect deletes: list cloud IDs for this user, remove rows not present locally.
-  const [propIds, expIds, dtIds] = await Promise.all([
-    client.from('auction_props').select('id').eq('user_key', uk),
-    client.from('auction_expenses').select('id').eq('user_key', uk),
-    client.from('auction_doc_types').select('id').eq('user_key', uk),
-  ]);
-  const localPropIds = new Set((S.props||[]).map(p => p.id));
-  const localExpIds  = new Set((S.expenses||[]).map(e => e.id));
-  const localDtIds   = new Set((S.docTypes||[]).map(d => d.id));
-  const toDelP = (propIds.data||[]).filter(r => !localPropIds.has(r.id)).map(r => r.id);
-  const toDelE = (expIds.data ||[]).filter(r => !localExpIds.has(r.id)).map(r => r.id);
-  const toDelD = (dtIds.data  ||[]).filter(r => !localDtIds.has(r.id)).map(r => r.id);
-  if (toDelP.length) await client.from('auction_props').delete().in('id', toDelP);
-  if (toDelE.length) await client.from('auction_expenses').delete().in('id', toDelE);
-  if (toDelD.length) await client.from('auction_doc_types').delete().in('id', toDelD);
 
   setSyncStatus('ok', '');
 }
@@ -1483,11 +1452,12 @@ function saveDocType() {
   toast('✓ เพิ่มประเภทเอกสารแล้ว');
 }
 
-function deleteDocType(id) {
+async function deleteDocType(id) {
   if (!confirm('ลบประเภทเอกสารนี้ออกจากทุกทรัพย์?')) return;
   S.docTypes = S.docTypes.filter(d => d.id!==id);
   S.props.forEach(p => { if (p.docs) p.docs = p.docs.filter(d => d.typeId!==id); if (p.removedDocs) p.removedDocs = p.removedDocs.filter(x=>x!==id); });
   saveS(); renderDocTypes(); renderProps();
+  await deleteCloudDocType(id);
 }
 
 // ensure a property has all docType entries (skip explicitly removed ones)
@@ -1993,13 +1963,38 @@ function savePropActualSell(propId, val) {
   if (typeof renderSold === 'function') renderSold();
 }
 
-function deleteProp(id) {
+async function deleteCloudProp(id) {
+  const client = initSb();
+  const uk = S.settings?.userKey;
+  if (!client || !uk) return;
+  try {
+    await client.from('auction_expenses').delete().eq('prop_id', id).eq('user_key', uk);
+    await client.from('auction_props').delete().eq('id', id).eq('user_key', uk);
+  } catch (e) {}
+}
+
+async function deleteCloudExpense(id) {
+  const client = initSb();
+  const uk = S.settings?.userKey;
+  if (!client || !uk) return;
+  try { await client.from('auction_expenses').delete().eq('id', id).eq('user_key', uk); } catch (e) {}
+}
+
+async function deleteCloudDocType(id) {
+  const client = initSb();
+  const uk = S.settings?.userKey;
+  if (!client || !uk) return;
+  try { await client.from('auction_doc_types').delete().eq('id', id).eq('user_key', uk); } catch (e) {}
+}
+
+async function deleteProp(id) {
   if (!confirm('ลบทรัพย์นี้?')) return;
   S.props = S.props.filter(x=>x.id!==id);
   S.expenses = S.expenses.filter(e=>e.propId!==id);   // ลบค่าใช้จ่ายที่ผูกกับทรัพย์นี้ด้วย
   if (renoActiveProp===id) renoActiveProp='';
   saveS(); renderProps(); renderReno();
   if (typeof renderSold === 'function') renderSold();
+  await deleteCloudProp(id);
 }
 
 // ── Property form helpers ─────────────────────
@@ -2215,15 +2210,6 @@ function importFromJson(ev) {
   r.readAsText(file);
 }
 
-// Header ☁️ button — trigger an immediate cloud sync
-async function pushToCloud() {
-  if (!S.props?.length && !S.expenses?.length) {
-    if (!confirm('เครื่องนี้ไม่มีข้อมูล — Push จะทำให้ Cloud ว่างด้วย ต้องการดำเนินการ?')) return;
-  }
-  scheduleSync();
-  toast('☁️ กำลัง sync ขึ้น Cloud...', '');
-}
-
 // Legacy aliases — Settings "⬇️ Sync จาก Cloud" button and any leftover onclick handlers
 async function supabaseSave() { scheduleSync(); }
 async function supabaseLoad() { const ok = await loadFromCloud(); if (ok) renderAll(); return ok; }
@@ -2295,13 +2281,21 @@ function calcStorageUsage() {
     <div style="color:var(--gray);font-size:12px;margin-top:2px">รูปภาพทั้งหมด: ${imgCount} ภาพ · ข้อมูล: ${kb} KB</div>`;
 }
 
-function confirmClearProps() {
+async function confirmClearProps() {
   if (!confirm(`ลบทรัพย์ทั้งหมด ${S.props.length} รายการ?\nรวมถึงรายการค่าใช้จ่ายที่เกี่ยวข้องด้วย\n\nไม่สามารถกู้คืนได้!`)) return;
   S.props    = [];
   S.expenses = [];
   saveS(); renderProps(); renderReno(); updateBadges(); populateRenoProps(); calcPopulatePropSel();
   calcStorageUsage();
   toast('✓ ลบทรัพย์ทั้งหมดแล้ว', 'success');
+  const client = initSb();
+  const uk = S.settings?.userKey;
+  if (client && uk) {
+    try {
+      await client.from('auction_expenses').delete().eq('user_key', uk);
+      await client.from('auction_props').delete().eq('user_key', uk);
+    } catch (e) {}
+  }
 }
 
 function confirmClearImages() {
@@ -2475,9 +2469,10 @@ function saveReno() {
   toast('✓ บันทึกรายการค่าใช้จ่ายแล้ว','success');
 }
 
-function deleteExpense(id) {
+async function deleteExpense(id) {
   if (!confirm('ลบรายการนี้?')) return;
   S.expenses = S.expenses.filter(x=>x.id!==id); saveS(); renderReno(); renderProps();
+  await deleteCloudExpense(id);
 }
 
 function toggleExpenseSettled(id) {
@@ -3205,7 +3200,7 @@ function showSoldDetail(id) {
   setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'start'}),50);
 }
 
-function deleteSoldProp(id) {
+async function deleteSoldProp(id) {
   const p = S.props.find(x => x.id === id);
   if (!p) return;
   const n = S.expenses.filter(e => e.propId === id).length;
@@ -3215,6 +3210,7 @@ function deleteSoldProp(id) {
   if (renoActiveProp === id) renoActiveProp = '';
   saveS(); renderSold(); renderProps(); renderReno(); updateBadges();
   toast('🗑 ลบบ้านและค่าใช้จ่ายเรียบร้อย', 'success');
+  await deleteCloudProp(id);
 }
 
 // ═══════════════════════════════════════════════
