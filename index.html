@@ -2583,17 +2583,21 @@ function renderReno() {
   const activeProps = wonProps.filter(p => !isSold(p));
   const soldProps   = wonProps.filter(p =>  isSold(p));
 
-  // ── ยอดรวมด้านบน = เฉพาะบ้านที่ยังไม่ขาย (บ้านที่ขายแล้วไม่ถูกนับ) ──
-  const activeIds = new Set(activeProps.map(p=>p.id));
-  const activeExp = S.expenses.filter(e => activeIds.has(e.propId));
-  const st        = expenseStats(activeExp);
-  const netBal    = netBalanceForProps(activeProps.map(p=>p.id));  // ค้างสุทธิหลังหักยอดโอนคืน
+  // ── ยอดรวมด้านบน = ทรัพย์ที่กำลังเลือกอยู่ ถ้าไม่ได้เลือกให้รวมทุกบ้านที่ยังไม่ขาย ──
+  const selectedProp = renoActiveProp ? S.props.find(p=>p.id===renoActiveProp) : null;
+  const scopedIds   = selectedProp ? [selectedProp.id] : activeProps.map(p=>p.id);
+  const scopedExp   = S.expenses.filter(e => scopedIds.includes(e.propId));
+  const st          = expenseStats(scopedExp);
+  const netBal      = netBalanceForProps(scopedIds);  // ค้างสุทธิหลังหักยอดโอนคืน
+  const scopeLabel  = selectedProp
+    ? `${selectedProp.code?selectedProp.code+' — ':''}${selectedProp.name||''}`
+    : 'ไม่รวมบ้านที่ขายแล้ว';
 
   document.getElementById('reno-summary-bar').innerHTML = `
     <div class="reno-summary-bar">
       <div class="reno-stat">
         <div class="reno-stat-num">${fmtNum(st.total)}</div>
-        <div class="reno-stat-label">รวมทั้งหมด (฿)<br><span style="font-size:9px;opacity:.75">ไม่รวมบ้านที่ขายแล้ว</span></div>
+        <div class="reno-stat-label">${selectedProp?'ยอดทรัพย์นี้ (฿)':'รวมทั้งหมด (฿)'}<br><span style="font-size:9px;opacity:.75">${scopeLabel}</span></div>
       </div>
       <div class="reno-stat">
         <div class="reno-stat-num">${fmtNum(st.myPaid)}</div>
@@ -2608,7 +2612,7 @@ function renderReno() {
         <div class="reno-stat-label">🔄 ค้างชำระสุทธิ (฿)<br><span style="font-size:9px;opacity:.75">หลังหักยอดโอนคืน</span></div>
       </div>
       <div class="reno-stat">
-        <div class="reno-stat-num">${activeExp.length}</div>
+        <div class="reno-stat-num">${scopedExp.length}</div>
         <div class="reno-stat-label">รายการ</div>
       </div>
     </div>`;
