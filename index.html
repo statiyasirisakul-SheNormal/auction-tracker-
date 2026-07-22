@@ -1204,6 +1204,9 @@ function renderAll() {
   if (typeof renderDocTypes       === 'function') renderDocTypes();
   if (typeof renderProps          === 'function') renderProps();
   if (typeof renderReno           === 'function') renderReno();
+  if (typeof renderSummary        === 'function') renderSummary();
+  if (typeof renderPnL            === 'function') renderPnL();
+  if (typeof renderSold           === 'function') renderSold();
   if (typeof updateBadges         === 'function') updateBadges();
   if (typeof calcPopulatePropSel  === 'function') calcPopulatePropSel();
 }
@@ -1402,6 +1405,7 @@ function toast(msg, type='') {
 function switchTab(t) {
   // docs tab no longer exists as a real tab — redirect to props
   if (t === 'docs') t = 'props';
+  try { localStorage.setItem('acktion_lasttab', t); } catch(e) {}
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   const tabOrder = ['props','reno','summary','calc','pnl','sold'];
@@ -3255,6 +3259,13 @@ populateRenoProps();
 renderDocTypes();
 renderProps();
 updateBadges();
+
+// Restore whichever tab was open before the last refresh (default: ทรัพย์).
+(() => {
+  let lastTab = 'props';
+  try { lastTab = localStorage.getItem('acktion_lasttab') || 'props'; } catch(e) {}
+  if (lastTab !== 'props') switchTab(lastTab);
+})();
 
 // Cloud sync (clock-in pattern): load from per-entity tables, then subscribe to realtime.
 // Other devices' changes flow back via realtime — no polling, no manual refresh.
