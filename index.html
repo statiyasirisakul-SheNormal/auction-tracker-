@@ -2465,12 +2465,14 @@ function saveReno() {
   }
   renoActiveProp = propId;   // แสดงรายการของบ้านที่เพิ่งบันทึกค้างไว้
   saveS(); renderReno(); renderProps(); closeModal('modal-reno'); clearRenoForm();
+  if (typeof renderSold === 'function') renderSold();
   toast('✓ บันทึกรายการค่าใช้จ่ายแล้ว','success');
 }
 
 async function deleteExpense(id) {
   if (!confirm('ลบรายการนี้?')) return;
   S.expenses = S.expenses.filter(x=>x.id!==id); saveS(); renderReno(); renderProps();
+  if (typeof renderSold === 'function') renderSold();
   await deleteCloudExpense(id);
 }
 
@@ -3159,6 +3161,7 @@ function soldCardHTML({ p, sold, costs, net, isP }) {
       </div>
       <div style="margin-top:6px;font-size:15px;font-weight:800;color:${isP?'var(--green)':'var(--red)'}">กำไร÷2 ${isP?'+':''}${fmtNum(Math.round(net))} ฿</div>
       <div style="display:flex;gap:6px;margin-top:10px">
+        <button class="btn btn-success btn-xs" style="flex:1" onclick="openRenoForProp('${p.id}')">+ เพิ่มค่าใช้จ่าย</button>
         <button class="btn btn-ghost btn-xs" style="flex:1" onclick="showSoldDetail('${p.id}')">📄 รายละเอียดย้อนหลัง</button>
         <button class="btn btn-danger btn-xs" onclick="deleteSoldProp('${p.id}')">🗑 ลบ</button>
       </div>
