@@ -1246,7 +1246,9 @@ async function refetchTable(which) {
 function uid() { return '_'+Math.random().toString(36).slice(2,9)+Date.now().toString(36); }
 
 // คำนวณต้นทุนรวมของทรัพย์ สำหรับหน้ากำไร/ขาดทุน
-// กำไร = ราคาขาย − (ราคาซื้อ + ค่าธรรมเนียมจากหน้าคำนวณทุกตัวยกเว้นค่าซ่อม + ค่าใช้จ่ายจริง)
+// กำไรจริง = ราคาขาย − ค่าใช้จ่ายจริงที่บันทึกในแท็บ "ค่าใช้จ่าย" เท่านั้น
+// (ราคาซื้อ / ค่าธรรมเนียม / ค่านายหน้า เป็นแค่ตัวเลขประมาณการ ไม่ถูกหักจริง
+//  จนกว่าจะถูกบันทึกเป็นรายการค่าใช้จ่ายเองด้วยมือ)
 function propCosts(p) {
   const appr  = Number(p.appraisal) || 0;
   const sell  = Number(p.actualSell) || 0;
@@ -1254,7 +1256,7 @@ function propCosts(p) {
   const broker = p.calcBrokerPct > 0 && sell > 0
                    ? Math.round(sell * p.calcBrokerPct / 100)
                    : (Number(p.calcBroker) || 0);
-  // ค่าธรรมเนียมจากหน้าคำนวณ (ยกเว้น calcRepair เพราะค่าซ่อมจริงอยู่ในแท็บค่าใช้จ่าย)
+  // ค่าธรรมเนียมประมาณการ — แสดงไว้อ้างอิงเท่านั้น ไม่ถูกหักในกำไรจริง
   const fees = (appr && sell) ? (
       appr * 0.01    // ค่าธรรมเนียมโอนเข้า 1%
     + appr * 0.02    // ค่าภาษีเงินได้บุคคล (เข้า) 2%
@@ -1266,7 +1268,7 @@ function propCosts(p) {
     + broker
   ) : 0;
   const expTotal = S.expenses.filter(e => e.propId === p.id).reduce((s, e) => s + Number(e.amount || 0), 0);
-  const totalCost = fees + expTotal;  // ไม่รวม buy เพราะ user กรอกเป็น expense เอง
+  const totalCost = expTotal;  // หักจริงเฉพาะค่าใช้จ่ายที่บันทึกไว้เท่านั้น — ไม่รวม fees/buy โดยอัตโนมัติ
   return { buy, fees, expTotal, totalCost };
 }
 
@@ -3090,9 +3092,9 @@ function pnlDetailHTML({ p, costs, sold, gross, net, isP }) {
         <div style="font-size:14px;font-weight:800;color:var(--navy)">${costs.buy ? fmtNum(costs.buy) : '—'}</div>
         <div style="font-size:10px;color:var(--gray)">ราคาซื้อ (฿)</div>
       </div>
-      <div style="background:#FEF2F2;border-radius:8px;padding:10px 6px">
-        <div style="font-size:14px;font-weight:700;color:var(--red)">${fmtNum(Math.round(costs.fees))}</div>
-        <div style="font-size:10px;color:var(--gray)">ค่าธรรมเนียม (฿)</div>
+      <div style="background:#F8FAFC;border-radius:8px;padding:10px 6px">
+        <div style="font-size:14px;font-weight:800;color:var(--navy)">${fmtNum(Math.round(costs.fees))}</div>
+        <div style="font-size:10px;color:var(--gray)">ค่าธรรมเนียม (ประมาณการ)</div>
       </div>
       <div style="background:#FEF2F2;border-radius:8px;padding:10px 6px">
         <div style="font-size:14px;font-weight:700;color:var(--red)">${fmtNum(Math.round(costs.expTotal))}</div>
@@ -3189,7 +3191,7 @@ function showSoldDetail(id) {
         <button onclick="document.getElementById('sold-detail').innerHTML=''" style="margin-left:auto;background:none;border:1.5px solid var(--border);border-radius:6px;padding:3px 10px;cursor:pointer;font-size:12px;color:var(--gray)">✕ ปิด</button>
       </div>
       <div style="font-size:13px;color:var(--gray);margin-bottom:12px;line-height:1.9">
-        💵 ราคาขาย: <b style="color:var(--green)">${fmtNum(sold)} ฿</b> · ค่าธรรมเนียมโอน/ภาษี: <b style="color:var(--red)">${fmtNum(Math.round(costs.fees))} ฿</b> · ค่าใช้จ่ายจริง: <b style="color:var(--red)">${fmtNum(Math.round(costs.expTotal))} ฿</b>
+        💵 ราคาขาย: <b style="color:var(--green)">${fmtNum(sold)} ฿</b> · ค่าธรรมเนียมโอน/ภาษี (ประมาณการ ไม่ถูกหักจริง): <b style="color:var(--navy)">${fmtNum(Math.round(costs.fees))} ฿</b> · ค่าใช้จ่ายจริงที่หัก: <b style="color:var(--red)">${fmtNum(Math.round(costs.expTotal))} ฿</b>
       </div>
       ${items.length ? `
       <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
