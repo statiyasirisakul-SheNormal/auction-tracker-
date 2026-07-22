@@ -1090,10 +1090,8 @@ function loadS() {
     }
   });
   if (!S.settings)  S.settings  = {};
-  // pre-fill credentials (local device only — not uploaded to GitHub)
-  if (!S.settings.supabaseUrl) S.settings.supabaseUrl = 'https://rjpzmaeiopiqtsjaksed.supabase.co';
-  if (!S.settings.supabaseKey) S.settings.supabaseKey = 'sb_publishable_-5eRFVpav1DpEbgKSV_zmA_AHTH2XFt';
-  if (!S.settings.userKey)     S.settings.userKey     = 'sirikul_auction_2026';
+  // Cloud credentials are per-device only, entered via ⚙️ Settings — never shipped as defaults here.
+  // (A previous version hardcoded real Supabase credentials in this public source file — removed.)
 }
 function saveS() {
   S.lastModified = new Date().toISOString();
