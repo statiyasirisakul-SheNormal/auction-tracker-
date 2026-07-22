@@ -1793,6 +1793,7 @@ function renderProps() {
                   onblur="savePropActualBuy('${p.id}',this.value)"
                   style="flex:1;min-width:140px;border:1.5px solid var(--navy);border-radius:7px;padding:6px 10px;font-size:14px;font-weight:700;color:var(--navy);background:white;outline:none">
               </div>
+              <div style="font-size:11px;color:#B45309;margin-top:-4px">⚠️ ราคานี้ไม่ถูกหักออกจาก "กำไรรวม" อัตโนมัติ — ต้องไปบันทึกเป็นรายการค่าใช้จ่ายในแท็บ "ค่าใช้จ่าย" ด้วยตัวเอง ไม่งั้นกำไรที่แสดงจะสูงเกินจริง</div>
               <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                 <span style="font-size:13px;font-weight:700;color:var(--green);white-space:nowrap;min-width:160px">💵 ราคาที่ขายได้จริง</span>
                 <input type="text" inputmode="numeric"
@@ -2627,7 +2628,9 @@ function renderReno() {
 
   document.getElementById('reno-house-cards').innerHTML = activeProps.length
     ? `<div class="house-pick-grid">${activeProps.map(p=>cardHtml(p)).join('')}</div>`
-    : `<div class="empty" style="padding:24px"><div class="empty-icon">🏠</div><p>ยังไม่มีบ้านที่ชนะประมูล — ไปที่แท็บ "ทรัพย์" แล้วตั้งสถานะเป็น ✓ ชนะประมูล</p></div>`;
+    : (wonProps.length
+        ? `<div class="empty" style="padding:24px"><div class="empty-icon">✅</div><p>ทรัพย์ที่ชนะประมูลทั้งหมดถูกขายไปแล้ว — ดูรายละเอียด/เพิ่มค่าใช้จ่ายย้อนหลังได้ที่แท็บ "✅ ขายแล้ว"</p></div>`
+        : `<div class="empty" style="padding:24px"><div class="empty-icon">🏠</div><p>ยังไม่มีบ้านที่ชนะประมูล — ไปที่แท็บ "ทรัพย์" แล้วตั้งสถานะเป็น ✓ ชนะประมูล</p></div>`);
 
   // บ้านที่ขายแล้วไม่แสดงในหน้านี้แล้ว (ไปอยู่แท็บ "✅ ขายแล้ว")
   document.getElementById('reno-sold-cards').innerHTML = soldProps.length
