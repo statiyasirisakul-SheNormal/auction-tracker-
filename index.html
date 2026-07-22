@@ -2609,18 +2609,19 @@ function renderReno() {
       </div>
     </div>`;
 
-  // ── การ์ดเลือกบ้าน (เฉพาะบ้านที่ยังไม่ขาย — บ้านที่ขายแล้วย้ายไปแท็บ "ขายแล้ว") ──
+  // ── การ์ดเลือกบ้าน (แสดงทุกบ้านที่ชนะประมูล รวมที่ขายแล้ว — กดเพิ่มค่าใช้จ่ายย้อนหลังได้ทุกใบ) ──
   const cardHtml = (p) => {
     const items = S.expenses.filter(e=>e.propId===p.id);
     const tot   = items.reduce((s,e)=>s+Number(e.amount||0),0);
     const act   = renoActiveProp===p.id ? ' active' : '';
     const img   = p.imgProp || p.imgDetail || '';
+    const sold  = isSold(p);
     return `
       <div class="house-pick-card${act}" onclick="selectRenoHouse('${p.id}')">
         ${img
           ? `<img class="house-pick-img" src="${img}" alt="">`
           : `<div class="house-pick-img house-pick-noimg">🏠</div>`}
-        <div class="house-pick-name">🏠 ${p.name||'(ไม่มีชื่อ)'}</div>
+        <div class="house-pick-name">🏠 ${p.name||'(ไม่มีชื่อ)'} ${sold?'<span class="badge badge-green" style="font-size:9px">ขายแล้ว</span>':''}</div>
         ${p.code?`<div class="house-pick-code">${p.code}</div>`:''}
         <div class="house-pick-total">${fmtNum(tot)} ฿</div>
         <div class="house-pick-meta">${items.length} รายการค่าใช้จ่าย</div>
@@ -2628,20 +2629,17 @@ function renderReno() {
       </div>`;
   };
 
-  document.getElementById('reno-house-cards').innerHTML = activeProps.length
-    ? `<div class="house-pick-grid">${activeProps.map(p=>cardHtml(p)).join('')}</div>`
-    : (wonProps.length
-        ? `<div class="empty" style="padding:24px"><div class="empty-icon">✅</div><p>ทรัพย์ที่ชนะประมูลทั้งหมดถูกขายไปแล้ว — ดูรายละเอียด/เพิ่มค่าใช้จ่ายย้อนหลังได้ที่แท็บ "✅ ขายแล้ว"</p></div>`
-        : `<div class="empty" style="padding:24px"><div class="empty-icon">🏠</div><p>ยังไม่มีบ้านที่ชนะประมูล — ไปที่แท็บ "ทรัพย์" แล้วตั้งสถานะเป็น ✓ ชนะประมูล</p></div>`);
+  document.getElementById('reno-house-cards').innerHTML = wonProps.length
+    ? `<div class="house-pick-grid">${wonProps.map(p=>cardHtml(p)).join('')}</div>`
+    : `<div class="empty" style="padding:24px"><div class="empty-icon">🏠</div><p>ยังไม่มีบ้านที่ชนะประมูล — ไปที่แท็บ "ทรัพย์" แล้วตั้งสถานะเป็น ✓ ชนะประมูล</p></div>`;
 
-  // บ้านที่ขายแล้วไม่แสดงในหน้านี้แล้ว (ไปอยู่แท็บ "✅ ขายแล้ว")
-  document.getElementById('reno-sold-cards').innerHTML = soldProps.length
-    ? `<div class="reno-sold-head">✅ มีบ้านที่ขายแล้ว ${soldProps.length} หลัง — ดูรายละเอียด/ลบได้ที่แท็บ <b style="color:var(--green)">✅ ขายแล้ว</b></div>`
-    : '';
+  // บ้านที่ขายแล้วตอนนี้แสดงรวมในการ์ดด้านบนแล้ว (มีป้าย "ขายแล้ว") ไม่ต้องมีแบนเนอร์แยกซ้ำ
+  document.getElementById('reno-sold-cards').innerHTML = '';
 
   // ── รายการค่าใช้จ่ายของบ้านที่เลือก ──
-  // ถ้าบ้านที่เลือกไว้ถูกขายไปแล้ว/ไม่อยู่ในรายการ ให้ยกเลิกการเลือก
-  if (renoActiveProp && !activeIds.has(renoActiveProp)) renoActiveProp = '';
+  // ถ้าบ้านที่เลือกไว้ไม่อยู่ในรายการทรัพย์ที่ชนะประมูลแล้ว (เช่นถูกลบ) ให้ยกเลิกการเลือก
+  const wonIds = new Set(wonProps.map(p=>p.id));
+  if (renoActiveProp && !wonIds.has(renoActiveProp)) renoActiveProp = '';
   const filterPropId = renoActiveProp;
   const headEl = document.getElementById('reno-detail-head');
   const listEl = document.getElementById('reno-list');
