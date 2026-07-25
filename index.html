@@ -1342,12 +1342,12 @@ function beToISO(str) {
 function addRoundToCalendar(propId, roundIdx) {
   const p = S.props.find(x => x.id === propId); if (!p) return;
   const rObj = (p.rounds || [])[roundIdx];
-  const rDate = typeof rObj === 'object' ? rObj.date : '';
+  const rDate = rObj && typeof rObj === 'object' ? rObj.date : '';
   if (!rDate) { toast('⚠️ กรุณากรอกวันที่นัดก่อน', 'error'); return; }
   const ROUND_DISC = ['ราคาเต็ม (รอบ 1)','ลด 10% (รอบ 2)','ลด 20% (รอบ 3)','ลด 30% (รอบ 4)','ลด 30% (รอบ 5)','ลด 30% (รอบ 6)'];
   const propLabel = [p.code, p.name].filter(Boolean).join(' — ');
   const roundLabel = `นัดที่ ${roundIdx + 1} ${ROUND_DISC[roundIdx] || ''}`;
-  const note = typeof rObj === 'object' ? (rObj.note || '') : '';
+  const note = rObj && typeof rObj === 'object' ? (rObj.note || '') : '';
   const [y, m, d] = rDate.split('-');
   const dtStart = `${y}${m}${d}`;
   const details = [`ทรัพย์: ${propLabel}`, roundLabel, note ? `หมายเหตุ: ${note}` : ''].filter(Boolean).join('\n');
@@ -1626,13 +1626,13 @@ function renderProps() {
     const statusLabel = {watching:'👁 ติดตาม', won:'✓ ชนะประมูล', lost:'✗ ไม่ได้ทรัพย์'};
 
     // days until next auction — scan all rounds for upcoming dates
-    const allRoundDates = (p.rounds||[]).map(r=>(typeof r==='object'?r.date:'')).filter(Boolean);
+    const allRoundDates = (p.rounds||[]).map(r=>(r&&typeof r==='object'?r.date:'')).filter(Boolean);
     const firstDate = p.date || allRoundDates[0] || '';
     const daysLeft = daysUntil(firstDate);
     // find next upcoming round date
     const today = new Date(); today.setHours(0,0,0,0);
     const nextRound = (p.rounds||[]).map((r,ri)=>{
-      const d = typeof r==='object'?r.date:'';
+      const d = r&&typeof r==='object'?r.date:'';
       if (!d) return null;
       const dt = new Date(d); dt.setHours(0,0,0,0);
       return { ri, dt, daysLeft: Math.round((dt-today)/86400000) };
@@ -1648,9 +1648,9 @@ function renderProps() {
 
     const roundsHtml = ROUNDS.map((r,ri) => {
       const rObj = (p.rounds||[])[ri];
-      const rSt  = typeof rObj==='object' ? (rObj.status||'pending') : (rObj||'pending');
-      const rDate= typeof rObj==='object' ? rObj.date : '';
-      const rNote= typeof rObj==='object' ? rObj.note : '';
+      const rSt  = rObj&&typeof rObj==='object' ? (rObj.status||'pending') : (rObj||'pending');
+      const rDate= rObj&&typeof rObj==='object' ? rObj.date : '';
+      const rNote= rObj&&typeof rObj==='object' ? rObj.note : '';
       const isTarget = ri === (p.targetRound||0);
       const cls  = rSt==='joined'?'joined': rSt==='skipped'?'skipped': isTarget?'target':'';
       const icon = rSt==='joined'?'✓': rSt==='skipped'?'—': isTarget?'🎯':'';
@@ -1848,9 +1848,9 @@ function cycleRound(propId, ri) {
   if (!p.rounds) p.rounds = Array(6).fill({status:'pending',date:'',note:'',isTarget:false});
   const seq = ['pending','joined','skipped'];
   const cur = p.rounds[ri];
-  const curStatus = typeof cur==='object' ? (cur.status||'pending') : (cur||'pending');
+  const curStatus = cur&&typeof cur==='object' ? (cur.status||'pending') : (cur||'pending');
   const nextStatus = seq[(seq.indexOf(curStatus)+1)%seq.length];
-  if (typeof cur==='object') {
+  if (cur&&typeof cur==='object') {
     p.rounds[ri] = {...cur, status: nextStatus};
   } else {
     p.rounds[ri] = nextStatus;
