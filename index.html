@@ -905,6 +905,7 @@ input, select, textarea { font-size: 16px !important; }
           <optgroup label="🏠 ต้นทุนซื้อ/ภาษี — ไม่นับในงบรีโนเวท">
             <option>ค่าบ้าน (ต้นทุนซื้อ)</option>
             <option>ค่าภาษี/ค่าธรรมเนียม</option>
+            <option>ค่าดำเนินการ/ราชการ</option>
           </optgroup>
           <optgroup label="🛠 งานรีโนเวท — นับในงบรีโนเวท">
             <option>โครงสร้าง/หลังคา</option><option>งานระบบไฟฟ้า</option>
@@ -913,7 +914,7 @@ input, select, textarea { font-size: 16px !important; }
             <option>ห้องน้ำ/สุขภัณฑ์</option><option>ครัว/เฟอร์นิเจอร์</option>
             <option>สวน/รั้ว/ถนน</option><option>ค่าแรงงาน</option>
             <option>ค่าออกแบบ/สำรวจ</option><option>ค่าขนส่ง/อุปกรณ์</option>
-            <option>ค่าดำเนินการ/ราชการ</option><option>อื่นๆ</option>
+            <option>อื่นๆ</option>
           </optgroup>
         </select>
       </div>
@@ -3295,7 +3296,7 @@ function propBuyPrice(p) {
 // หลัก: ดูจาก "หมวดหมู่" — หมวด ค่าบ้าน / ค่าภาษี ไม่นับเป็นรีโนเวท
 //   e.notReno === true  → ไม่นับเป็นรีโนเวทเสมอ (กดปุ่มเอง)
 //   e.notReno === false → นับเป็นรีโนเวทเสมอ (กดปุ่มเอง)
-const NON_RENO_CATS = ['ค่าบ้าน (ต้นทุนซื้อ)', 'ค่าภาษี/ค่าธรรมเนียม'];
+const NON_RENO_CATS = ['ค่าบ้าน (ต้นทุนซื้อ)', 'ค่าภาษี/ค่าธรรมเนียม', 'ค่าดำเนินการ/ราชการ'];
 // คำช่วยเดา (เฉพาะช่วงเปลี่ยนผ่าน — ใช้กับรายการเก่าที่ยังอยู่หมวด "อื่นๆ" ยังไม่ได้จัดหมวดใหม่)
 const ACQ_KEYWORDS = ['ราคาซื้อ','ค่าบ้าน','บ้านส่วน','ซื้อบ้าน','มัดจำ','ค่าโอน','โอนที่','ค่าธรรมเนียม','ธรรมเนียม','ประมูล','กรมบังคับคดี','วางก่อน','ค่าที่ดิน','ค่าซื้อ'];
 function isAcquisitionCost(e) {
