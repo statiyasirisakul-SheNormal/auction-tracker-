@@ -470,6 +470,9 @@ input, select, textarea { font-size: 16px !important; }
   <button class="tab-btn" onclick="switchTab('sold')">
     ✅ <span class="t-full">ขายแล้ว</span><span class="t-short">ขายแล้ว</span> <span class="tab-badge" id="badge-sold">0</span>
   </button>
+  <button class="tab-btn" onclick="switchTab('map')">
+    🗺️ <span class="t-full">แผนที่</span><span class="t-short">แผนที่</span>
+  </button>
 </div>
 
 <div class="content">
@@ -668,6 +671,19 @@ input, select, textarea { font-size: 16px !important; }
         <div class="card-title">✅ บ้านที่ขายแล้ว</div>
       </div>
       <div id="sold-content"></div>
+    </div>
+  </div>
+
+  <!-- ══ MAP (แผนที่รวมทุกทรัพย์) ════════════════════════ -->
+  <div class="tab-panel" id="tab-map">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">🗺️ แผนที่รวมทรัพย์ทั้งหมด</div>
+        <div id="map-legend" style="display:flex;gap:10px;flex-wrap:wrap;font-size:11px;font-weight:700"></div>
+      </div>
+      <div id="map-canvas" style="height:520px;border-radius:12px;overflow:hidden;border:1.5px solid var(--border);background:#EAF0F5"></div>
+      <div id="map-empty" style="display:none" class="empty"><div class="empty-icon">🗺️</div><p>ยังไม่มีทรัพย์ที่ระบุพิกัด/แผนที่<br><span style="font-size:12px;color:var(--gray)">ใส่ Google Maps URL หรือพิกัด (lat, lng) ในหน้าแก้ไขทรัพย์</span></p></div>
+      <div id="map-list" style="margin-top:14px"></div>
     </div>
   </div>
 
@@ -1451,7 +1467,7 @@ function switchTab(t) {
   try { localStorage.setItem('acktion_lasttab', t); } catch(e) {}
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  const tabOrder = ['props','reno','summary','calc','pnl','sold'];
+  const tabOrder = ['props','reno','summary','calc','pnl','sold','map'];
   const idx = tabOrder.indexOf(t);
   if (idx >= 0) document.querySelectorAll('.tab-btn')[idx].classList.add('active');
   document.getElementById('tab-'+t).classList.add('active');
@@ -1460,6 +1476,103 @@ function switchTab(t) {
   if (t === 'calc')    { calcPopulatePropSel(); calcUpdate(); }
   if (t === 'pnl')     renderPnL();
   if (t === 'sold')    renderSold();
+  if (t === 'map')     renderMap();
+}
+
+// ── แผนที่รวมทรัพย์ (item 11): Leaflet + OpenStreetMap (ฟรี ไม่ต้องใช้ API key) ──
+let _leafletLoading = null, _map = null, _mapMarkers = [];
+function loadLeaflet() {
+  if (window.L) return Promise.resolve();
+  if (_leafletLoading) return _leafletLoading;
+  _leafletLoading = new Promise((resolve, reject) => {
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(css);
+    const js = document.createElement('script');
+    js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    js.onload = resolve;
+    js.onerror = () => reject(new Error('โหลดแผนที่ไม่สำเร็จ (ต้องต่ออินเทอร์เน็ต)'));
+    document.head.appendChild(js);
+  });
+  return _leafletLoading;
+}
+// ดึงพิกัด lat,lng จากช่อง mapUrl (รองรับพิกัดตรงๆ และ Google Maps URL หลายแบบ)
+function parseLatLng(str) {
+  if (!str) return null;
+  const s = String(str).trim();
+  // พิกัดตรงๆ "17.399840, 102.816920"
+  let m = s.match(/^\s*(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)\s*$/);
+  if (m) return { lat:+m[1], lng:+m[2] };
+  // Google Maps URL: .../@17.39,102.81,15z  หรือ  ?q=17.39,102.81  หรือ  !3d17.39!4d102.81
+  m = s.match(/@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/)
+   || s.match(/[?&]q=(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/)
+   || s.match(/[?&]ll=(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/)
+   || s.match(/!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)/);
+  if (m) return { lat:+m[1], lng:+m[2] };
+  return null;
+}
+async function renderMap() {
+  const props   = S.props.map(p => ({ p, ll: parseLatLng(p.mapUrl) }));
+  const located = props.filter(x => x.ll);
+  const legend  = document.getElementById('map-legend');
+  const emptyEl = document.getElementById('map-empty');
+  const canvas  = document.getElementById('map-canvas');
+  const listEl  = document.getElementById('map-list');
+
+  // legend ตามสถานะ
+  legend.innerHTML = STAGES.filter(s=>['watching','bidding','won','sold'].includes(s.key))
+    .map(s=>`<span style="display:inline-flex;align-items:center;gap:4px"><span style="width:11px;height:11px;border-radius:50%;background:${stageColor(s.key)};display:inline-block"></span>${s.label}</span>`).join('')
+    + `<span style="display:inline-flex;align-items:center;gap:4px"><span style="width:11px;height:11px;border-radius:50%;background:${stageColor('lost')};display:inline-block"></span>ไม่ได้ทรัพย์</span>`;
+
+  // รายชื่อทรัพย์ที่ยังไม่มีพิกัด
+  const missing = props.filter(x => !x.ll);
+  listEl.innerHTML = missing.length ? `
+    <div style="font-size:12px;color:var(--gray);margin-bottom:6px">⚠️ ทรัพย์ที่ยังไม่ได้ระบุพิกัด (${missing.length}) — แก้ไขทรัพย์แล้วใส่ Google Maps URL หรือ lat,lng:</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${missing.map(x=>`<span class="badge badge-gray">${x.p.code?x.p.code+' ':''}${x.p.name}</span>`).join('')}` : '';
+
+  if (!located.length) {
+    canvas.style.display = 'none';
+    emptyEl.style.display = '';
+    return;
+  }
+  canvas.style.display = '';
+  emptyEl.style.display = 'none';
+
+  try { await loadLeaflet(); }
+  catch(e) { canvas.innerHTML = `<div style="padding:40px;text-align:center;color:var(--red)">${e.message}</div>`; return; }
+
+  if (!_map) {
+    _map = L.map('map-canvas', { scrollWheelZoom:true });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '© OpenStreetMap'
+    }).addTo(_map);
+  }
+  _mapMarkers.forEach(mk => _map.removeLayer(mk));
+  _mapMarkers = [];
+  const bounds = [];
+  located.forEach(({p, ll}) => {
+    const color = stageColor(p.status||'watching');
+    const si = stageInfo(p.status||'watching');
+    const mk = L.circleMarker([ll.lat, ll.lng], {
+      radius:10, fillColor:color, color:'#fff', weight:2, fillOpacity:.9
+    }).addTo(_map);
+    const base = Number(p.appraisal)||0;
+    mk.bindPopup(`<div style="font-weight:800;margin-bottom:2px">${p.code?p.code+' — ':''}${p.name}</div>
+      <div style="font-size:12px;color:#666">${p.loc||''}</div>
+      <div style="font-size:12px;margin-top:3px">${si.icon} ${si.label}${base?' · ประเมิน '+fmtNum(base)+' ฿':''}</div>
+      <a href="https://www.google.com/maps/search/?api=1&query=${ll.lat},${ll.lng}" target="_blank" style="font-size:12px">เปิดใน Google Maps ↗</a>`);
+    _mapMarkers.push(mk);
+    bounds.push([ll.lat, ll.lng]);
+  });
+  if (bounds.length === 1) _map.setView(bounds[0], 15);
+  else _map.fitBounds(bounds, { padding:[40,40] });
+  setTimeout(() => _map.invalidateSize(), 100);
+}
+function stageColor(key) {
+  return { watching:'#3B82F6', inspecting:'#6366F1', bidding:'#F59E0B',
+           won:'#16A34A', renovating:'#0EA5E9', listed:'#8B5CF6',
+           sold:'#059669', lost:'#EF4444' }[key] || '#6B7280';
 }
 
 function updateBadges() {
