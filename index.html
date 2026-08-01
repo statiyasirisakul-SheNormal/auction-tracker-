@@ -2154,6 +2154,18 @@ function setPropSaleReceiver(id, field, who) {
   if (typeof renderSummary==='function' && document.getElementById('tab-summary')?.classList.contains('active')) renderSummary();
 }
 
+// จำว่ารายการค่าใช้จ่ายของทรัพย์ไหนถูกกางอยู่ (ย่อไว้เป็นค่าเริ่มต้น กันการ์ดยาว)
+let expListOpen = new Set();
+function toggleExpList(id) {
+  const el  = document.getElementById('explist-'+id);
+  const arr = document.getElementById('explistarr-'+id);
+  if (!el) return;
+  const show = el.style.display === 'none';
+  el.style.display = show ? '' : 'none';
+  if (arr) arr.textContent = show ? '▾' : '▸';
+  if (show) expListOpen.add(id); else expListOpen.delete(id);
+}
+
 function renderProps() {
   const el = document.getElementById('props-list');
   // จำ card ที่กางอยู่ก่อน re-render
@@ -2303,6 +2315,11 @@ function renderProps() {
             ${renoBudgetBar(p, propRenoSpent(p), propAcqCost(p))}
             ${renoItems.length ? `
             <div style="background:var(--green-lt);border-radius:9px;padding:4px 12px;">
+              <button onclick="event.stopPropagation();toggleExpList('${p.id}')" style="width:100%;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:8px 2px;font-size:12px;font-weight:800;color:var(--navy)">
+                <span><span id="explistarr-${p.id}" style="display:inline-block;width:14px">${expListOpen.has(p.id)?'▾':'▸'}</span> แตะดูรายการ (${renoItems.length})</span>
+                <span style="color:var(--green)">${fmtPrice(renoStats.total)}</span>
+              </button>
+              <div id="explist-${p.id}" style="display:${expListOpen.has(p.id)?'':'none'}">
               ${renoItems.map(e=>{
                 const isP = e.payer === 'partner';
                 const isAcq = isAcquisitionCost(e);
@@ -2322,7 +2339,8 @@ function renderProps() {
                   <button onclick="event.stopPropagation();deleteExpense('${e.id}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:13px;padding:0 2px;flex-shrink:0" title="ลบ">✕</button>
                 </div>`;
               }).join('')}
-              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:8px 0 4px;text-align:center;">
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:8px 0 4px;text-align:center;border-top:1px solid #C6E6D0;margin-top:2px;">
                 <div>
                   <div style="font-size:12px;font-weight:800;color:#1F2937">${fmtPrice(renoStats.total)}</div>
                   <div style="font-size:10px;color:var(--gray)">รวมทั้งหมด</div>
