@@ -179,10 +179,11 @@ input[type="file"] { display:none; }
 
 /* ── PROPERTY CARDS ── */
 .prop-card { border:1.5px solid var(--border); border-radius:13px; margin-bottom:14px; overflow:hidden; transition:border-color .2s; }
-.prop-card.won  { border-color:#86EFAC; }
+.prop-card.won, .prop-card.renovating, .prop-card.listed, .prop-card.sold { border-color:#86EFAC; }
 .prop-card.lost { border-color:#FECACA; }
+.prop-card.bidding { border-color:#FCD34D; }
 .prop-header { padding:15px 18px; background:#FAFAFA; display:flex; align-items:center; gap:13px; cursor:pointer; transition:background .15s; }
-.prop-card.won  .prop-header { background:#F0FDF4; }
+.prop-card.won .prop-header, .prop-card.renovating .prop-header, .prop-card.listed .prop-header, .prop-card.sold .prop-header { background:#F0FDF4; }
 .prop-card.lost .prop-header { background:#FFF5F5; }
 .prop-header:hover { filter:brightness(.97); }
 .prop-num { width:34px; height:34px; background:var(--navy); color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; flex-shrink:0; }
@@ -209,6 +210,19 @@ input[type="file"] { display:none; }
 .disc-20 { background:#FED7AA; color:#9A3412; }
 .disc-30 { background:#FECACA; color:var(--red); }
 .round-status { font-size:15px; margin-top:5px; display:block; }
+
+/* ── PIPELINE STEPPER (item 7) ── */
+.stage-stepper { display:flex; align-items:stretch; gap:0; flex-wrap:wrap; }
+.stage-step { display:flex; flex-direction:column; align-items:center; gap:4px; background:none; border:none; cursor:pointer; padding:2px 4px; flex:1; min-width:52px; }
+.stage-dot { width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; background:#E5E7EB; color:#9CA3AF; border:2px solid transparent; transition:all .2s; }
+.stage-lbl { font-size:10px; font-weight:700; color:#9CA3AF; text-align:center; line-height:1.15; }
+.stage-step.done  .stage-dot { background:var(--green); color:#fff; }
+.stage-step.done  .stage-lbl { color:var(--green); }
+.stage-step.active .stage-dot { background:var(--navy); color:#fff; border-color:#FCD34D; box-shadow:0 0 0 3px #FCD34D55; transform:scale(1.12); }
+.stage-step.active .stage-lbl { color:var(--navy); font-weight:800; }
+.stage-step:hover .stage-dot { transform:scale(1.08); }
+.stage-arrow { align-self:flex-start; margin-top:5px; color:#D1D5DB; font-size:16px; font-weight:800; }
+@media (max-width:640px){ .stage-lbl{font-size:9px;} .stage-arrow{display:none;} .stage-step{min-width:44px;} }
 
 /* ── NOTIF SECTION ── */
 .notif-box {
@@ -1284,6 +1298,29 @@ const ROUNDS = [
   {label:'รอบ 6',disc:.30, discLabel:'ลด 30%',  cls:'disc-30'},
 ];
 
+// ══════════════════════════════════════════════════
+//  PIPELINE STAGES (item 7) — เล็ง→ตรวจสอบ→ประมูล→ชนะ→รีโนเวท→ประกาศขาย→ขายแล้ว
+//  (สถานะเดิม watching/won/lost ยังทำงานได้ปกติ ไม่ต้อง migrate ข้อมูล)
+// ══════════════════════════════════════════════════
+const STAGES = [
+  { key:'watching',   label:'เล็ง',      icon:'👁', badge:'badge-blue'  },
+  { key:'inspecting', label:'ตรวจสอบ',   icon:'🔍', badge:'badge-blue'  },
+  { key:'bidding',    label:'ประมูล',    icon:'🔨', badge:'badge-amber' },
+  { key:'won',        label:'ชนะประมูล', icon:'✓',  badge:'badge-green' },
+  { key:'renovating', label:'รีโนเวท',   icon:'🛠', badge:'badge-amber' },
+  { key:'listed',     label:'ประกาศขาย', icon:'🏷', badge:'badge-green' },
+  { key:'sold',       label:'ขายแล้ว',   icon:'💰', badge:'badge-green' },
+];
+const STAGE_KEYS = STAGES.map(s => s.key);
+const WON_IDX    = STAGE_KEYS.indexOf('won');
+const LOST_INFO  = { key:'lost', label:'ไม่ได้ทรัพย์', icon:'✗', badge:'badge-red' };
+function stageIdx(st)  { const i = STAGE_KEYS.indexOf(st); return i < 0 ? 0 : i; }
+function stageInfo(st) { return st === 'lost' ? LOST_INFO : STAGES[stageIdx(st)]; }
+// "เป็นเจ้าของทรัพย์แล้ว" = ชนะประมูลขึ้นไป (won/renovating/listed/sold) แต่ไม่ใช่ lost
+function isAcquired(p) { return p.status !== 'lost' && stageIdx(p.status) >= WON_IDX; }
+// "ขายแล้ว" = สถานะ sold หรือมีราคาขายจริงแล้ว
+function isSold(p)     { return isAcquired(p) && (p.status === 'sold' || Number(p.actualSell) > 0); }
+
 function fmtNum(n)   { if (!n && n!==0) return '—'; return Number(n).toLocaleString('th-TH', { maximumFractionDigits: 2 }); }
 
 // สรุปยอดค่าใช้จ่ายโมเดล 50/50: ทุกรายการหาร 2 ระหว่างฉันกับหุ้นส่วน
@@ -1425,7 +1462,7 @@ function updateBadges() {
   document.getElementById('badge-props').textContent = S.props.length;
   document.getElementById('badge-reno').textContent = S.expenses.length;
   const soldBadge = document.getElementById('badge-sold');
-  if (soldBadge) soldBadge.textContent = S.props.filter(p => p.status === 'won' && Number(p.actualSell) > 0).length;
+  if (soldBadge) soldBadge.textContent = S.props.filter(p => isSold(p)).length;
 }
 
 // ═══════════════════════════════════════════════
@@ -1480,7 +1517,7 @@ function syncPropDocs(prop) {
 // ═══════════════════════════════════════════════
 function renderDocs() {
   renderDocTypes();
-  const wonProps = S.props.filter(p => p.status==='won');
+  const wonProps = S.props.filter(p => isAcquired(p));
   const listEl   = document.getElementById('docs-won-list');
   const emptyEl  = document.getElementById('docs-empty');
 
@@ -1622,8 +1659,7 @@ function renderProps() {
   }
   el.innerHTML = S.props.map((p,i) => {
     const base = Number(p.appraisal)||Number(p.price)||0;
-    const statusMap   = {watching:'badge-blue', won:'badge-green', lost:'badge-red'};
-    const statusLabel = {watching:'👁 ติดตาม', won:'✓ ชนะประมูล', lost:'✗ ไม่ได้ทรัพย์'};
+    const si = stageInfo(p.status||'watching');
 
     // days until next auction — scan all rounds for upcoming dates
     const allRoundDates = (p.rounds||[]).map(r=>(r&&typeof r==='object'?r.date:'')).filter(Boolean);
@@ -1691,7 +1727,7 @@ function renderProps() {
           </div>
           <div class="prop-badges" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
             ${dateChip}
-            <span class="badge ${statusMap[p.status||'watching']}">${statusLabel[p.status||'watching']}</span>
+            <span class="badge ${si.badge}">${si.icon} ${si.label}</span>
           </div>
           <div class="prop-actions" onclick="event.stopPropagation()" style="display:flex;gap:5px;">
             <button class="icon-btn" onclick="editProp('${p.id}')" title="แก้ไข">✏️</button>
@@ -1724,13 +1760,28 @@ function renderProps() {
           </div>
           <div class="rounds-grid">${roundsHtml}</div>
 
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;">
-            <span style="font-size:12px;font-weight:700;color:var(--gray);align-self:center;">สถานะ:</span>
-            ${['watching','won','lost'].map(s=>`
-              <button class="btn btn-xs ${p.status===s?'btn-primary':'btn-ghost'}"
-                      onclick="setPropStatus('${p.id}','${s}')">
-                ${{watching:'👁 ติดตาม',won:'✓ ชนะประมูล',lost:'✗ ไม่ได้ทรัพย์'}[s]}
-              </button>`).join('')}
+          <div style="margin-bottom:18px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+              <span style="font-size:12px;font-weight:700;color:var(--gray)">สถานะทรัพย์ (Pipeline):</span>
+              <button class="btn btn-xs ${p.status==='lost'?'btn-primary':'btn-ghost'}"
+                      style="${p.status==='lost'?'background:var(--red);border-color:var(--red)':''}"
+                      onclick="setPropStatus('${p.id}','lost')">✗ ไม่ได้ทรัพย์</button>
+            </div>
+            ${p.status==='lost' ? `
+              <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:8px 12px;font-size:12px;color:var(--red);font-weight:600">
+                ทรัพย์นี้ประมูลไม่ได้ — <button class="btn btn-ghost btn-xs" onclick="setPropStatus('${p.id}','watching')">↩ กลับมาติดตามใหม่</button>
+              </div>` : `
+              <div class="stage-stepper">
+                ${STAGES.map((s,si2)=>{
+                  const cur = stageIdx(p.status||'watching');
+                  const done = si2 < cur, active = si2 === cur;
+                  const cls = active ? 'active' : done ? 'done' : '';
+                  return `<button class="stage-step ${cls}" onclick="setPropStatus('${p.id}','${s.key}')" title="${s.label}">
+                    <span class="stage-dot">${done?'✓':s.icon}</span>
+                    <span class="stage-lbl">${s.label}</span>
+                  </button>`;
+                }).join('<span class="stage-arrow">›</span>')}
+              </div>`}
           </div>
 
           <!-- RENO SECTION -->
@@ -1786,8 +1837,8 @@ function renderProps() {
             <div style="font-size:13px;color:#374151;background:#F9FAFB;padding:10px 14px;border-radius:8px;">${p.notes}</div>
           </div>`:''}
 
-          <!-- BUY / SELL PRICE (ชนะประมูล) -->
-          ${p.status==='won'?`
+          <!-- BUY / SELL PRICE (ชนะประมูลขึ้นไป) -->
+          ${isAcquired(p)?`
           <div onclick="event.stopPropagation()" style="margin-top:14px;background:#F0FDF4;border-radius:9px;padding:12px 14px;border:1px solid #BBF7D0">
             <div style="display:flex;flex-direction:column;gap:8px">
               <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -1869,10 +1920,11 @@ function setPropStatus(id, status) {
   const p = S.props.find(x=>x.id===id); if (!p) return;
   const prev = p.status;
   p.status = status;
-  // when newly won, ensure docs are initialised
-  if (status==='won' && prev!=='won') syncPropDocs(p);
-  if (status!=='won' && renoActiveProp===id) renoActiveProp='';
+  // when newly acquired (ชนะประมูลขึ้นไป), ensure docs are initialised
+  if (isAcquired(p) && !isAcquired({status:prev})) syncPropDocs(p);
+  if (!isAcquired(p) && renoActiveProp===id) renoActiveProp='';
   saveS(); renderProps(); renderReno(); updateBadges();
+  if (typeof renderSummary === 'function' && document.getElementById('tab-summary')?.classList.contains('active')) renderSummary();
   if (typeof renderSold === 'function') renderSold();
 }
 
@@ -1963,6 +2015,8 @@ function savePropActualSell(propId, val) {
   const v = parseNumInput(val);
   if (v === (p.actualSell||0)) return;
   p.actualSell = v;
+  // กรอกราคาขายจริง → เลื่อนสถานะเป็น "ขายแล้ว" อัตโนมัติ (ถ้าเป็นเจ้าของทรัพย์แล้ว)
+  if (v > 0 && isAcquired(p) && p.status !== 'sold') p.status = 'sold';
   if (v > 0 && renoActiveProp === propId) renoActiveProp = '';  // ขายแล้ว → เอาออกจากบ้านที่เลือกในหน้าค่าใช้จ่าย
   saveS(); renderProps(); renderReno(); updateBadges();
   if (typeof renderSold === 'function') renderSold();
@@ -2334,7 +2388,7 @@ let renoActiveProp = '';   // บ้านที่ถูกเลือกอ�
 
 function populateRenoProps() {
   const sel    = document.getElementById('reno-prop-sel');
-  const wonProps = S.props.filter(p => p.status === 'won');
+  const wonProps = S.props.filter(p => isAcquired(p));
   const opts = wonProps.map(p=>`<option value="${p.id}">${p.code ? p.code+' — '+p.name : p.name}</option>`).join('');
   if (sel) sel.innerHTML = '<option value="">— เลือกทรัพย์ (ชนะประมูล) —</option>'+opts;
 }
@@ -2580,7 +2634,7 @@ function editExpense(id) {
 }
 
 function renderReno() {
-  const wonProps    = S.props.filter(p => p.status === 'won');
+  const wonProps    = S.props.filter(p => isAcquired(p));
   const isSold      = p => Number(p.actualSell) > 0;
   const activeProps = wonProps.filter(p => !isSold(p));
   const soldProps   = wonProps.filter(p =>  isSold(p));
@@ -2774,20 +2828,20 @@ function renderSummary() {
   if (pid) { renderSummaryProp(pid); return; }
 
   // ── ภาพรวมทั้งหมด ──
-  const won     = S.props.filter(p=>p.status==='won').length;
+  const won     = S.props.filter(p=>isAcquired(p)).length;
   const lost    = S.props.filter(p=>p.status==='lost').length;
-  const watching= S.props.filter(p=>p.status==='watching').length;
+  const watching= S.props.filter(p=>!isAcquired(p) && p.status!=='lost').length;
   const stAll = expenseStats(S.expenses);
   const totalExp = stAll.total;
   const totalMy  = stAll.myPaid;
   const totalP   = stAll.partnerPaid;
   const totalBal = stAll.balance;
-  const profitProps = S.props.filter(p=>p.status==='won'&&Number(p.actualSell)>0&&(Number(p.actualBuy)||Number(p.calcCustomBid))>0).map(p=>{
+  const profitProps = S.props.filter(p=>isSold(p)&&(Number(p.actualBuy)||Number(p.calcCustomBid))>0).map(p=>{
     const allExp = S.expenses.filter(e=>e.propId===p.id).reduce((s,e)=>s+Number(e.amount||0),0);
     const gross  = Number(p.actualSell)-(Number(p.actualBuy)||Number(p.calcCustomBid))-allExp;
     return { p, allExp, gross, net: gross/2 };
   });
-  const wonDocs = S.props.filter(p=>p.status==='won').map(p=>{ syncPropDocs(p); return { total:p.docs.length, done:p.docs.filter(d=>d.done).length }; });
+  const wonDocs = S.props.filter(p=>isAcquired(p)).map(p=>{ syncPropDocs(p); return { total:p.docs.length, done:p.docs.filter(d=>d.done).length }; });
   const docsTotal = wonDocs.reduce((s,x)=>s+x.total,0);
   const docsDone  = wonDocs.reduce((s,x)=>s+x.done,0);
   const notifProps= S.props.filter(p=>p.notif&&(p.notif.tgToken||p.notif.browser)).length;
@@ -2845,8 +2899,8 @@ function renderSummary() {
             const tIdx=p.targetRound||0; const tR=ROUNDS[tIdx]||ROUNDS[0];
             const bidPrice=base?Math.floor(base*(1-tR.disc)):0;
             const expOut=S.expenses.filter(e=>e.propId===p.id).reduce((s,e)=>s+Number(e.amount||0),0);
-            const sb=p.status==='won'?'badge-green':p.status==='lost'?'badge-red':'badge-blue';
-            const sl={watching:'👁 ติดตาม',won:'✓ ชนะ',lost:'✗ ไม่ได้'}[p.status||'watching'];
+            const _si=stageInfo(p.status||'watching');
+            const sb=_si.badge, sl=_si.icon+' '+_si.label;
             return `<tr>
               <td style="font-weight:700;color:var(--blue)">${i+1}</td>
               <td style="font-weight:700">${p.code?`<span style="font-size:11px;background:var(--blue-lt);color:var(--blue);padding:1px 6px;border-radius:4px;margin-right:4px">${p.code}</span>`:''}${p.name}</td>
@@ -2904,8 +2958,8 @@ function renderSummaryProp(pid) {
   const base    = Number(p.appraisal)||Number(p.price)||0;
   const tIdx    = p.targetRound||0; const tR = ROUNDS[tIdx]||ROUNDS[0];
   const bidPrice= base?Math.floor(base*(1-tR.disc)):0;
-  const sb      = p.status==='won'?'badge-green':p.status==='lost'?'badge-red':'badge-blue';
-  const sl      = {watching:'👁 กำลังติดตาม',won:'✓ ชนะประมูล',lost:'✗ ไม่ได้ทรัพย์'}[p.status||'watching'];
+  const _si2    = stageInfo(p.status||'watching');
+  const sb      = _si2.badge, sl = _si2.icon+' '+_si2.label;
   const docsTotal= p.docs.length; const docsDone = p.docs.filter(d=>d.done).length;
   const _buyPrice = Number(p.actualBuy)||Number(p.calcCustomBid);
   const hasSold = Number(p.actualSell)>0 && _buyPrice>0;
@@ -2979,7 +3033,7 @@ function renderSummaryProp(pid) {
 // ═══════════════════════════════════════════════
 function renderPnL() {
   const el = document.getElementById('pnl-content');
-  const wonProps = S.props.filter(p => p.status === 'won');
+  const wonProps = S.props.filter(p => isAcquired(p));
   if (!wonProps.length) {
     el.innerHTML = `<div class="card"><div class="empty"><div class="empty-icon">💰</div><p>ยังไม่มีทรัพย์ที่ชนะประมูล</p></div></div>`;
     return;
@@ -3133,7 +3187,7 @@ function renderSold() {
   const el = document.getElementById('sold-content');
   if (!el) return;
   updateBadges();
-  const soldProps = S.props.filter(p => p.status === 'won' && Number(p.actualSell) > 0);
+  const soldProps = S.props.filter(p => isSold(p));
   if (!soldProps.length) {
     el.innerHTML = `<div class="empty"><div class="empty-icon">✅</div><p>ยังไม่มีบ้านที่ขายแล้ว<br><span style="font-size:12px;color:var(--gray)">บ้านจะย้ายมาที่นี่อัตโนมัติเมื่อกรอก "ราคาที่ขายได้จริง" ในแท็บทรัพย์</span></p></div>`;
     return;
