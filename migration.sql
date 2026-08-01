@@ -38,3 +38,22 @@ ALTER TABLE auction_doc_types  DISABLE ROW LEVEL SECURITY;
 ALTER PUBLICATION supabase_realtime ADD TABLE auction_props;
 ALTER PUBLICATION supabase_realtime ADD TABLE auction_expenses;
 ALTER PUBLICATION supabase_realtime ADD TABLE auction_doc_types;
+
+-- =============================================
+-- STORAGE BUCKET สำหรับรูปภาพ (item 12)
+-- เก็บรูปทรัพย์/บิล เป็นไฟล์ใน Storage แทน base64 ใน jsonb
+-- (กัน localStorage/แถว jsonb บวมจนเต็ม)
+-- =============================================
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('auction-images', 'auction-images', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- อ่านได้สาธารณะ (รูป public URL) + อัปโหลด/แก้/ลบด้วย anon key (แยก tenant ด้วย path = userKey/)
+DROP POLICY IF EXISTS "auction_images_read"   ON storage.objects;
+DROP POLICY IF EXISTS "auction_images_write"  ON storage.objects;
+DROP POLICY IF EXISTS "auction_images_update" ON storage.objects;
+DROP POLICY IF EXISTS "auction_images_delete" ON storage.objects;
+CREATE POLICY "auction_images_read"   ON storage.objects FOR SELECT USING (bucket_id = 'auction-images');
+CREATE POLICY "auction_images_write"  ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'auction-images');
+CREATE POLICY "auction_images_update" ON storage.objects FOR UPDATE USING (bucket_id = 'auction-images');
+CREATE POLICY "auction_images_delete" ON storage.objects FOR DELETE USING (bucket_id = 'auction-images');
