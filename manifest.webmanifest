@@ -1,0 +1,17 @@
+{
+  "name": "ระบบจัดการทรัพย์ กรมบังคับคดี",
+  "short_name": "ทรัพย์ LED",
+  "description": "บริหารเอกสาร ติดตามประมูล บันทึกค่าใช้จ่าย ทรัพย์กรมบังคับคดี",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F3F4F6",
+  "theme_color": "#12305B",
+  "lang": "th",
+  "icons": [
+    { "src": "./icon.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "./icon.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
