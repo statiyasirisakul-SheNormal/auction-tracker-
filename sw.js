@@ -1,7 +1,7 @@
 // Service Worker — ระบบจัดการทรัพย์ กรมบังคับคดี (item 13 PWA)
 // เปิดแอปแบบ offline ได้: cache ตัวแอป (app shell) + รูปที่โหลดแล้ว
 // ข้อมูลจริงอยู่ใน localStorage + sync Supabase เมื่อออนไลน์
-const CACHE = 'auction-tracker-v1';
+const CACHE = 'auction-tracker-v3';
 const SHELL = [
   './',
   './index.html',
@@ -10,8 +10,11 @@ const SHELL = [
 ];
 
 self.addEventListener('install', (e) => {
+  // ดึงไฟล์สดจากเน็ต (ข้าม HTTP cache) ตอนติดตั้ง SW ใหม่
   e.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())
+    caches.open(CACHE)
+      .then((c) => Promise.all(SHELL.map((u) => fetch(u, { cache: 'reload' }).then((r) => c.put(u, r)).catch(() => {}))))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -31,13 +34,13 @@ self.addEventListener('fetch', (e) => {
   // Supabase / API — เอาสด ๆ เสมอ (อย่า cache ข้อมูล) ; ออฟไลน์ก็ปล่อยพัง (แอปมี localStorage)
   if (/supabase\.co/.test(url.host)) return;
 
-  // การเปิดหน้า (navigation) → network-first, ล้มเหลวค่อยใช้ cache (ทำงาน offline)
+  // การเปิดหน้า (navigation) → network-first + ข้าม HTTP cache เสมอ (ได้ตัวใหม่ทันที)
   if (req.mode === 'navigate') {
     e.respondWith(
-      fetch(req).then((res) => {
+      fetch(req, { cache: 'reload' }).then((res) => {
         caches.open(CACHE).then((c) => c.put('./index.html', res.clone()));
         return res;
-      }).catch(() => caches.match('./index.html'))
+      }).catch(() => caches.match('./index.html') || caches.match('./'))
     );
     return;
   }

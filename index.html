@@ -4313,9 +4313,14 @@ function calcSaveToProperty() {
 
 // ── PWA: ลงทะเบียน service worker (item 13) — ทำงานเฉพาะ https/localhost ไม่ใช่ file:// ──
 if ('serviceWorker' in navigator) {
+  // เมื่อมี SW ตัวใหม่เข้าคุม → รีโหลดหน้าอัตโนมัติ 1 ครั้ง (ผู้ใช้จะได้เวอร์ชันใหม่เองไม่ต้องล้าง cache)
+  let _swRefreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (_swRefreshing) return; _swRefreshing = true; location.reload();
+  });
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js')
-      .then(() => console.log('[PWA] service worker registered'))
+      .then((reg) => { reg.update(); console.log('[PWA] service worker registered'); })
       .catch((e) => console.log('[PWA] SW register skipped:', e.message));
   });
 }
