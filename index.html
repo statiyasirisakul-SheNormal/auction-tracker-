@@ -732,8 +732,9 @@ input, select, textarea { font-size: 16px !important; }
   <div class="modal">
     <h3>📁 เพิ่มประเภทเอกสาร</h3>
     <div class="form-group">
-      <label class="form-label">ชื่อประเภทเอกสาร *</label>
-      <input class="form-input" id="doctype-name" placeholder="เช่น สำเนาบัตรประชาชน" />
+      <label class="form-label">ชื่อประเภทเอกสาร * <span style="font-size:11px;color:var(--gray);font-weight:400">(เลือกจากลิสต์ หรือพิมพ์เอง)</span></label>
+      <select class="form-select" id="doctype-quick" onchange="doctypePick(this)" style="margin-bottom:6px"></select>
+      <input class="form-input" id="doctype-name" placeholder="หรือพิมพ์ชื่อเอกสารเอง" autocomplete="off" />
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-doctype')">ยกเลิก</button>
@@ -924,9 +925,9 @@ input, select, textarea { font-size: 16px !important; }
       </div>
     </div>
     <div class="form-group">
-      <label class="form-label">รายละเอียด * <span style="font-size:11px;color:var(--gray);font-weight:400">(เลือกจากรายการ หรือพิมพ์เอง)</span></label>
-      <input class="form-input" id="reno-desc" list="reno-desc-options" placeholder="เลือก/พิมพ์ เช่น ค่าทาสี, รื้อถอน" autocomplete="off" />
-      <datalist id="reno-desc-options"></datalist>
+      <label class="form-label">รายการ * <span style="font-size:11px;color:var(--gray);font-weight:400">(เลือกจากลิสต์ หรือพิมพ์เอง)</span></label>
+      <select class="form-select" id="reno-desc-quick" onchange="renoDescPick(this)" style="margin-bottom:6px"></select>
+      <input class="form-input" id="reno-desc" placeholder="หรือพิมพ์รายการเอง เช่น ค่าทาสีห้องนอน" autocomplete="off" />
     </div>
     <div class="form-row">
       <div class="form-group">
@@ -3948,28 +3949,62 @@ function showLightbox(src) {
   document.getElementById('lightbox').classList.add('open');
 }
 function openModal(id)  {
-  if (id === 'modal-reno') populateRenoDescOptions();
+  if (id === 'modal-reno')    populateRenoDescOptions();
+  if (id === 'modal-doctype') populateDoctypeOptions();
   document.getElementById(id).classList.add('open');
 }
-// รายการค่าใช้จ่ายยอดนิยม (dropdown) + รวมรายการที่เคยกรอกไว้จริง
-const RENO_DESC_PRESETS = [
-  'รื้อถอน','เก็บกวาด/ทำความสะอาด','กำจัดปลวก','ปรับพื้นที่/ถมดิน',
-  'งานหลังคา','ฝ้าเพดาน','ไม้ระแนง','กันซึม',
-  'ทาสี','สี','โป๊ว/ฉาบผนัง','ปูกระเบื้อง','ปูพื้น',
-  'งานไฟฟ้า','เดินสายไฟ','โคมไฟ/หลอดไฟ','ปลั๊ก/สวิตช์',
-  'งานประปา','เดินท่อน้ำ','ปั๊มน้ำ','ถังเก็บน้ำ',
-  'สุขภัณฑ์','ห้องน้ำ','ประตู','หน้าต่าง','มุ้งลวด','เหล็กดัด',
-  'ครัว/เคาน์เตอร์','เฟอร์นิเจอร์บิลท์อิน','รั้ว','ประตูรั้ว','ถนน/ลานจอด',
-  'ค่าแรงช่าง','ค่าขนส่ง/อุปกรณ์','ค่าน้ำ','ค่าไฟ',
-  'ค่าบ้าน (มัดจำ)','ค่าบ้าน (ส่วนที่เหลือ)','ค่าโอนกรรมสิทธิ์',
-  'ค่าธรรมเนียมกรมบังคับคดี','ค่าภาษี','คัดถ่ายทะเบียนราษฎร','ค่าดำเนินการ',
+// หัวข้อเอกสารยอดนิยม (dropdown) — เอกสารประมูลกรมบังคับคดี
+const DOCTYPE_PRESETS = [
+  'สำเนาบัตรประชาชน','สำเนาทะเบียนบ้าน','ใบมอบอำนาจ','ใบมอบอำนาจการประมูลทรัพย์',
+  'หนังสือรับรองการโอนกรรมสิทธิ์','โฉนดที่ดิน / น.ส.3','สัญญาซื้อขาย','ใบเสร็จวางเงินมัดจำ',
+  'ประกาศขายทอดตลาด','หนังสือรับรองราคาประเมิน','ใบปลอดหนี้ / ค่าส่วนกลาง',
+  'คำร้องขอขยายเวลา','หนังสือรับรองบริษัท','หนังสือรับรองการเงิน / เงินเดือน',
 ];
+function populateDoctypeOptions() {
+  const sel = document.getElementById('doctype-quick'); if (!sel) return;
+  const existing = new Set(S.docTypes.map(d => d.name));
+  const items = DOCTYPE_PRESETS.filter(d => !existing.has(d));   // ซ่อนอันที่มีแล้ว
+  sel.innerHTML = '<option value="">▼ เลือกประเภทเอกสารที่พบบ่อย...</option>'
+    + items.map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join('');
+  sel.value = '';
+}
+function doctypePick(sel) {
+  if (!sel.value) return;
+  document.getElementById('doctype-name').value = sel.value;
+  sel.value = '';
+}
+// รายการค่าใช้จ่ายยอดนิยม (dropdown จริง) + รวมรายการที่เคยกรอกไว้จริง
+const RENO_DESC_GROUPS = [
+  { label:'🛠 งานรีโนเวท', items:[
+    'รื้อถอน','เก็บกวาด/ทำความสะอาด','กำจัดปลวก','ปรับพื้นที่/ถมดิน',
+    'งานหลังคา','ฝ้าเพดาน','ไม้ระแนง','กันซึม','ทาสี','โป๊ว/ฉาบผนัง','ปูกระเบื้อง','ปูพื้น',
+    'งานไฟฟ้า','เดินสายไฟ','โคมไฟ/หลอดไฟ','ปลั๊ก/สวิตช์',
+    'งานประปา','เดินท่อน้ำ','ปั๊มน้ำ','ถังเก็บน้ำ',
+    'สุขภัณฑ์','ประตู','หน้าต่าง','มุ้งลวด','เหล็กดัด',
+    'ครัว/เคาน์เตอร์','เฟอร์นิเจอร์บิลท์อิน','รั้ว/ประตูรั้ว','ถนน/ลานจอด',
+    'ค่าแรงช่าง','ค่าขนส่ง/อุปกรณ์','ค่าน้ำ','ค่าไฟ' ] },
+  { label:'🏠 ต้นทุนซื้อ/ค่าธรรมเนียม', items:[
+    'ค่าบ้าน (มัดจำ)','ค่าบ้าน (ส่วนที่เหลือ)','ค่าโอนกรรมสิทธิ์',
+    'ค่าธรรมเนียมกรมบังคับคดี','ค่าภาษี','คัดถ่ายทะเบียนราษฎร','ค่าดำเนินการ' ] },
+];
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
 function populateRenoDescOptions() {
-  const dl = document.getElementById('reno-desc-options'); if (!dl) return;
+  const sel = document.getElementById('reno-desc-quick'); if (!sel) return;
   const used = [...new Set(S.expenses.map(e => (e.desc||'').trim()).filter(d => d.length > 1))];
-  const seen = new Set(); const all = [];
-  [...used, ...RENO_DESC_PRESETS].forEach(d => { if (!seen.has(d)) { seen.add(d); all.push(d); } });
-  dl.innerHTML = all.map(d => `<option value="${d.replace(/"/g,'&quot;')}"></option>`).join('');
+  let html = '<option value="">▼ เลือกรายการที่พบบ่อย...</option>';
+  if (used.length) html += `<optgroup label="⭐ เคยกรอกไว้">${used.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('')}</optgroup>`;
+  RENO_DESC_GROUPS.forEach(g => {
+    html += `<optgroup label="${g.label}">${g.items.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('')}</optgroup>`;
+  });
+  sel.innerHTML = html;
+  sel.value = '';
+}
+// เลือกจาก dropdown → เติมลงช่องพิมพ์ (แก้ต่อได้)
+function renoDescPick(sel) {
+  if (!sel.value) return;
+  const inp = document.getElementById('reno-desc');
+  inp.value = sel.value;
+  sel.value = '';
 }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
