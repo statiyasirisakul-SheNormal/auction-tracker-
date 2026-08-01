@@ -924,8 +924,9 @@ input, select, textarea { font-size: 16px !important; }
       </div>
     </div>
     <div class="form-group">
-      <label class="form-label">รายละเอียด *</label>
-      <input class="form-input" id="reno-desc" placeholder="เช่น ค่าช่างซ่อมหลังคาห้องนอน" />
+      <label class="form-label">รายละเอียด * <span style="font-size:11px;color:var(--gray);font-weight:400">(เลือกจากรายการ หรือพิมพ์เอง)</span></label>
+      <input class="form-input" id="reno-desc" list="reno-desc-options" placeholder="เลือก/พิมพ์ เช่น ค่าทาสี, รื้อถอน" autocomplete="off" />
+      <datalist id="reno-desc-options"></datalist>
     </div>
     <div class="form-row">
       <div class="form-group">
@@ -3946,7 +3947,30 @@ function showLightbox(src) {
   document.getElementById('lightbox-img').src = src;
   document.getElementById('lightbox').classList.add('open');
 }
-function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function openModal(id)  {
+  if (id === 'modal-reno') populateRenoDescOptions();
+  document.getElementById(id).classList.add('open');
+}
+// รายการค่าใช้จ่ายยอดนิยม (dropdown) + รวมรายการที่เคยกรอกไว้จริง
+const RENO_DESC_PRESETS = [
+  'รื้อถอน','เก็บกวาด/ทำความสะอาด','กำจัดปลวก','ปรับพื้นที่/ถมดิน',
+  'งานหลังคา','ฝ้าเพดาน','ไม้ระแนง','กันซึม',
+  'ทาสี','สี','โป๊ว/ฉาบผนัง','ปูกระเบื้อง','ปูพื้น',
+  'งานไฟฟ้า','เดินสายไฟ','โคมไฟ/หลอดไฟ','ปลั๊ก/สวิตช์',
+  'งานประปา','เดินท่อน้ำ','ปั๊มน้ำ','ถังเก็บน้ำ',
+  'สุขภัณฑ์','ห้องน้ำ','ประตู','หน้าต่าง','มุ้งลวด','เหล็กดัด',
+  'ครัว/เคาน์เตอร์','เฟอร์นิเจอร์บิลท์อิน','รั้ว','ประตูรั้ว','ถนน/ลานจอด',
+  'ค่าแรงช่าง','ค่าขนส่ง/อุปกรณ์','ค่าน้ำ','ค่าไฟ',
+  'ค่าบ้าน (มัดจำ)','ค่าบ้าน (ส่วนที่เหลือ)','ค่าโอนกรรมสิทธิ์',
+  'ค่าธรรมเนียมกรมบังคับคดี','ค่าภาษี','คัดถ่ายทะเบียนราษฎร','ค่าดำเนินการ',
+];
+function populateRenoDescOptions() {
+  const dl = document.getElementById('reno-desc-options'); if (!dl) return;
+  const used = [...new Set(S.expenses.map(e => (e.desc||'').trim()).filter(d => d.length > 1))];
+  const seen = new Set(); const all = [];
+  [...used, ...RENO_DESC_PRESETS].forEach(d => { if (!seen.has(d)) { seen.add(d); all.push(d); } });
+  dl.innerHTML = all.map(d => `<option value="${d.replace(/"/g,'&quot;')}"></option>`).join('');
+}
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
 document.querySelectorAll('.modal-overlay').forEach(el => {
