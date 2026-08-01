@@ -746,6 +746,10 @@ input, select, textarea { font-size: 16px !important; }
         <label class="form-label">💵 ราคาที่ขายได้จริง (บาท)</label>
         <input class="form-input" type="text" inputmode="numeric" id="prop-actual-sell" placeholder="กรอกเมื่อขายได้แล้ว" oninput="fmtNumInput(this)" />
       </div>
+      <div class="form-group">
+        <label class="form-label">🛠 งบรีโนเวทที่ตั้งไว้ (บาท)</label>
+        <input class="form-input" type="text" inputmode="numeric" id="prop-reno-budget" placeholder="เช่น 300,000" oninput="fmtNumInput(this)" />
+      </div>
     </div>
     <div class="form-group">
       <label class="form-label">🎯 นัดที่ต้องการเข้าซื้อ</label>
@@ -1647,6 +1651,38 @@ function saveDocNote(propId, typeId, val) {
 // ═══════════════════════════════════════════════
 //  PROPERTIES
 // ═══════════════════════════════════════════════
+// งบรีโนเวทตั้งไว้ vs จ่ายจริง (item 8) — แสดง progress bar + เตือนเมื่อเกินงบ
+function renoBudgetBar(p, spent) {
+  const budget = Number(p.renoBudget) || 0;
+  if (!budget && !spent) return '';
+  if (!budget) {
+    // ยังไม่ตั้งงบ — แค่ชวนให้ตั้ง (แสดงเฉพาะเมื่อเป็นเจ้าของทรัพย์แล้ว)
+    if (!isAcquired(p)) return '';
+    return `<div style="font-size:11px;color:var(--gray);margin-bottom:8px">💡 ตั้ง <b>งบรีโนเวท</b> ในหน้าแก้ไขทรัพย์ เพื่อดูแถบเทียบงบ vs จ่ายจริง</div>`;
+  }
+  const pct     = budget ? (spent / budget) * 100 : 0;
+  const over    = spent - budget;
+  const isOver  = over > 0;
+  const barPct  = Math.min(100, pct);
+  const barColor= isOver ? 'var(--red)' : pct >= 85 ? 'var(--amber)' : 'var(--green)';
+  const remain  = budget - spent;
+  return `
+    <div style="background:${isOver?'#FEF2F2':'#F9FAFB'};border:1px solid ${isOver?'#FECACA':'var(--border)'};border-radius:9px;padding:9px 12px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:6px;flex-wrap:wrap;gap:4px">
+        <span style="font-weight:700;color:var(--navy)">🛠 งบรีโนเวท ${fmtPrice(budget)}</span>
+        <span style="color:${barColor};font-weight:800">${Math.round(pct)}%</span>
+      </div>
+      <div style="height:8px;background:#E5E7EB;border-radius:20px;overflow:hidden">
+        <div style="height:100%;width:${barPct}%;background:${barColor};border-radius:20px;transition:width .3s"></div>
+      </div>
+      <div style="font-size:11px;margin-top:6px;font-weight:700;color:${isOver?'var(--red)':'var(--gray)'}">
+        จ่ายจริง ${fmtPrice(spent)} · ${isOver
+          ? `⚠️ เกินงบ ${fmtPrice(over)}`
+          : `เหลืองบ ${fmtPrice(remain)}`}
+      </div>
+    </div>`;
+}
+
 function renderProps() {
   const el = document.getElementById('props-list');
   // จำ card ที่กางอยู่ก่อน re-render
@@ -1790,6 +1826,7 @@ function renderProps() {
               <div class="section-title" style="margin-bottom:0">🔨 ค่าใช้จ่าย${renoTotal>0?` <span style="color:var(--green);font-weight:800;margin-left:6px">${fmtPrice(renoTotal)}</span>`:''}</div>
               <button class="btn btn-success btn-xs" onclick="event.stopPropagation();openRenoForProp('${p.id}')">+ เพิ่ม</button>
             </div>
+            ${renoBudgetBar(p, renoTotal)}
             ${renoItems.length ? `
             <div style="background:var(--green-lt);border-radius:9px;padding:4px 12px;">
               ${renoItems.map(e=>{
@@ -1931,7 +1968,7 @@ function setPropStatus(id, status) {
 function openAddPropModal() {
   document.getElementById('prop-edit-id').value = '';
   document.getElementById('modal-prop-title').textContent = '🏠 เพิ่มทรัพย์ที่เล็งไว้';
-  ['prop-code','prop-name','prop-loc','prop-size','prop-deed','prop-case','prop-appraisal','prop-target-sell','prop-actual-sell','prop-notes','prop-map'].forEach(id=>{
+  ['prop-code','prop-name','prop-loc','prop-size','prop-deed','prop-case','prop-appraisal','prop-target-sell','prop-actual-sell','prop-reno-budget','prop-notes','prop-map'].forEach(id=>{
     document.getElementById(id).value='';
   });
   document.getElementById('prop-target-round-sel').value = '0';
@@ -1954,6 +1991,7 @@ function editProp(id) {
   setNumInput('prop-appraisal',   p.appraisal||0);
   setNumInput('prop-target-sell', p.targetSell||0);
   setNumInput('prop-actual-sell', p.actualSell||0);
+  setNumInput('prop-reno-budget', p.renoBudget||0);
   document.getElementById('prop-notes').value       = p.notes||'';
   document.getElementById('prop-map').value         = p.mapUrl||'';
   clearPropImgAll();
@@ -1982,6 +2020,7 @@ function saveProp() {
     price:      parseNumInput(document.getElementById('prop-appraisal').value),
     targetSell: parseNumInput(document.getElementById('prop-target-sell').value),
     actualSell: parseNumInput(document.getElementById('prop-actual-sell').value),
+    renoBudget: parseNumInput(document.getElementById('prop-reno-budget').value),
     notes:      document.getElementById('prop-notes').value.trim(),
     mapUrl:     document.getElementById('prop-map').value.trim(),
     targetRound,
