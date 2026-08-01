@@ -227,6 +227,15 @@ input[type="file"] { display:none; }
 .stage-arrow { align-self:flex-start; margin-top:5px; color:#D1D5DB; font-size:16px; font-weight:800; }
 @media (max-width:640px){ .stage-lbl{font-size:9px;} .stage-arrow{display:none;} .stage-step{min-width:44px;} }
 
+/* ── toggle switch (item 6 LINE notify) ── */
+.switch { position:relative; display:inline-block; width:44px; height:24px; flex-shrink:0; }
+.switch input { opacity:0; width:0; height:0; }
+.switch-slider { position:absolute; inset:0; background:#CBD5E1; border-radius:24px; cursor:pointer; transition:.2s; }
+.switch-slider::before { content:''; position:absolute; height:18px; width:18px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s; }
+.switch input:checked + .switch-slider { background:var(--tg,#06C755); }
+.switch input:checked + .switch-slider::before { transform:translateX(20px); }
+.switch input:disabled + .switch-slider { opacity:.45; cursor:not-allowed; }
+
 /* ── NOTIF SECTION ── */
 .notif-box {
   border:2px solid var(--tg); border-radius:12px; padding:16px;
@@ -467,7 +476,7 @@ input, select, textarea { font-size: 16px !important; }
 <div class="header">
   <div style="font-size:30px">🏛️</div>
   <div style="flex:1;min-width:0">
-    <h1>ระบบจัดการทรัพย์ กรมบังคับคดี <span style="font-size:10px;font-weight:600;opacity:.6;white-space:nowrap">v.2026.06.10-1</span></h1>
+    <h1>ระบบจัดการทรัพย์ กรมบังคับคดี <span style="font-size:10px;font-weight:600;opacity:.6;white-space:nowrap">v.2026.08.01</span></h1>
     <p>บริหารเอกสาร · ติดตามประมูล · บันทึกค่าใช้จ่าย · ปฏิทิน Google</p>
   </div>
   <button onclick="openSettings()" style="background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.35);color:white;border-radius:9px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0">
@@ -1969,6 +1978,42 @@ function printPropReport(id) {
   window.print();
 }
 
+// แจ้งเตือน LINE ก่อนวันนัดประมูล 3 วัน (item 6) — toggle ต่อทรัพย์
+function lineNotifyRow(p) {
+  const ti = p.targetRound||0;
+  const rObj = (p.rounds||[])[ti];
+  const tDate = rObj && typeof rObj==='object' ? rObj.date : '';
+  const on = p.lineNotify !== false && !!tDate;  // ค่าเริ่มต้น: เปิด ถ้ามีวันนัด
+  let info = '';
+  if (!tDate) {
+    info = `<span style="color:var(--amber)">⚠️ ใส่วันที่นัดที่ ${ti+1} ก่อน ถึงจะตั้งเตือนได้</span>`;
+  } else {
+    const remind = new Date(tDate+'T00:00:00'); remind.setDate(remind.getDate()-3);
+    const rStr = remind.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'});
+    const dLeft = Math.round((remind - new Date(todayISO()))/86400000);
+    info = p.lineNotify===false
+      ? '<span style="color:var(--gray)">ปิดการเตือน</span>'
+      : `<span style="color:var(--green)">📆 เตือนวันที่ ${rStr}${dLeft>=0?` (อีก ${dLeft} วัน)`:' (ผ่านไปแล้ว)'}</span>`;
+  }
+  return `
+    <div onclick="event.stopPropagation()" style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--tg-lt);border:1px solid #C7E0F4;border-radius:9px;padding:8px 12px;margin-bottom:14px;flex-wrap:wrap">
+      <div style="font-size:12px;font-weight:700;color:var(--navy)">
+        🔔 แจ้งเตือน LINE ก่อนวันนัดที่ ${ti+1} · 3 วัน
+        <div style="font-size:11px;font-weight:600;margin-top:2px">${info}</div>
+      </div>
+      <label class="switch" title="เปิด/ปิดการเตือน LINE">
+        <input type="checkbox" ${on?'checked':''} ${!tDate?'disabled':''} onchange="setLineNotify('${p.id}',this.checked)">
+        <span class="switch-slider"></span>
+      </label>
+    </div>`;
+}
+function setLineNotify(id, on) {
+  const p = S.props.find(x=>x.id===id); if (!p) return;
+  p.lineNotify = !!on;
+  saveS(); renderProps();
+  toast(on ? '🔔 เปิดเตือน LINE ก่อนนัด 3 วัน' : '🔕 ปิดเตือน LINE');
+}
+
 // งบรีโนเวทตั้งไว้ vs จ่ายจริง (item 8) — แสดง progress bar + เตือนเมื่อเกินงบ
 function renoBudgetBar(p, spent) {
   const budget = Number(p.renoBudget) || 0;
@@ -2114,6 +2159,8 @@ function renderProps() {
             </div>
           </div>
           <div class="rounds-grid">${roundsHtml}</div>
+
+          ${lineNotifyRow(p)}
 
           <div style="margin-bottom:18px;">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap">
