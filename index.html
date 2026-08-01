@@ -2014,15 +2014,29 @@ function setLineNotify(id, on) {
   toast(on ? '🔔 เปิดเตือน LINE ก่อนนัด 3 วัน' : '🔕 ปิดเตือน LINE');
 }
 
-// งบรีโนเวทตั้งไว้ vs จ่ายจริง (item 8) — แสดง progress bar + เตือนเมื่อเกินงบ
+// งบ/ค่ารีโนเวท (item 8) — ช่องกรอกในตัวการ์ด + progress bar + เตือนเกินงบ
+// ค่าที่กรอกจะไปเป็น "ค่าซ่อมแซม วิเคราะห์จากพื้นที่จริง" ในหน้าคำนวณอัตโนมัติ
 function renoBudgetBar(p, spent) {
   const budget = Number(p.renoBudget) || 0;
-  if (!budget && !spent) return '';
-  if (!budget) {
-    // ยังไม่ตั้งงบ — แค่ชวนให้ตั้ง (แสดงเฉพาะเมื่อเป็นเจ้าของทรัพย์แล้ว)
-    if (!isAcquired(p)) return '';
-    return `<div style="font-size:11px;color:var(--gray);margin-bottom:8px">💡 ตั้ง <b>งบรีโนเวท</b> ในหน้าแก้ไขทรัพย์ เพื่อดูแถบเทียบงบ vs จ่ายจริง</div>`;
-  }
+  const size   = Number(p.size) || 0;
+  // ช่องกรอกค่ารีโนเวทแบบ inline (กรอกตรงนี้ได้เลย ไม่ต้องเข้าหน้าแก้ไข)
+  const input = `
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:${budget?'8px':'2px'}">
+      <span style="font-size:12px;font-weight:700;color:var(--navy);white-space:nowrap">🛠 ค่ารีโนเวท/ซ่อมแซม (ประเมิน)</span>
+      <input type="text" inputmode="numeric"
+        value="${budget?budget.toLocaleString('th-TH'):''}"
+        placeholder="เช่น 300,000"
+        oninput="fmtNumInput(this)"
+        onblur="savePropRenoBudget('${p.id}',this.value)"
+        style="flex:1;min-width:120px;border:1.5px solid #0EA5E9;border-radius:7px;padding:6px 10px;font-size:14px;font-weight:700;color:var(--navy);background:white;outline:none">
+      <span style="font-size:12px;color:var(--gray)">฿</span>
+    </div>
+    <div style="font-size:11px;color:var(--gray);margin-bottom:${budget?'10px':'0'}">
+      → ใช้เป็น “ค่าซ่อมแซม” ในหน้าคำนวณอัตโนมัติ${size?` · พื้นที่ ${size} ตร.ว.${budget?` ≈ ${fmtNum(Math.round(budget/size))} ฿/ตร.ว.`:''}`:''}
+    </div>`;
+
+  if (!budget) return `<div style="background:#F9FAFB;border:1px solid var(--border);border-radius:9px;padding:9px 12px;margin-bottom:10px">${input}</div>`;
+
   const pct     = budget ? (spent / budget) * 100 : 0;
   const over    = spent - budget;
   const isOver  = over > 0;
@@ -2031,8 +2045,10 @@ function renoBudgetBar(p, spent) {
   const remain  = budget - spent;
   return `
     <div style="background:${isOver?'#FEF2F2':'#F9FAFB'};border:1px solid ${isOver?'#FECACA':'var(--border)'};border-radius:9px;padding:9px 12px;margin-bottom:10px">
+      ${input}
+      ${spent>0?`
       <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:6px;flex-wrap:wrap;gap:4px">
-        <span style="font-weight:700;color:var(--navy)">🛠 งบรีโนเวท ${fmtPrice(budget)}</span>
+        <span style="font-weight:700;color:var(--navy)">งบ ${fmtPrice(budget)}</span>
         <span style="color:${barColor};font-weight:800">${Math.round(pct)}%</span>
       </div>
       <div style="height:8px;background:#E5E7EB;border-radius:20px;overflow:hidden">
@@ -2042,8 +2058,20 @@ function renoBudgetBar(p, spent) {
         จ่ายจริง ${fmtPrice(spent)} · ${isOver
           ? `⚠️ เกินงบ ${fmtPrice(over)}`
           : `เหลืองบ ${fmtPrice(remain)}`}
-      </div>
+      </div>`:''}
     </div>`;
+}
+// กรอกค่ารีโนเวทจากการ์ด → เก็บเป็นงบ (renoBudget) และค่าซ่อมแซมในหน้าคำนวณ (calcRepair)
+function savePropRenoBudget(id, val) {
+  const p = S.props.find(x=>x.id===id); if (!p) return;
+  const v = parseNumInput(val);
+  if (v === (Number(p.renoBudget)||0)) return;
+  p.renoBudget = v;
+  p.calcRepair = v;   // ไหลไปเป็น "ค่าซ่อมแซม" ในหน้าคำนวณ
+  saveS(); renderProps();
+  // ถ้าหน้าคำนวณกำลังเปิดทรัพย์นี้อยู่ อัปเดตให้ทันที
+  const sel = document.getElementById('calc-prop-sel');
+  if (sel && sel.value === id && document.getElementById('tab-calc')?.classList.contains('active')) calcFillFromProp();
 }
 
 function renderProps() {
@@ -3949,8 +3977,9 @@ function setNumInput(id, val) {
   const n = Number(val||0);
   el.value = n ? n.toLocaleString('th-TH') : '';
 }
-const pctColor = v => v >= 0.15 ? '#1E6B45' : v >= 0.05 ? '#B45309' : '#B91C1C';
-const pctBg    = v => v >= 0.15 ? '#E8F5EE' : v >= 0.05 ? '#FFFBEB' : '#FEF2F2';
+// function declaration (hoisted) — กัน TDZ error ตอน calcUpdate ถูกเรียกช่วงโหลด
+function pctColor(v) { return v >= 0.15 ? '#1E6B45' : v >= 0.05 ? '#B45309' : '#B91C1C'; }
+function pctBg(v)    { return v >= 0.15 ? '#E8F5EE' : v >= 0.05 ? '#FFFBEB' : '#FEF2F2'; }
 
 function calcClearAll() {
   ['calc-appraisal','calc-sell','calc-market'].forEach(id => {
