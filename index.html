@@ -434,6 +434,29 @@ input, select, textarea { font-size: 16px !important; }
   .round-tile  { padding: 8px 6px; }
   .round-price { font-size: 11px; }
 }
+
+/* ── PRINT / PDF REPORT (item 10) ── */
+#print-area { display:none; }
+.rpt { font-family:'Sarabun','Prompt',system-ui,sans-serif; color:#1F2937; max-width:760px; margin:0 auto; }
+.rpt h1 { font-size:20px; margin:0 0 2px; color:#12305B; }
+.rpt .rpt-sub { color:#6B7280; font-size:13px; margin-bottom:14px; }
+.rpt .rpt-sec { margin:16px 0 6px; font-size:14px; font-weight:800; color:#12305B; border-bottom:2px solid #E5E7EB; padding-bottom:4px; }
+.rpt table { width:100%; border-collapse:collapse; font-size:13px; }
+.rpt th, .rpt td { border:1px solid #E5E7EB; padding:6px 9px; text-align:left; }
+.rpt td.num, .rpt th.num { text-align:right; }
+.rpt .kv { display:flex; flex-wrap:wrap; gap:6px 20px; font-size:13px; }
+.rpt .kv div { min-width:180px; }
+.rpt .kv b { color:#12305B; }
+.rpt .tot { font-weight:800; background:#F0FDF4; }
+.rpt .neg { color:#DC2626; } .rpt .pos { color:#16A34A; }
+.rpt-imgs img { height:120px; border:1px solid #E5E7EB; border-radius:6px; margin-right:8px; }
+.rpt-foot { margin-top:22px; font-size:11px; color:#9CA3AF; border-top:1px solid #E5E7EB; padding-top:8px; }
+@media print {
+  @page { margin:14mm; }
+  body > *:not(#print-area) { display:none !important; }
+  #print-area { display:block !important; }
+  .rpt { max-width:none; }
+}
 </style>
 </head>
 <body>
@@ -1055,6 +1078,9 @@ create policy "open" on auction_data for all using (true) with check (true);</pr
   <img id="lightbox-img" src="" />
 </div>
 <div class="toast" id="toast"></div>
+
+<!-- Print/PDF report target (item 10) -->
+<div id="print-area"></div>
 
 <script>
 // ═══════════════════════════════════════════════
@@ -1796,6 +1822,96 @@ function saveDocNote(propId, typeId, val) {
 // ═══════════════════════════════════════════════
 //  PROPERTIES
 // ═══════════════════════════════════════════════
+// รายงานต่อทรัพย์ → พิมพ์ / บันทึก PDF (item 10)
+function printPropReport(id) {
+  const p = S.props.find(x => x.id === id); if (!p) return;
+  syncPropDocs(p);
+  const base   = Number(p.appraisal)||Number(p.price)||0;
+  const tR     = ROUNDS[p.targetRound||0]||ROUNDS[0];
+  const bid    = base ? Math.floor(base*(1-tR.disc)) : 0;
+  const buy    = Number(p.actualBuy)||Number(p.calcCustomBid)||0;
+  const sell   = Number(p.actualSell)||0;
+  const si     = stageInfo(p.status||'watching');
+  const items  = S.expenses.filter(e=>e.propId===p.id);
+  const st     = expenseStats(items);
+  const budget = Number(p.renoBudget)||0;
+  const { fees } = propCosts(p);
+  const gross  = sell ? sell - buy - st.total : null;
+  const net    = gross!=null ? gross/2 : null;
+  const money  = n => Number(n||0).toLocaleString('th-TH',{maximumFractionDigits:0});
+  const row = (k,v,cls='') => `<tr><td>${k}</td><td class="num ${cls}">${v}</td></tr>`;
+
+  const rounds = (p.rounds||[]).map((r,ri)=>{
+    const o = r&&typeof r==='object'?r:{status:r||''};
+    const price = base?money(Math.floor(base*(1-ROUNDS[ri].disc)))+' ฿':'—';
+    const stTxt = {joined:'✓ เข้าประมูล',skipped:'— งด',pending:''}[o.status||'pending']||'';
+    const tgt = ri===(p.targetRound||0)?' 🎯':'';
+    return `<tr><td>นัดที่ ${ri+1} (${ROUNDS[ri].discLabel})${tgt}</td><td class="num">${price}</td><td>${o.date?fmtDate(o.date):'—'}</td><td>${stTxt}${o.note?' · '+o.note:''}</td></tr>`;
+  }).join('');
+
+  const expRows = items.length ? items.map(e=>`<tr>
+    <td>${fmtDate(e.date)}</td><td>${e.desc||''}</td>
+    <td>${e.payer==='partner'?'🤝 หุ้นส่วน':'👤 ฉัน'}${e.settled?' · ✓ตัด':''}</td>
+    <td class="num">${money(e.amount)}</td></tr>`).join('')
+    : `<tr><td colspan="4" style="text-align:center;color:#9CA3AF">— ยังไม่มีรายการ —</td></tr>`;
+
+  const docRows = (p.docs||[]).map(d=>{
+    const dt = S.docTypes.find(t=>t.id===d.typeId);
+    return `<tr><td>${d.done?'✅':'⬜'}</td><td>${dt?dt.name:d.typeId}</td><td>${d.done?'เสร็จแล้ว':'ยังไม่เสร็จ'}</td></tr>`;
+  }).join('');
+
+  const html = `
+  <div class="rpt">
+    <h1>🏛️ รายงานทรัพย์ ${p.code?p.code+' — ':''}${p.name||''}</h1>
+    <div class="rpt-sub">${[p.loc, p.size?p.size+' ตร.ว.':'', p.deed?'โฉนด '+p.deed:'', p.case?'คดี '+p.case:''].filter(Boolean).join('  ·  ')} &nbsp;|&nbsp; สถานะ: ${si.icon} ${si.label}</div>
+
+    ${(p.imgProp||p.imgDetail)?`<div class="rpt-imgs">${p.imgProp?`<img src="${p.imgProp}">`:''}${p.imgDetail?`<img src="${p.imgDetail}">`:''}</div>`:''}
+
+    <div class="rpt-sec">💰 ราคา</div>
+    <table>
+      ${row('ราคาประเมินที่ดิน', money(base)+' ฿')}
+      ${row(`ราคาเป้าประมูล (นัดที่ ${(p.targetRound||0)+1} · ${tR.discLabel})`, bid?money(bid)+' ฿':'—')}
+      ${row('ราคาซื้อจริง', buy?money(buy)+' ฿':'—')}
+      ${row('ราคาขายที่คาดหวัง', Number(p.targetSell)?money(p.targetSell)+' ฿':'—')}
+      ${row('ราคาขายได้จริง', sell?money(sell)+' ฿':'—','pos')}
+      ${row('ค่าธรรมเนียม/ภาษี (ประมาณการ)', fees?money(Math.round(fees))+' ฿':'—')}
+    </table>
+
+    <div class="rpt-sec">📅 ตารางนัดประมูล</div>
+    <table><thead><tr><th>นัด</th><th class="num">ราคา</th><th>วันที่</th><th>สถานะ</th></tr></thead><tbody>${rounds||'<tr><td colspan=4>—</td></tr>'}</tbody></table>
+
+    <div class="rpt-sec">🔨 ค่าใช้จ่ายรีโนเวท${budget?` (งบตั้งไว้ ${money(budget)} ฿)`:''}</div>
+    <table><thead><tr><th>วันที่</th><th>รายการ</th><th>ผู้จ่าย</th><th class="num">จำนวน (฿)</th></tr></thead>
+      <tbody>${expRows}
+        <tr class="tot"><td colspan="3">รวมค่าใช้จ่าย</td><td class="num">${money(st.total)}</td></tr>
+        ${budget?`<tr class="${st.total>budget?'neg':'pos'}"><td colspan="3">${st.total>budget?'เกินงบ':'คงเหลือจากงบ'}</td><td class="num">${money(Math.abs(budget-st.total))}</td></tr>`:''}
+        <tr><td colspan="3">👤 ฉันจ่าย / 🤝 หุ้นส่วนจ่าย</td><td class="num">${money(st.myPaid)} / ${money(st.partnerPaid)}</td></tr>
+        <tr><td colspan="3">🔄 ค้างชำระระหว่างกัน ${st.balance>=0?'(หุ้นส่วนคืนฉัน)':'(ฉันคืนหุ้นส่วน)'}</td><td class="num">${money(Math.abs(st.balance))}</td></tr>
+      </tbody></table>
+
+    ${sell?`
+    <div class="rpt-sec">📈 สรุปกำไร</div>
+    <table>
+      ${row('กำไรรวม (ขาย − ซื้อ − ค่าใช้จ่าย)', (gross>=0?'+':'')+money(gross)+' ฿', gross>=0?'pos':'neg')}
+      ${row('กำไรส่วนตัว (÷2)', (net>=0?'+':'')+money(net)+' ฿', net>=0?'pos':'neg')}
+    </table>`:''}
+
+    ${(p.docs||[]).length?`
+    <div class="rpt-sec">📋 เอกสาร (${(p.docs||[]).filter(d=>d.done).length}/${(p.docs||[]).length})</div>
+    <table><thead><tr><th style="width:40px"></th><th>เอกสาร</th><th>สถานะ</th></tr></thead><tbody>${docRows}</tbody></table>`:''}
+
+    ${p.notes?`<div class="rpt-sec">📝 หมายเหตุ</div><div style="font-size:13px">${p.notes}</div>`:''}
+
+    <div class="rpt-foot">ระบบจัดการทรัพย์ กรมบังคับคดี · พิมพ์เมื่อ ${new Date().toLocaleString('th-TH',{dateStyle:'long',timeStyle:'short'})}</div>
+  </div>`;
+
+  const area = document.getElementById('print-area');
+  area.innerHTML = html;
+  const done = () => { area.innerHTML=''; window.removeEventListener('afterprint', done); };
+  window.addEventListener('afterprint', done);
+  window.print();
+}
+
 // งบรีโนเวทตั้งไว้ vs จ่ายจริง (item 8) — แสดง progress bar + เตือนเมื่อเกินงบ
 function renoBudgetBar(p, spent) {
   const budget = Number(p.renoBudget) || 0;
@@ -1928,6 +2044,7 @@ function renderProps() {
             ${Number(p.actualSell)>0?`<span class="badge badge-green">💵 ขายได้ ${fmtNum(Number(p.actualSell))} ฿</span>`:''}
             ${p.mapUrl?`<a href="${p.mapUrl.startsWith('http')?p.mapUrl:'https://maps.google.com/?q='+encodeURIComponent(p.mapUrl)}" target="_blank" class="btn btn-ghost btn-xs">📍 แผนที่</a>`:''}
             <button class="btn btn-ghost btn-xs" onclick="switchTab('calc');setTimeout(()=>{const s=document.getElementById('calc-prop-sel');if(s){s.value='${p.id}';calcFillFromProp();}},100)">🧮 คำนวณ</button>
+            <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();printPropReport('${p.id}')">🖨 พิมพ์ / PDF</button>
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px">
             <div class="section-title" style="margin-bottom:0">📅 ตารางนัด</div>
