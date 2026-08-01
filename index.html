@@ -3667,7 +3667,8 @@ function calcFillFromProp() {
   if (appr) setNumInput('calc-appraisal', appr);
   if (p.targetSell) setNumInput('calc-sell', p.targetSell);
   // โหลดค่า repair / broker / customBid ที่บันทึกไว้
-  document.getElementById('calc-repair').value         = p.calcRepair    || 0;
+  // ค่ารีโนเวท: ใช้ค่าที่เคยกรอกในหน้าคำนวณก่อน → ถ้ายังไม่มี ดึงจากค่าใช้จ่ายจริง → ถ้ายังไม่มี ใช้งบรีโนเวทที่ตั้งไว้ (item 8)
+  document.getElementById('calc-repair').value         = p.calcRepair || propRenoSpent(p) || p.renoBudget || 0;
   document.getElementById('calc-broker').value         = p.calcBroker    || 0;
   document.getElementById('calc-broker-pct').value     = p.calcBrokerPct || '';
   document.getElementById('calc-mortgage').value       = p.calcMortgage  || '';
