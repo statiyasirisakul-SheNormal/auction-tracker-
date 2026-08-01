@@ -1479,12 +1479,25 @@ function settlementSigned(propId) {
   return propSettlements(propId).reduce((s, x) =>
     s + (x.from === 'partner' ? Number(x.amount||0) : -Number(x.amount||0)), 0);
 }
+// ── รายรับจากการขาย (มัดจำ + ยอดคงเหลือ) เข้าโมเดล 50/50 ──
+// ใครได้รับเงินไป = ถือเงินของอีกฝ่ายครึ่งนึง → ฉันรับ = ฉันติดหุ้นส่วน(−), หุ้นส่วนรับ = หุ้นส่วนติดฉัน(+)
+function saleReceipts(p) {
+  const r = [];
+  if (Number(p.saleDeposit) > 0)   r.push({ amount: Number(p.saleDeposit),   receiver: p.saleDepositReceiver   || 'me', label: 'มัดจำ' });
+  if (Number(p.saleRemaining) > 0) r.push({ amount: Number(p.saleRemaining), receiver: p.saleRemainingReceiver || 'me', label: 'ยอดคงเหลือ' });
+  return r;
+}
+function saleIncomeBalance(p) {
+  return saleReceipts(p).reduce((s, x) => s + (x.receiver === 'partner' ? x.amount : -x.amount) / 2, 0);
+}
 // ยอดค้างสุทธิหลังหักยอดโอนคืนแล้ว (+ = หุ้นส่วนติดฉัน, − = ฉันติดหุ้นส่วน)
+// รวม: ค่าใช้จ่าย(ใครจ่าย) + รายรับขาย(ใครรับ) − ยอดโอนคืน
 function netBalanceForProps(propIds) {
   const idset = new Set(propIds);
   const rawBalance = expenseStats(S.expenses.filter(e => idset.has(e.propId))).balance;
+  const income     = propIds.reduce((s, id) => { const p = S.props.find(x => x.id === id); return s + (p ? saleIncomeBalance(p) : 0); }, 0);
   const settled    = propIds.reduce((s, id) => s + settlementSigned(id), 0);
-  return rawBalance - settled;
+  return rawBalance + income - settled;
 }
 
 function fmtPrice(n) { return fmtNum(n)+' ฿'; }
@@ -2093,6 +2106,52 @@ function savePropRenoBudget(id, val) {
   if (sel && sel.value === id && document.getElementById('tab-calc')?.classList.contains('active')) calcFillFromProp();
 }
 
+// การรับเงินจากการขาย: มัดจำ + ยอดคงเหลือ + ผู้รับ (ฉัน/หุ้นส่วน) → รวมเข้ายอดหารกัน
+function renderSaleReceipts(p) {
+  const sell = Number(p.actualSell)||0;
+  const dep  = Number(p.saleDeposit)||0;
+  const rem  = Number(p.saleRemaining)||0;
+  const received = dep + rem;
+  const pending  = Math.max(0, sell - received);
+  const suggestRem = Math.max(0, sell - dep);
+  const recRadio = (field, cur) => `
+    <label style="display:inline-flex;align-items:center;gap:3px;font-size:11px;cursor:pointer;font-weight:600"><input type="radio" name="${field}-${p.id}" ${cur!=='partner'?'checked':''} onchange="setPropSaleReceiver('${p.id}','${field}','me')">👤 ฉัน</label>
+    <label style="display:inline-flex;align-items:center;gap:3px;font-size:11px;cursor:pointer;font-weight:600"><input type="radio" name="${field}-${p.id}" ${cur==='partner'?'checked':''} onchange="setPropSaleReceiver('${p.id}','${field}','partner')">🤝 หุ้นส่วน</label>`;
+  const inputRow = (icon,label,field,recField,val,ph,recCur) => `
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span style="font-size:12px;font-weight:700;color:var(--navy);min-width:110px">${icon} ${label}</span>
+      <input type="text" inputmode="numeric" value="${val>0?val.toLocaleString('th-TH'):''}" placeholder="${ph}"
+        oninput="fmtNumInput(this)" onblur="savePropSaleField('${p.id}','${field}',this.value)"
+        style="flex:1;min-width:100px;border:1.5px solid #A7F3D0;border-radius:7px;padding:5px 9px;font-size:13px;font-weight:700;color:var(--navy);background:white;outline:none">
+      <span style="display:flex;gap:8px;align-items:center;white-space:nowrap"><span style="font-size:11px;color:var(--gray)">ผู้รับ:</span>${recRadio(recField,recCur)}</span>
+    </div>`;
+  const net = netBalanceForProps([p.id]);
+  return `
+    <div style="border-top:1px dashed #86EFAC;margin-top:8px;padding-top:10px;display:flex;flex-direction:column;gap:9px">
+      <div style="font-size:12px;font-weight:800;color:var(--green)">💰 การรับเงินจากการขาย</div>
+      ${inputRow('🧾','มัดจำที่ได้รับ','saleDeposit','saleDepositReceiver',dep,'เช่น 100,000',p.saleDepositReceiver)}
+      ${inputRow('⏳','ยอดคงเหลือ','saleRemaining','saleRemainingReceiver',rem, suggestRem>0?('≈ '+suggestRem.toLocaleString('th-TH')):'ยอดที่รับเพิ่ม',p.saleRemainingReceiver)}
+      <div style="font-size:11px;color:var(--gray);display:flex;gap:14px;flex-wrap:wrap">
+        <span>📥 รับมาแล้ว <b style="color:var(--green)">${fmtNum(received)}</b> ฿</span>
+        ${sell>0?`<span>⏳ รอรับอีก <b style="color:${pending>0?'var(--amber)':'var(--gray)'}">${fmtNum(pending)}</b> ฿</span>`:''}
+      </div>
+      ${received>0?`<div style="font-size:12px;font-weight:700;color:${net>=0?'var(--green)':'var(--red)'};background:#ECFDF5;border-radius:6px;padding:6px 10px" title="+ = หุ้นส่วนติดฉัน, − = ฉันติดหุ้นส่วน (รวมค่าใช้จ่าย + การขาย − ยอดโอนคืน)">🔄 ยอดสุทธิระหว่างกัน (รวมทุกอย่าง): <b>${net>=0?'+':''}${fmtNum(Math.round(net))} ฿</b> ${net>=0?'· หุ้นส่วนติดฉัน':'· ฉันติดหุ้นส่วน'}</div>`:''}
+    </div>`;
+}
+function savePropSaleField(id, field, val) {
+  const p = S.props.find(x=>x.id===id); if(!p) return;
+  const v = parseNumInput(val);
+  if (v === (Number(p[field])||0)) return;
+  p[field] = v; saveS(); renderProps();
+  if (typeof renderSummary==='function' && document.getElementById('tab-summary')?.classList.contains('active')) renderSummary();
+}
+function setPropSaleReceiver(id, field, who) {
+  const p = S.props.find(x=>x.id===id); if(!p) return;
+  if (p[field] === who) return;
+  p[field] = who; saveS(); renderProps();
+  if (typeof renderSummary==='function' && document.getElementById('tab-summary')?.classList.contains('active')) renderSummary();
+}
+
 function renderProps() {
   const el = document.getElementById('props-list');
   // จำ card ที่กางอยู่ก่อน re-render
@@ -2322,6 +2381,7 @@ function renderProps() {
                   +'<span style="font-size:13px;font-weight:700;color:var(--navy)">กำไรส่วนตัว (÷2): <strong style="color:'+_nc+';font-size:15px">'+(_net>=0?'+':'')+fmtNum(Math.round(_net))+'</strong> ฿</span>'
                   +'</div>';
               })()}
+              ${renderSaleReceipts(p)}
             </div>
           </div>`:''}
 
@@ -3435,7 +3495,7 @@ function renderSummary() {
   const totalExp = stAll.total;
   const totalMy  = stAll.myPaid;
   const totalP   = stAll.partnerPaid;
-  const totalBal = stAll.balance;
+  const totalBal = netBalanceForProps(S.props.map(p=>p.id));  // รวมค่าใช้จ่าย + การขาย − ยอดโอนคืน
   const profitProps = S.props.filter(p=>isSold(p)).map(p=>{
     const allExp = S.expenses.filter(e=>e.propId===p.id).reduce((s,e)=>s+Number(e.amount||0),0);
     const gross  = Number(p.actualSell)-allExp;   // ค่าใช้จ่ายรวมราคาซื้อแล้ว ไม่หักซ้ำ
@@ -3580,7 +3640,7 @@ function renderSummaryProp(pid) {
         <div class="stat-card"><div class="stat-num" style="color:#374151">${fmtNum(expAll)}</div><div class="stat-label">ค่าใช้จ่ายรวมทั้งหมด (฿)</div></div>
         <div class="stat-card"><div class="stat-num" style="color:var(--green)">${fmtNum(ps.myPaid)}</div><div class="stat-label">👤 ฉันจ่าย (฿)</div></div>
         <div class="stat-card"><div class="stat-num" style="color:var(--blue)">${fmtNum(ps.partnerPaid)}</div><div class="stat-label">🤝 หุ้นส่วนจ่าย (฿)</div></div>
-        <div class="stat-card" title="+ = หุ้นส่วนต้องคืนฉัน, − = ฉันต้องคืนหุ้นส่วน"><div class="stat-num" style="color:${ps.balance>=0?'var(--green)':'var(--red)'}">${ps.balance>=0?'+':''}${fmtNum(ps.balance)}</div><div class="stat-label">🔄 ค้างชำระระหว่างกัน (฿)</div></div>
+        <div class="stat-card" title="+ = หุ้นส่วนต้องคืนฉัน, − = ฉันต้องคืนหุ้นส่วน (รวมค่าใช้จ่าย + การขาย)"><div class="stat-num" style="color:${netBalanceForProps([pid])>=0?'var(--green)':'var(--red)'}">${netBalanceForProps([pid])>=0?'+':''}${fmtNum(Math.round(netBalanceForProps([pid])))}</div><div class="stat-label">🔄 ค้างชำระระหว่างกัน (฿)</div></div>
         <div class="stat-card">
           <div class="stat-num" style="color:var(--green)">${docsDone}/${docsTotal}</div>
           <div class="stat-label">เอกสาร</div>
