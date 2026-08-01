@@ -2154,8 +2154,9 @@ function setPropSaleReceiver(id, field, who) {
   if (typeof renderSummary==='function' && document.getElementById('tab-summary')?.classList.contains('active')) renderSummary();
 }
 
-// จำว่ารายการค่าใช้จ่ายของทรัพย์ไหนถูกกางอยู่ (ย่อไว้เป็นค่าเริ่มต้น กันการ์ดยาว)
+// จำว่ารายการค่าใช้จ่าย/เอกสารของทรัพย์ไหนถูกกางอยู่ (ย่อไว้เป็นค่าเริ่มต้น กันการ์ดยาว)
 let expListOpen = new Set();
+let docsOpen = new Set();
 function toggleExpList(id) {
   const el  = document.getElementById('explist-'+id);
   const arr = document.getElementById('explistarr-'+id);
@@ -2164,6 +2165,15 @@ function toggleExpList(id) {
   el.style.display = show ? '' : 'none';
   if (arr) arr.textContent = show ? '▾' : '▸';
   if (show) expListOpen.add(id); else expListOpen.delete(id);
+}
+function toggleDocList(id) {
+  const el  = document.getElementById('docs-'+id);
+  const arr = document.getElementById('docsarr-'+id);
+  if (!el) return;
+  const show = el.style.display === 'none';
+  el.style.display = show ? '' : 'none';
+  if (arr) arr.textContent = show ? '▾' : '▸';
+  if (show) docsOpen.add(id); else docsOpen.delete(id);
 }
 
 function renderProps() {
@@ -2405,14 +2415,18 @@ function renderProps() {
             </div>
           </div>`:''}
 
-          <!-- DOCS SECTION (ทุกทรัพย์) -->
+          <!-- DOCS SECTION (ทุกทรัพย์) — กดหัวข้อเพื่อย่อ/ขยาย -->
+          ${(()=>{ const _d=p.docs||[]; const _done=_d.filter(x=>x.done).length; const _open=docsOpen.has(p.id); return `
           <div style="margin-top:18px">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-              <div class="section-title" style="margin-bottom:0">📋 เอกสาร</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px">
+              <button onclick="event.stopPropagation();toggleDocList('${p.id}')" style="background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;gap:6px" class="section-title" title="แตะเพื่อย่อ/ขยาย">
+                <span id="docsarr-${p.id}" style="display:inline-block;width:14px;color:var(--gray)">${_open?'▾':'▸'}</span>
+                📋 เอกสาร${_d.length?` <span style="font-size:12px;font-weight:700;color:${_done===_d.length?'var(--green)':'var(--amber)'}">(${_done}/${_d.length})</span>`:''}
+              </button>
               <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openModal('modal-doctype')">+ เพิ่มประเภท</button>
             </div>
-            ${propDocsHtml(p)}
-          </div>
+            <div id="docs-${p.id}" style="display:${_open?'':'none'}">${propDocsHtml(p)}</div>
+          </div>`; })()}
         </div>
       </div>`;
   }).join('');
