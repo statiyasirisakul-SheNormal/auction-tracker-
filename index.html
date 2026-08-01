@@ -2016,9 +2016,10 @@ function setLineNotify(id, on) {
 
 // งบ/ค่ารีโนเวท (item 8) — ช่องกรอกในตัวการ์ด + progress bar + เตือนเกินงบ
 // ค่าที่กรอกจะไปเป็น "ค่าซ่อมแซม วิเคราะห์จากพื้นที่จริง" ในหน้าคำนวณอัตโนมัติ
-function renoBudgetBar(p, spent) {
+function renoBudgetBar(p, spent, acqCost) {
   const budget = Number(p.renoBudget) || 0;
   const size   = Number(p.size) || 0;
+  const acq    = Number(acqCost) || 0;
   // ช่องกรอกค่ารีโนเวทแบบ inline (กรอกตรงนี้ได้เลย ไม่ต้องเข้าหน้าแก้ไข)
   const input = `
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:${budget?'8px':'2px'}">
@@ -2055,10 +2056,11 @@ function renoBudgetBar(p, spent) {
         <div style="height:100%;width:${barPct}%;background:${barColor};border-radius:20px;transition:width .3s"></div>
       </div>
       <div style="font-size:11px;margin-top:6px;font-weight:700;color:${isOver?'var(--red)':'var(--gray)'}">
-        จ่ายจริง ${fmtPrice(spent)} · ${isOver
+        รีโนเวทจริง ${fmtPrice(spent)} · ${isOver
           ? `⚠️ เกินงบ ${fmtPrice(over)}`
           : `เหลืองบ ${fmtPrice(remain)}`}
-      </div>`:''}
+      </div>
+      ${acq>0?`<div style="font-size:10px;margin-top:4px;color:var(--gray)">💰 แยกต้นทุนซื้อ/ค่าธรรมเนียมออก ${fmtPrice(acq)} (ไม่นับในงบรีโนเวท)</div>`:''}`:''}
     </div>`;
 }
 // กรอกค่ารีโนเวทจากการ์ด → เก็บเป็นงบ (renoBudget) และค่าซ่อมแซมในหน้าคำนวณ (calcRepair)
@@ -2220,22 +2222,24 @@ function renderProps() {
               <div class="section-title" style="margin-bottom:0">🔨 ค่าใช้จ่าย${renoTotal>0?` <span style="color:var(--green);font-weight:800;margin-left:6px">${fmtPrice(renoTotal)}</span>`:''}</div>
               <button class="btn btn-success btn-xs" onclick="event.stopPropagation();openRenoForProp('${p.id}')">+ เพิ่ม</button>
             </div>
-            ${renoBudgetBar(p, renoTotal)}
+            ${renoBudgetBar(p, propRenoSpent(p), propAcqCost(p))}
             ${renoItems.length ? `
             <div style="background:var(--green-lt);border-radius:9px;padding:4px 12px;">
               ${renoItems.map(e=>{
                 const isP = e.payer === 'partner';
+                const isAcq = isAcquisitionCost(e);
                 const payerBadge = isP
                   ? `<span style="font-size:10px;background:var(--blue-lt);color:var(--blue);padding:1px 5px;border-radius:4px;font-weight:700;flex-shrink:0" title="หุ้นส่วนจ่าย">🤝 หุ้นส่วน</span>`
                   : `<span style="font-size:10px;background:#F0FDF4;color:var(--green);padding:1px 5px;border-radius:4px;font-weight:700;flex-shrink:0" title="ฉันจ่าย">👤 ฉัน</span>`;
                 const settledBadge = e.settled ? `<span style="font-size:10px;background:#F3F4F6;color:var(--gray);padding:1px 5px;border-radius:4px;font-weight:700;flex-shrink:0" title="ตัดบัญชีระหว่างเราแล้ว">✓ ตัด</span>` : '';
                 return `
-                <div onclick="event.stopPropagation();editExpense('${e.id}')" style="display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px dashed #C6E6D0;font-size:12px;cursor:pointer;border-radius:4px" onmouseover="this.style.background='rgba(0,0,0,.03)'" onmouseout="this.style.background=''">
+                <div onclick="event.stopPropagation();editExpense('${e.id}')" style="display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px dashed #C6E6D0;font-size:12px;cursor:pointer;border-radius:4px;${isAcq?'opacity:.7':''}" onmouseover="this.style.background='rgba(0,0,0,.03)'" onmouseout="this.style.background=''">
                   <span style="color:var(--gray);min-width:62px;flex-shrink:0">${fmtDate(e.date)}</span>
-                  <span style="flex:1;font-weight:600;color:${e.settled?'var(--gray)':'#1F2937'}">${e.desc}</span>
+                  <span style="flex:1;font-weight:600;color:${e.settled?'var(--gray)':'#1F2937'}">${e.desc}${isAcq?` <span style="font-size:9px;background:#FEF3C7;color:#92400E;padding:1px 4px;border-radius:3px;font-weight:700" title="นับเป็นต้นทุนซื้อ/ค่าธรรมเนียม ไม่รวมในงบรีโนเวท">ต้นทุนซื้อ</span>`:''}</span>
                   ${payerBadge}
                   ${settledBadge}
                   <span style="font-weight:700;color:${isP?'var(--blue)':'var(--green)'};white-space:nowrap;flex-shrink:0">${fmtPrice(e.amount)}</span>
+                  <button onclick="event.stopPropagation();toggleExpenseReno('${e.id}')" style="background:${isAcq?'#FEF3C7':'#F0FDF4'};border:1px solid var(--border);border-radius:4px;cursor:pointer;color:${isAcq?'#92400E':'var(--green)'};font-size:10px;padding:2px 5px;flex-shrink:0;font-weight:700" title="สลับ: นับ/ไม่นับในงบรีโนเวท">${isAcq?'💰ซื้อ':'🛠รีโน'}</button>
                   <button onclick="event.stopPropagation();toggleExpenseSettled('${e.id}')" style="background:${e.settled?'#E5E7EB':'#F3F4F6'};border:1px solid var(--border);border-radius:4px;cursor:pointer;color:${e.settled?'var(--navy)':'var(--gray)'};font-size:10px;padding:2px 5px;flex-shrink:0;font-weight:700" title="ตัด/ยกเลิกตัดบัญชี">${e.settled?'✓ตัด':'ตัด'}</button>
                   <button onclick="event.stopPropagation();deleteExpense('${e.id}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:13px;padding:0 2px;flex-shrink:0" title="ลบ">✕</button>
                 </div>`;
@@ -2980,6 +2984,14 @@ function toggleExpenseSettled(id) {
   e.settled = !e.settled;
   saveS(); renderReno(); renderProps();
 }
+// สลับว่ารายการนี้นับเป็นค่ารีโนเวท หรือ ต้นทุนซื้อ/ค่าธรรมเนียม (ไม่รวมในงบรีโนเวท)
+function toggleExpenseReno(id) {
+  const e = S.expenses.find(x=>x.id===id);
+  if (!e) return;
+  e.notReno = !isAcquisitionCost(e);   // ตั้งค่าชัดเจนตรงข้ามกับสถานะปัจจุบัน
+  saveS(); renderReno(); renderProps();
+  toast(e.notReno ? '💰 นับเป็นต้นทุนซื้อ (ไม่รวมงบรีโนเวท)' : '🛠 นับเป็นค่ารีโนเวท');
+}
 function toggleExpensePayer(id) {
   const e = S.expenses.find(x=>x.id===id);
   if (!e) return;
@@ -3263,8 +3275,24 @@ function propBuyPrice(p) {
   const tR = ROUNDS[p.targetRound||0]||ROUNDS[0];
   return base ? Math.floor(base*(1-tR.disc)) : 0;
 }
+// แยก "ต้นทุนซื้อ/ค่าธรรมเนียม" ออกจากค่ารีโนเวท (ทวนลอจิกงบรีโนเวท)
+// e.notReno === true  → ไม่นับเป็นรีโนเวทเสมอ (ผู้ใช้กดเอง)
+// e.notReno === false → นับเป็นรีโนเวทเสมอ (ผู้ใช้กดเอง)
+// ไม่ได้ตั้ง          → เดาอัตโนมัติจากคำในรายละเอียด (ราคาซื้อ/ค่าบ้าน/มัดจำ/ค่าโอน/ธรรมเนียม/ประมูล)
+const ACQ_KEYWORDS = ['ราคาซื้อ','ค่าบ้าน','บ้านส่วน','ซื้อบ้าน','มัดจำ','ค่าโอน','โอนที่','ค่าธรรมเนียม','ธรรมเนียม','ประมูล','กรมบังคับคดี','วางก่อน','ค่าที่ดิน','ค่าซื้อ'];
+function isAcquisitionCost(e) {
+  if (e.notReno === true)  return true;
+  if (e.notReno === false) return false;
+  const d = ((e.desc||'') + ' ' + (e.cat||''));
+  return ACQ_KEYWORDS.some(k => d.includes(k));
+}
+// ค่ารีโนเวทจริง (ไม่รวมต้นทุนซื้อ/ค่าธรรมเนียม) — ใช้ในแถบงบ + ค่าซ่อมแซมหน้าคำนวณ + เงินจม dashboard
 function propRenoSpent(p) {
-  return S.expenses.filter(e=>e.propId===p.id).reduce((s,e)=>s+Number(e.amount||0),0);
+  return S.expenses.filter(e=>e.propId===p.id && !isAcquisitionCost(e)).reduce((s,e)=>s+Number(e.amount||0),0);
+}
+// ต้นทุนซื้อ/ค่าธรรมเนียมที่ถูกแยกออก (ไว้แสดงให้เห็นว่าตัดอะไรออกบ้าง)
+function propAcqCost(p) {
+  return S.expenses.filter(e=>e.propId===p.id && isAcquisitionCost(e)).reduce((s,e)=>s+Number(e.amount||0),0);
 }
 // แถบแนวนอน: rows = [{label,value,color,sub}]
 function dashBars(rows, fmt) {
