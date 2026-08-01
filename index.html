@@ -1405,6 +1405,16 @@ function propCosts(p) {
   return { buy, fees, expTotal, totalCost };
 }
 
+// ── กำไรมาตรฐาน (ใช้ทุกหน้าให้ตรงกัน) ──
+// กำไร = ราคาขาย − ค่าใช้จ่ายที่บันทึกทั้งหมด (ราคาซื้อ + ค่าธรรมเนียม + รีโนเวท อยู่ในค่าใช้จ่ายอยู่แล้ว)
+// *ไม่* หักราคาซื้อซ้ำอีก เพราะราคาซื้อถูกบันทึกเป็นค่าใช้จ่ายแล้ว
+function propGross(p) {
+  const sell = Number(p.actualSell) || 0;
+  if (!sell) return null;
+  return sell - propCosts(p).totalCost;
+}
+function propNet(p) { const g = propGross(p); return g === null ? null : g / 2; }
+
 // ═══════════════════════════════════════════════
 //  HELPERS
 // ═══════════════════════════════════════════════
@@ -3348,9 +3358,9 @@ function renderDashboard() {
   // KPI
   const soldProps = S.props.filter(p=>isSold(p));
   const profitRows = soldProps.map(p=>{
-    const buy=propBuyPrice(p), exp=propRenoSpent(p);
-    const gross=Number(p.actualSell)-buy-exp;
-    const roi = (buy+exp)>0 ? gross/(buy+exp)*100 : 0;
+    const invested = propCosts(p).totalCost;         // ค่าใช้จ่ายทั้งหมด (รวมราคาซื้อ)
+    const gross = propGross(p) || 0;                 // ขาย − ค่าใช้จ่ายทั้งหมด
+    const roi = invested>0 ? gross/invested*100 : 0;
     let hold=null;
     if (p.wonDate && p.soldDate) hold=Math.max(0,Math.round((new Date(p.soldDate)-new Date(p.wonDate))/86400000));
     return { p, gross, net:gross/2, roi, hold };
@@ -3425,9 +3435,9 @@ function renderSummary() {
   const totalMy  = stAll.myPaid;
   const totalP   = stAll.partnerPaid;
   const totalBal = stAll.balance;
-  const profitProps = S.props.filter(p=>isSold(p)&&(Number(p.actualBuy)||Number(p.calcCustomBid))>0).map(p=>{
+  const profitProps = S.props.filter(p=>isSold(p)).map(p=>{
     const allExp = S.expenses.filter(e=>e.propId===p.id).reduce((s,e)=>s+Number(e.amount||0),0);
-    const gross  = Number(p.actualSell)-(Number(p.actualBuy)||Number(p.calcCustomBid))-allExp;
+    const gross  = Number(p.actualSell)-allExp;   // ค่าใช้จ่ายรวมราคาซื้อแล้ว ไม่หักซ้ำ
     return { p, allExp, gross, net: gross/2 };
   });
   const wonDocs = S.props.filter(p=>isAcquired(p)).map(p=>{ syncPropDocs(p); return { total:p.docs.length, done:p.docs.filter(d=>d.done).length }; });
@@ -3551,9 +3561,8 @@ function renderSummaryProp(pid) {
   const _si2    = stageInfo(p.status||'watching');
   const sb      = _si2.badge, sl = _si2.icon+' '+_si2.label;
   const docsTotal= p.docs.length; const docsDone = p.docs.filter(d=>d.done).length;
-  const _buyPrice = Number(p.actualBuy)||Number(p.calcCustomBid);
-  const hasSold = Number(p.actualSell)>0 && _buyPrice>0;
-  const gross   = hasSold ? Number(p.actualSell)-_buyPrice-expAll : null;
+  const hasSold = Number(p.actualSell)>0;
+  const gross   = hasSold ? Number(p.actualSell)-expAll : null;   // ค่าใช้จ่ายรวมราคาซื้อแล้ว ไม่หักซ้ำ
   const net     = hasSold ? gross/2 : null;
 
   document.getElementById('summary-content').innerHTML = `
