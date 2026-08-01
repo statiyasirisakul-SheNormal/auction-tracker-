@@ -35,9 +35,19 @@ ALTER TABLE auction_expenses   DISABLE ROW LEVEL SECURITY;
 ALTER TABLE auction_doc_types  DISABLE ROW LEVEL SECURITY;
 
 -- เปิด realtime สำหรับทั้ง 3 ตาราง (ให้เครื่องอื่นอัปเดตอัตโนมัติ)
-ALTER PUBLICATION supabase_realtime ADD TABLE auction_props;
-ALTER PUBLICATION supabase_realtime ADD TABLE auction_expenses;
-ALTER PUBLICATION supabase_realtime ADD TABLE auction_doc_types;
+-- ใช้ DO block กัน error ถ้าเคยเพิ่มไปแล้ว (รันซ้ำได้)
+DO $$
+DECLARE t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['auction_props','auction_expenses','auction_doc_types'] LOOP
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_publication_tables
+      WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = t
+    ) THEN
+      EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE %I', t);
+    END IF;
+  END LOOP;
+END $$;
 
 -- =============================================
 -- STORAGE BUCKET สำหรับรูปภาพ (item 12)
