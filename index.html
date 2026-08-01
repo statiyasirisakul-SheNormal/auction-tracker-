@@ -902,13 +902,19 @@ input, select, textarea { font-size: 16px !important; }
       <div class="form-group">
         <label class="form-label">หมวดหมู่</label>
         <select class="form-select" id="reno-cat">
-          <option>โครงสร้าง/หลังคา</option><option>งานระบบไฟฟ้า</option>
-          <option>งานระบบประปา</option><option>งานพื้น/กระเบื้อง</option>
-          <option>ทาสี/ผนัง</option><option>ประตู/หน้าต่าง</option>
-          <option>ห้องน้ำ/สุขภัณฑ์</option><option>ครัว/เฟอร์นิเจอร์</option>
-          <option>สวน/รั้ว/ถนน</option><option>ค่าแรงงาน</option>
-          <option>ค่าออกแบบ/สำรวจ</option><option>ค่าขนส่ง/อุปกรณ์</option>
-          <option>ค่าดำเนินการ/ราชการ</option><option>อื่นๆ</option>
+          <optgroup label="🏠 ต้นทุนซื้อ/ภาษี — ไม่นับในงบรีโนเวท">
+            <option>ค่าบ้าน (ต้นทุนซื้อ)</option>
+            <option>ค่าภาษี/ค่าธรรมเนียม</option>
+          </optgroup>
+          <optgroup label="🛠 งานรีโนเวท — นับในงบรีโนเวท">
+            <option>โครงสร้าง/หลังคา</option><option>งานระบบไฟฟ้า</option>
+            <option>งานระบบประปา</option><option>งานพื้น/กระเบื้อง</option>
+            <option>ทาสี/ผนัง</option><option>ประตู/หน้าต่าง</option>
+            <option>ห้องน้ำ/สุขภัณฑ์</option><option>ครัว/เฟอร์นิเจอร์</option>
+            <option>สวน/รั้ว/ถนน</option><option>ค่าแรงงาน</option>
+            <option>ค่าออกแบบ/สำรวจ</option><option>ค่าขนส่ง/อุปกรณ์</option>
+            <option>ค่าดำเนินการ/ราชการ</option><option>อื่นๆ</option>
+          </optgroup>
         </select>
       </div>
       <div class="form-group">
@@ -3275,16 +3281,19 @@ function propBuyPrice(p) {
   const tR = ROUNDS[p.targetRound||0]||ROUNDS[0];
   return base ? Math.floor(base*(1-tR.disc)) : 0;
 }
-// แยก "ต้นทุนซื้อ/ค่าธรรมเนียม" ออกจากค่ารีโนเวท (ทวนลอจิกงบรีโนเวท)
-// e.notReno === true  → ไม่นับเป็นรีโนเวทเสมอ (ผู้ใช้กดเอง)
-// e.notReno === false → นับเป็นรีโนเวทเสมอ (ผู้ใช้กดเอง)
-// ไม่ได้ตั้ง          → เดาอัตโนมัติจากคำในรายละเอียด (ราคาซื้อ/ค่าบ้าน/มัดจำ/ค่าโอน/ธรรมเนียม/ประมูล)
+// แยก "ต้นทุนซื้อ/ค่าภาษี" ออกจากค่ารีโนเวท (ทวนลอจิกงบรีโนเวท)
+// หลัก: ดูจาก "หมวดหมู่" — หมวด ค่าบ้าน / ค่าภาษี ไม่นับเป็นรีโนเวท
+//   e.notReno === true  → ไม่นับเป็นรีโนเวทเสมอ (กดปุ่มเอง)
+//   e.notReno === false → นับเป็นรีโนเวทเสมอ (กดปุ่มเอง)
+const NON_RENO_CATS = ['ค่าบ้าน (ต้นทุนซื้อ)', 'ค่าภาษี/ค่าธรรมเนียม'];
+// คำช่วยเดา (เฉพาะช่วงเปลี่ยนผ่าน — ใช้กับรายการเก่าที่ยังอยู่หมวด "อื่นๆ" ยังไม่ได้จัดหมวดใหม่)
 const ACQ_KEYWORDS = ['ราคาซื้อ','ค่าบ้าน','บ้านส่วน','ซื้อบ้าน','มัดจำ','ค่าโอน','โอนที่','ค่าธรรมเนียม','ธรรมเนียม','ประมูล','กรมบังคับคดี','วางก่อน','ค่าที่ดิน','ค่าซื้อ'];
 function isAcquisitionCost(e) {
   if (e.notReno === true)  return true;
   if (e.notReno === false) return false;
-  const d = ((e.desc||'') + ' ' + (e.cat||''));
-  return ACQ_KEYWORDS.some(k => d.includes(k));
+  if (NON_RENO_CATS.includes(e.cat)) return true;            // หมวดต้นทุนซื้อ/ภาษี
+  if (e.cat === 'อื่นๆ') return ACQ_KEYWORDS.some(k => (e.desc||'').includes(k)); // เดาเฉพาะของเก่าในหมวดอื่นๆ
+  return false;
 }
 // ค่ารีโนเวทจริง (ไม่รวมต้นทุนซื้อ/ค่าธรรมเนียม) — ใช้ในแถบงบ + ค่าซ่อมแซมหน้าคำนวณ + เงินจม dashboard
 function propRenoSpent(p) {

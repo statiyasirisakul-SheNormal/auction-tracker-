@@ -3,12 +3,11 @@
 //  แจ้งเตือน LINE ก่อนวันนัดประมูล 3 วัน — ยิงเข้ากลุ่ม LINE ของ user
 //  รันวันละครั้งด้วย pg_cron (ดู notify-cron.sql)
 //
-//  Secrets ที่ต้องตั้ง (supabase secrets set ...):
-//    SB_URL                     = https://rjpzmaeiopiqtsjaksed.supabase.co
-//    SB_SERVICE_ROLE            = <service_role key ของโปรเจกต์>
+//  Secrets ที่ user ต้องตั้งเอง (แค่ 2 ค่า):
 //    LINE_CHANNEL_ACCESS_TOKEN  = <LINE Messaging API channel token>
 //    LINE_TARGET_ID             = <groupId/userId ปลายทาง>
 //    NOTIFY_DAYS_BEFORE         = 3   (ไม่บังคับ, ค่าเริ่มต้น 3)
+//  (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY มีให้อัตโนมัติในทุก edge function)
 // ══════════════════════════════════════════════════════════════
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -44,14 +43,14 @@ async function sendLine(token: string, to: string, text: string) {
 
 Deno.serve(async (_req) => {
   try {
-    const SB_URL = Deno.env.get("SB_URL")!;
-    const SB_KEY = Deno.env.get("SB_SERVICE_ROLE")!;
+    const SB_URL = Deno.env.get("SUPABASE_URL")!;                 // มีให้อัตโนมัติ
+    const SB_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;    // มีให้อัตโนมัติ
     const LINE_TOKEN = Deno.env.get("LINE_CHANNEL_ACCESS_TOKEN")!;
     const LINE_TARGET = Deno.env.get("LINE_TARGET_ID")!;
     const DAYS = parseInt(Deno.env.get("NOTIFY_DAYS_BEFORE") || "3");
 
-    if (!SB_URL || !SB_KEY || !LINE_TOKEN || !LINE_TARGET) {
-      return new Response("missing secrets", { status: 500 });
+    if (!LINE_TOKEN || !LINE_TARGET) {
+      return new Response(JSON.stringify({ ok: false, error: "ยังไม่ได้ตั้ง LINE_CHANNEL_ACCESS_TOKEN / LINE_TARGET_ID" }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
     const sb = createClient(SB_URL, SB_KEY);
     const today = todayBangkok();
