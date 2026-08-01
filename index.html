@@ -1153,12 +1153,55 @@ function loadS() {
   if (!S.settings)  S.settings  = {};
   // Cloud credentials are per-device only, entered via ⚙️ Settings — never shipped as defaults here.
   // (A previous version hardcoded real Supabase credentials in this public source file — removed.)
+  buildSnap();  // baseline snapshot สำหรับตรวจจับ record ที่เปลี่ยน (item 14)
 }
 function saveS() {
   S.lastModified = new Date().toISOString();
+  stampChanged();  // ประทับเวลาต่อ record ที่เปลี่ยนจริง (item 14 — กัน sync ทับกัน)
   try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
   // Sync to per-entity tables (clock-in pattern). Non-blocking; queued if a sync is in flight.
   scheduleSync();
+}
+
+// ── กัน sync ทับกันข้อมูลหาย (item 14) ──
+// เก็บ snapshot ของแต่ละ record เพื่อรู้ว่าอันไหน "เปลี่ยนจริง" แล้วประทับ _ts เฉพาะอันนั้น
+let _recSnap = null;
+function buildSnap() {
+  _recSnap = { p:{}, e:{} };
+  (S.props||[]).forEach(r=>{ if(r&&r.id) _recSnap.p[r.id]=JSON.stringify({...r,_ts:0}); });
+  (S.expenses||[]).forEach(r=>{ if(r&&r.id) _recSnap.e[r.id]=JSON.stringify({...r,_ts:0}); });
+}
+function stampChanged() {
+  const now = Date.now();
+  if (!_recSnap) buildSnap();
+  const doArr = (arr, key) => {
+    const snap = _recSnap[key] || {}; const live = {};
+    (arr||[]).forEach(r => {
+      if (!r || !r.id) return;
+      const j = JSON.stringify({...r, _ts:0});
+      live[r.id] = j;
+      if (snap[r.id] !== j) r._ts = now;   // ใหม่หรือแก้ไข → ประทับเวลา
+    });
+    _recSnap[key] = live;
+  };
+  doArr(S.props, 'p'); doArr(S.expenses, 'e');
+}
+// รวมข้อมูล cloud + local แบบไม่ทับของใหม่ทิ้ง:
+//  - record ที่มีทั้งสองฝั่ง → เก็บอันที่ _ts ใหม่กว่า
+//  - มีเฉพาะ cloud → เอาจาก cloud (เครื่องอื่นเพิ่ง/สร้าง)
+//  - มีเฉพาะ local → เก็บถ้าเพิ่งแก้หลัง pull ล่าสุด (ยังไม่ทันขึ้น cloud) ไม่งั้นถือว่าถูกลบจากเครื่องอื่น
+function mergeCloud(localArr, cloudArr, pulledAt) {
+  const seen = new Set(); const out = [];
+  (cloudArr||[]).forEach(r => {
+    const loc = (localArr||[]).find(x => x.id === r.id);
+    out.push(loc && (loc._ts||0) > (r._ts||0) ? loc : r);
+    seen.add(r.id);
+  });
+  (localArr||[]).forEach(r => {
+    if (seen.has(r.id)) return;
+    if ((r._ts||0) > (pulledAt||0)) out.push(r);  // local ล้วนที่ยังไม่ sync → เก็บไว้
+  });
+  return out;
 }
 
 // ── Supabase client (per-entity tables, mirrors ระบบตอกบัตร pattern) ──
@@ -1195,13 +1238,13 @@ async function syncToCloud() {
   // Upsert all local entities (one row per entity, like clock_records / leaves / withdrawals)
   if (S.props?.length) {
     const { error } = await client.from('auction_props').upsert(
-      S.props.map(p => ({ id: p.id, user_key: uk, data: p, updated_at: stamp }))
+      S.props.map(p => ({ id: p.id, user_key: uk, data: p, updated_at: new Date(p._ts||Date.now()).toISOString() }))
     );
     if (error) throw error;
   }
   if (S.expenses?.length) {
     const { error } = await client.from('auction_expenses').upsert(
-      S.expenses.map(e => ({ id: e.id, user_key: uk, prop_id: e.propId || null, data: e, updated_at: stamp }))
+      S.expenses.map(e => ({ id: e.id, user_key: uk, prop_id: e.propId || null, data: e, updated_at: new Date(e._ts||Date.now()).toISOString() }))
     );
     if (error) throw error;
   }
@@ -1243,11 +1286,19 @@ async function loadFromCloud() {
     const localHasData = (S.props?.length||0) + (S.expenses?.length||0) > 0;
 
     if (cloudHasData) {
-      // Cloud has data → adopt it
-      S.props    = cloudProps;
-      S.expenses = cloudExps;
+      // Cloud has data → MERGE (ไม่ทับของ local ที่ใหม่กว่า/ยังไม่ sync) — item 14
+      const pulledAt = S._pulledAt || 0;
+      const mergedProps = mergeCloud(S.props, cloudProps, pulledAt);
+      const mergedExps  = mergeCloud(S.expenses, cloudExps, pulledAt);
+      const localWon = mergedProps.length > cloudProps.length || mergedExps.length > cloudExps.length;
+      S.props    = mergedProps;
+      S.expenses = mergedExps;
       if (cloudDts.length) S.docTypes = cloudDts;
+      S._pulledAt = Date.now();
+      buildSnap();
       try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
+      // ถ้ามี record local ที่ cloud ยังไม่มี → ดันขึ้น cloud ให้ครบ
+      if (localWon) syncToCloud().catch(()=>{});
     } else if (localHasData) {
       // Cloud empty, local has data → migrate up (first-time setup or recovery)
       await syncToCloud();
@@ -1290,16 +1341,19 @@ async function refetchTable(which) {
   const client = initSb();
   const uk = S.settings?.userKey;
   if (!client || !uk || _syncing) return; // skip while our own sync is in flight
+  const pulledAt = S._pulledAt || 0;
   if (which === 'props') {
     const { data } = await client.from('auction_props').select('*').eq('user_key', uk);
-    if (data) S.props = data.map(r => r.data);
+    if (data) S.props = mergeCloud(S.props, data.map(r => r.data), pulledAt);   // item 14: merge ไม่ทับ
   } else if (which === 'expenses') {
     const { data } = await client.from('auction_expenses').select('*').eq('user_key', uk);
-    if (data) S.expenses = data.map(r => r.data);
+    if (data) S.expenses = mergeCloud(S.expenses, data.map(r => r.data), pulledAt);
   } else if (which === 'docTypes') {
     const { data } = await client.from('auction_doc_types').select('*').eq('user_key', uk);
     if (data) S.docTypes = data.map(r => ({ id: r.id, name: r.name }));
   }
+  S._pulledAt = Date.now();
+  buildSnap();
   try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
   renderAll();
 }
