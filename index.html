@@ -681,6 +681,7 @@ input, select, textarea { font-size: 16px !important; }
         <div class="card-title">🗺️ แผนที่รวมทรัพย์ทั้งหมด</div>
         <div id="map-legend" style="display:flex;gap:10px;flex-wrap:wrap;font-size:11px;font-weight:700"></div>
       </div>
+      <div id="map-filter" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
       <div id="map-canvas" style="height:520px;border-radius:12px;overflow:hidden;border:1.5px solid var(--border);background:#EAF0F5"></div>
       <div id="map-empty" style="display:none" class="empty"><div class="empty-icon">🗺️</div><p>ยังไม่มีทรัพย์ที่ระบุพิกัด/แผนที่<br><span style="font-size:12px;color:var(--gray)">ใส่ Google Maps URL หรือพิกัด (lat, lng) ในหน้าแก้ไขทรัพย์</span></p></div>
       <div id="map-list" style="margin-top:14px"></div>
@@ -1512,13 +1513,40 @@ function parseLatLng(str) {
   if (m) return { lat:+m[1], lng:+m[2] };
   return null;
 }
+let _mapFilter = 'all';
+function setMapFilter(f) { _mapFilter = f; renderMap(); }
+// จับกลุ่มสถานะสำหรับตัวกรองแผนที่
+function mapGroup(p) {
+  if (p.status === 'lost') return 'lost';
+  if (isSold(p)) return 'sold';
+  if (isAcquired(p)) return 'owned';   // ชนะ/รีโนเวท/ประกาศขาย
+  return 'watching';                    // เล็ง/ตรวจสอบ/ประมูล
+}
 async function renderMap() {
-  const props   = S.props.map(p => ({ p, ll: parseLatLng(p.mapUrl) }));
-  const located = props.filter(x => x.ll);
-  const legend  = document.getElementById('map-legend');
-  const emptyEl = document.getElementById('map-empty');
-  const canvas  = document.getElementById('map-canvas');
-  const listEl  = document.getElementById('map-list');
+  const MAP_FILTERS = [
+    { key:'all',      label:'ทั้งหมด' },
+    { key:'watching', label:'👁 กำลังเล็ง/ประมูล' },
+    { key:'owned',    label:'✓ เป็นเจ้าของ/รีโนเวท' },
+    { key:'sold',     label:'💰 ขายแล้ว' },
+    { key:'lost',     label:'✗ ไม่ได้ทรัพย์' },
+  ];
+  const filterEl = document.getElementById('map-filter');
+  if (filterEl) {
+    filterEl.innerHTML = MAP_FILTERS.map(f => {
+      const cnt = f.key==='all' ? S.props.filter(p=>parseLatLng(p.mapUrl)).length
+                                : S.props.filter(p=>parseLatLng(p.mapUrl) && mapGroup(p)===f.key).length;
+      const active = _mapFilter === f.key;
+      return `<button class="btn btn-xs ${active?'btn-primary':'btn-ghost'}" onclick="setMapFilter('${f.key}')">${f.label} (${cnt})</button>`;
+    }).join('');
+  }
+
+  const allProps = S.props.map(p => ({ p, ll: parseLatLng(p.mapUrl) }));
+  const props    = _mapFilter==='all' ? allProps : allProps.filter(x => mapGroup(x.p) === _mapFilter);
+  const located  = props.filter(x => x.ll);
+  const legend   = document.getElementById('map-legend');
+  const emptyEl  = document.getElementById('map-empty');
+  const canvas   = document.getElementById('map-canvas');
+  const listEl   = document.getElementById('map-list');
 
   // legend ตามสถานะ
   legend.innerHTML = STAGES.filter(s=>['watching','bidding','won','sold'].includes(s.key))
@@ -1532,8 +1560,12 @@ async function renderMap() {
     <div style="display:flex;gap:6px;flex-wrap:wrap">${missing.map(x=>`<span class="badge badge-gray">${x.p.code?x.p.code+' ':''}${x.p.name}</span>`).join('')}` : '';
 
   if (!located.length) {
+    if (_map) { _mapMarkers.forEach(mk => _map.removeLayer(mk)); _mapMarkers = []; }
     canvas.style.display = 'none';
     emptyEl.style.display = '';
+    emptyEl.querySelector('p').innerHTML = _mapFilter==='all'
+      ? 'ยังไม่มีทรัพย์ที่ระบุพิกัด/แผนที่<br><span style="font-size:12px;color:var(--gray)">ใส่ Google Maps URL หรือพิกัด (lat, lng) ในหน้าแก้ไขทรัพย์</span>'
+      : 'ไม่มีทรัพย์ในกลุ่มนี้ที่ระบุพิกัด';
     return;
   }
   canvas.style.display = '';
@@ -2070,6 +2102,9 @@ function setPropStatus(id, status) {
   const p = S.props.find(x=>x.id===id); if (!p) return;
   const prev = p.status;
   p.status = status;
+  // stamp วันที่เพื่อคำนวณระยะเวลาถือครอง (item 9)
+  if (isAcquired(p) && !p.wonDate) p.wonDate = todayISO();
+  if (status === 'sold' && !p.soldDate) p.soldDate = todayISO();
   // when newly acquired (ชนะประมูลขึ้นไป), ensure docs are initialised
   if (isAcquired(p) && !isAcquired({status:prev})) syncPropDocs(p);
   if (!isAcquired(p) && renoActiveProp===id) renoActiveProp='';
@@ -2169,6 +2204,8 @@ function savePropActualSell(propId, val) {
   p.actualSell = v;
   // กรอกราคาขายจริง → เลื่อนสถานะเป็น "ขายแล้ว" อัตโนมัติ (ถ้าเป็นเจ้าของทรัพย์แล้ว)
   if (v > 0 && isAcquired(p) && p.status !== 'sold') p.status = 'sold';
+  if (v > 0 && !p.soldDate) p.soldDate = todayISO();
+  if (v > 0 && !p.wonDate)  p.wonDate  = todayISO();
   if (v > 0 && renoActiveProp === propId) renoActiveProp = '';  // ขายแล้ว → เอาออกจากบ้านที่เลือกในหน้าค่าใช้จ่าย
   saveS(); renderProps(); renderReno(); updateBadges();
   if (typeof renderSold === 'function') renderSold();
@@ -2966,6 +3003,120 @@ function renderReno() {
 // ═══════════════════════════════════════════════
 //  SUMMARY
 // ═══════════════════════════════════════════════
+// ══════════════════════════════════════════════════
+//  DASHBOARD (item 9) — กราฟ SVG ล้วน ไม่พึ่ง library
+// ══════════════════════════════════════════════════
+// ราคาซื้อจริง หรือประมาณจากนัดเป้า
+function propBuyPrice(p) {
+  const explicit = Number(p.actualBuy) || Number(p.calcCustomBid);
+  if (explicit) return explicit;
+  const base = Number(p.appraisal)||Number(p.price)||0;
+  const tR = ROUNDS[p.targetRound||0]||ROUNDS[0];
+  return base ? Math.floor(base*(1-tR.disc)) : 0;
+}
+function propRenoSpent(p) {
+  return S.expenses.filter(e=>e.propId===p.id).reduce((s,e)=>s+Number(e.amount||0),0);
+}
+// แถบแนวนอน: rows = [{label,value,color,sub}]
+function dashBars(rows, fmt) {
+  if (!rows.length) return `<div style="font-size:12px;color:var(--gray);padding:8px 0">— ยังไม่มีข้อมูล —</div>`;
+  const max = Math.max(1, ...rows.map(r=>Math.abs(r.value)));
+  return `<div style="display:flex;flex-direction:column;gap:9px">${rows.map(r=>`
+    <div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+        <span style="font-weight:600;color:var(--navy);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%">${r.label}</span>
+        <span style="font-weight:800;color:${r.color}">${(fmt||fmtNum)(r.value)}${r.sub?` <span style="color:var(--gray);font-weight:600">${r.sub}</span>`:''}</span>
+      </div>
+      <div style="height:9px;background:#EEF2F6;border-radius:20px;overflow:hidden">
+        <div style="height:100%;width:${Math.max(2,Math.abs(r.value)/max*100)}%;background:${r.color};border-radius:20px"></div>
+      </div>
+    </div>`).join('')}</div>`;
+}
+// โดนัท SVG: segs = [{label,value,color}]
+function dashDonut(segs) {
+  const total = segs.reduce((s,x)=>s+x.value,0);
+  if (!total) return `<div style="font-size:12px;color:var(--gray)">— ยังไม่มีข้อมูล —</div>`;
+  const R=52, C=2*Math.PI*R; let off=0;
+  const arcs = segs.filter(s=>s.value>0).map(s=>{
+    const frac=s.value/total, len=frac*C;
+    const el=`<circle r="${R}" cx="70" cy="70" fill="none" stroke="${s.color}" stroke-width="22"
+      stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"></circle>`;
+    off+=len; return el;
+  }).join('');
+  const legend = segs.filter(s=>s.value>0).map(s=>`
+    <div style="display:flex;align-items:center;gap:6px;font-size:12px">
+      <span style="width:11px;height:11px;border-radius:3px;background:${s.color};flex-shrink:0"></span>
+      <span style="color:var(--navy);font-weight:600">${s.label}</span>
+      <span style="color:var(--gray);margin-left:auto;font-weight:700">${s.value}</span>
+    </div>`).join('');
+  return `<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+    <svg viewBox="0 0 140 140" style="width:130px;height:130px;flex-shrink:0">${arcs}
+      <text x="70" y="66" text-anchor="middle" style="font-size:24px;font-weight:800;fill:var(--navy)">${total}</text>
+      <text x="70" y="86" text-anchor="middle" style="font-size:11px;fill:var(--gray)">ทรัพย์</text>
+    </svg>
+    <div style="flex:1;min-width:150px;display:flex;flex-direction:column;gap:7px">${legend}</div>
+  </div>`;
+}
+function renderDashboard() {
+  if (!S.props.length) return '';
+  // KPI
+  const soldProps = S.props.filter(p=>isSold(p));
+  const profitRows = soldProps.map(p=>{
+    const buy=propBuyPrice(p), exp=propRenoSpent(p);
+    const gross=Number(p.actualSell)-buy-exp;
+    const roi = (buy+exp)>0 ? gross/(buy+exp)*100 : 0;
+    let hold=null;
+    if (p.wonDate && p.soldDate) hold=Math.max(0,Math.round((new Date(p.soldDate)-new Date(p.wonDate))/86400000));
+    return { p, gross, net:gross/2, roi, hold };
+  });
+  const totalNet   = profitRows.reduce((s,x)=>s+x.net,0);
+  const rois       = profitRows.filter(x=>isFinite(x.roi));
+  const avgRoi     = rois.length ? rois.reduce((s,x)=>s+x.roi,0)/rois.length : null;
+  const holds      = profitRows.filter(x=>x.hold!=null);
+  const avgHold    = holds.length ? Math.round(holds.reduce((s,x)=>s+x.hold,0)/holds.length) : null;
+  // เงินจม = ทรัพย์ที่เป็นเจ้าของแต่ยังไม่ขาย
+  const lockedProps = S.props.filter(p=>isAcquired(p)&&!isSold(p));
+  const lockedRows  = lockedProps.map(p=>({ label:(p.code?p.code+' ':'')+p.name, value:propBuyPrice(p)+propRenoSpent(p), color:'#0EA5E9' }))
+                                 .filter(r=>r.value>0).sort((a,b)=>b.value-a.value);
+  const totalLocked = lockedRows.reduce((s,r)=>s+r.value,0);
+
+  const kpi = (num,label,color,sub)=>`<div class="stat-card"><div class="stat-num" style="color:${color};font-size:${String(num).length>9?'19px':'24px'}">${num}</div><div class="stat-label">${label}</div>${sub?`<div style="font-size:10px;color:var(--gray);margin-top:2px">${sub}</div>`:''}</div>`;
+
+  // pipeline donut
+  const donutSegs = STAGES.map(s=>({ label:s.icon+' '+s.label, value:S.props.filter(p=>(p.status||'watching')===s.key).length, color:stageColor(s.key) }))
+    .concat([{ label:'✗ ไม่ได้ทรัพย์', value:S.props.filter(p=>p.status==='lost').length, color:stageColor('lost') }]);
+
+  const profitBars = profitRows.slice().sort((a,b)=>b.net-a.net).map(x=>({
+    label:(x.p.code?x.p.code+' ':'')+x.p.name, value:Math.round(x.net),
+    color:x.net>=0?'#16A34A':'#EF4444', sub:isFinite(x.roi)?`(ROI ${x.roi>=0?'+':''}${x.roi.toFixed(0)}%)`:''
+  }));
+
+  return `
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title" style="margin-bottom:14px">📈 แดชบอร์ด</div>
+    <div class="stat-grid" style="margin-bottom:18px">
+      ${kpi((totalNet>=0?'+':'')+fmtNum(Math.round(totalNet)), '💰 กำไรสุทธิสะสม (÷2) ฿', totalNet>=0?'var(--green)':'var(--red)', `จาก ${soldProps.length} ทรัพย์ที่ขายแล้ว`)}
+      ${kpi(fmtNum(totalLocked), '🔒 เงินจมรวม (฿)', 'var(--navy)', `${lockedRows.length} ทรัพย์ยังไม่ขาย`)}
+      ${kpi(avgRoi==null?'—':(avgRoi>=0?'+':'')+avgRoi.toFixed(1)+'%', '📊 ROI เฉลี่ย', avgRoi==null?'var(--gray)':avgRoi>=0?'var(--green)':'var(--red)', 'ต่อทรัพย์ที่ขายแล้ว')}
+      ${kpi(avgHold==null?'—':avgHold+' วัน', '⏱ ถือครองเฉลี่ย', 'var(--amber)', avgHold==null?'ยังไม่มีข้อมูลวันที่':'ชนะ→ขาย')}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px">
+      <div>
+        <div class="section-title">🏷 สถานะทรัพย์ (Pipeline)</div>
+        ${dashDonut(donutSegs)}
+      </div>
+      <div>
+        <div class="section-title">🔒 เงินจมแต่ละทรัพย์ (ยังไม่ขาย)</div>
+        ${dashBars(lockedRows, fmtNum)}
+      </div>
+    </div>
+    <div style="margin-top:18px">
+      <div class="section-title">💰 กำไรสุทธิรายทรัพย์ที่ขายแล้ว (÷2)</div>
+      ${dashBars(profitBars, (v)=>(v>=0?'+':'')+fmtNum(v))}
+    </div>
+  </div>`;
+}
+
 function renderSummary() {
   // populate dropdown
   const propSel = document.getElementById('summary-prop-sel');
@@ -2999,9 +3150,10 @@ function renderSummary() {
   const notifProps= S.props.filter(p=>p.notif&&(p.notif.tgToken||p.notif.browser)).length;
 
   document.getElementById('summary-content').innerHTML = `
+    ${renderDashboard()}
     <div class="stat-grid">
       <div class="stat-card"><div class="stat-num" style="color:var(--blue)">${S.props.length}</div><div class="stat-label">ทรัพย์ทั้งหมด</div></div>
-      <div class="stat-card"><div class="stat-num" style="color:var(--green)">${won}</div><div class="stat-label">ชนะประมูล</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--green)">${won}</div><div class="stat-label">เป็นเจ้าของ</div></div>
       <div class="stat-card"><div class="stat-num" style="color:var(--red)">${lost}</div><div class="stat-label">ไม่ได้ทรัพย์</div></div>
       <div class="stat-card"><div class="stat-num" style="color:var(--amber)">${watching}</div><div class="stat-label">กำลังติดตาม</div></div>
       <div class="stat-card">
