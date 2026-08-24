@@ -29,10 +29,9 @@ CREATE TABLE IF NOT EXISTS auction_doc_types (
 );
 CREATE INDEX IF NOT EXISTS auction_doc_types_user_idx ON auction_doc_types(user_key);
 
--- ปิด RLS (ใช้ user_key เป็น tenant แทน เหมือนระบบตอกบัตร)
-ALTER TABLE auction_props      DISABLE ROW LEVEL SECURITY;
-ALTER TABLE auction_expenses   DISABLE ROW LEVEL SECURITY;
-ALTER TABLE auction_doc_types  DISABLE ROW LEVEL SECURITY;
+-- RLS: ดูไฟล์ auth_rls.sql (อย่าปิด RLS ตรงนี้)
+-- เวอร์ชันก่อนหน้าเคย DISABLE RLS ไว้ ทำให้ใครก็ตามที่เห็น anon key ใน source
+-- อ่าน/ลบข้อมูลได้หมด — ตอนนี้เปลี่ยนไปใช้ Supabase Auth (PIN) + RLS แล้ว
 
 -- เปิด realtime สำหรับทั้ง 3 ตาราง (ให้เครื่องอื่นอัปเดตอัตโนมัติ)
 -- ใช้ DO block กัน error ถ้าเคยเพิ่มไปแล้ว (รันซ้ำได้)

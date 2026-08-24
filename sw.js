@@ -1,7 +1,7 @@
 // Service Worker — ระบบจัดการทรัพย์ กรมบังคับคดี (item 13 PWA)
 // เปิดแอปแบบ offline ได้: cache ตัวแอป (app shell) + รูปที่โหลดแล้ว
 // ข้อมูลจริงอยู่ใน localStorage + sync Supabase เมื่อออนไลน์
-const CACHE = 'auction-tracker-v3';
+const CACHE = 'auction-tracker-v4';
 const SHELL = [
   './',
   './index.html',

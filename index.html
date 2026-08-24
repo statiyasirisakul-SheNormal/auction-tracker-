@@ -190,6 +190,14 @@ input[type="file"] { display:none; }
 .prop-card.lost .prop-header { background:#FFF5F5; }
 .prop-header:hover { filter:brightness(.97); }
 .prop-num { width:34px; height:34px; background:var(--navy); color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; flex-shrink:0; }
+/* รูปย่อในหัวการ์ด — เห็นว่าเป็นทรัพย์หลังไหนโดยไม่ต้องกางการ์ด */
+.prop-thumb { width:46px; height:46px; border-radius:9px; object-fit:cover; flex-shrink:0;
+  border:1.5px solid var(--border); background:#F3F4F6; cursor:zoom-in; transition:.15s; }
+.prop-thumb:hover { transform:scale(1.06); border-color:#93C5FD; }
+/* ทรัพย์ที่ยังไม่มีรูป — ช่องว่างจาง ๆ ให้การ์ดเรียงตรงกันทุกใบ */
+.prop-thumb-empty { width:46px; height:46px; border-radius:9px; flex-shrink:0; border:1.5px dashed var(--border);
+  background:#FAFAFA; display:flex; align-items:center; justify-content:center; font-size:17px; opacity:.4; }
+@media (max-width:520px){ .prop-thumb, .prop-thumb-empty { width:38px; height:38px; } }
 .prop-info { flex:1; min-width:0; }
 .prop-name { font-weight:700; font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .prop-sub  { font-size:12px; color:var(--gray); margin-top:2px; }
@@ -372,15 +380,17 @@ input, select, textarea { font-size: 16px !important; }
   /* ── Prop card: grid layout ── */
   .prop-header {
     display: grid;
-    grid-template-columns: 32px 1fr auto;
+    grid-template-columns: 32px 40px 1fr auto;
     grid-template-areas:
-      "num info  actions"
-      "num badges badges";
-    column-gap: 10px;
+      "num thumb info   actions"
+      "num thumb badges badges";
+    column-gap: 9px;
     row-gap: 5px;
     padding: 12px 12px;
     align-items: center;
   }
+  /* รูปย่อกินสองแถว วางชิดเลขลำดับ — ถ้าไม่กำหนด area จะตกไปแถวใหม่เอง */
+  .prop-thumb, .prop-thumb-empty { grid-area: thumb; align-self:start; margin-top:2px; }
   .prop-num     { grid-area: num; width:32px; height:32px; font-size:12px; align-self:start; margin-top:2px; flex-shrink:0; }
   .prop-info    { grid-area: info; min-width:0; }
   .prop-name    { white-space:normal !important; font-size:14px; line-height:1.3; }
@@ -472,6 +482,47 @@ input, select, textarea { font-size: 16px !important; }
 </style>
 </head>
 <body>
+
+<!-- ── LOGIN GATE (แพตเทิร์นเดียวกับระบบตอกบัตร) ────────────────────
+     บังหน้าจอไว้จนกว่าจะล็อกอินสำเร็จ — ไม่มี token = RLS ไม่ให้ข้อมูลอยู่แล้ว
+     ตัวนี้แค่กัน UI ไม่ให้แสดงหน้าเปล่า ๆ ให้งง -->
+<style>
+#loginGate{position:fixed;inset:0;z-index:9999;background:linear-gradient(160deg,#1E3A8A,#0F172A);
+  display:none;align-items:center;justify-content:center;padding:20px}
+#loginGate .lp-card{background:#fff;border-radius:18px;padding:28px 26px;width:100%;max-width:340px;
+  box-shadow:0 24px 60px rgba(0,0,0,.4);text-align:center}
+#loginGate h2{font-size:19px;font-weight:800;color:#1E3A8A;margin:10px 0 2px}
+#loginGate .lp-sub{font-size:12.5px;color:#6B7280;margin-bottom:18px}
+#loginDots{display:flex;gap:11px;justify-content:center;margin-bottom:8px;min-height:16px}
+#loginDots .lp-dot{width:13px;height:13px;border-radius:50%;background:#E5E7EB;transition:.15s}
+#loginDots .lp-dot.f{background:#2563EB;transform:scale(1.12)}
+#loginPinErr{font-size:12.5px;color:#DC2626;min-height:19px;margin-bottom:10px;font-weight:600}
+.lp-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.lp-pad button{padding:15px 0;font-size:20px;font-weight:700;border:1.5px solid #E5E7EB;background:#F9FAFB;
+  border-radius:12px;cursor:pointer;color:#111827;font-family:inherit;transition:.12s}
+.lp-pad button:hover{background:#EFF6FF;border-color:#93C5FD}
+.lp-pad button:active{transform:scale(.94)}
+.lp-pad button.lp-go{background:#2563EB;color:#fff;border-color:#2563EB}
+</style>
+<div id="loginGate">
+  <div class="lp-card">
+    <div style="font-size:42px">🏛️</div>
+    <h2>ระบบจัดการทรัพย์</h2>
+    <div class="lp-sub">ใส่ PIN เพื่อเข้าใช้งาน</div>
+    <div id="loginDots">
+      <span class="lp-dot"></span><span class="lp-dot"></span><span class="lp-dot"></span>
+      <span class="lp-dot"></span><span class="lp-dot"></span><span class="lp-dot"></span>
+    </div>
+    <div id="loginPinErr"></div>
+    <div class="lp-pad">
+      <button onclick="lpk('1')">1</button><button onclick="lpk('2')">2</button><button onclick="lpk('3')">3</button>
+      <button onclick="lpk('4')">4</button><button onclick="lpk('5')">5</button><button onclick="lpk('6')">6</button>
+      <button onclick="lpk('7')">7</button><button onclick="lpk('8')">8</button><button onclick="lpk('9')">9</button>
+      <button onclick="lpdel()">⌫</button><button onclick="lpk('0')">0</button>
+      <button class="lp-go" onclick="submitLoginPin()">→</button>
+    </div>
+  </div>
+</div>
 
 <div class="header">
   <div style="font-size:30px">🏛️</div>
@@ -847,6 +898,7 @@ input, select, textarea { font-size: 16px !important; }
           <span>📁 เลือกรูป</span>
           <input type="file" accept="image/*" id="prop-img-prop" style="display:none" onchange="handlePropImg(this,'prop')">
         </label>
+        <button class="btn btn-ghost btn-xs" style="margin-top:6px;width:100%" onclick="openImgPick('prop')">🗂️ เลือกจากรูปที่เคยอัปโหลด</button>
       </div>
       <div class="form-group">
         <label class="form-label">รูปรายละเอียด</label>
@@ -858,6 +910,7 @@ input, select, textarea { font-size: 16px !important; }
           <span>📁 เลือกรูป</span>
           <input type="file" accept="image/*" id="prop-img-detail" style="display:none" onchange="handlePropImg(this,'detail')">
         </label>
+        <button class="btn btn-ghost btn-xs" style="margin-top:6px;width:100%" onclick="openImgPick('detail')">🗂️ เลือกจากรูปที่เคยอัปโหลด</button>
       </div>
     </div>
 
@@ -1024,40 +1077,20 @@ input, select, textarea { font-size: 16px !important; }
 <div class="modal-overlay" id="modal-settings">
   <div class="modal" style="max-width:540px">
     <h3>⚙️ ตั้งค่าระบบ</h3>
-    <!-- Supabase -->
+    <!-- Cloud / บัญชี -->
     <div style="background:var(--blue-lt);border:1.5px solid #93C5FD;border-radius:10px;padding:14px;margin-bottom:16px">
-      <div style="font-weight:800;color:var(--blue);margin-bottom:8px">☁️ Cloud Sync — Supabase (ฟรี)</div>
+      <div style="font-weight:800;color:var(--blue);margin-bottom:8px">☁️ Cloud &amp; บัญชี</div>
       <div style="font-size:12px;color:#374151;line-height:1.7;margin-bottom:10px">
-        สมัครที่ <strong>supabase.com</strong> → สร้าง Project → Settings → API → copy URL + anon key<br>
-        จากนั้นรัน SQL ใน SQL Editor ของ Supabase:
-        <pre style="background:white;border:1px solid var(--border);border-radius:6px;padding:8px;margin-top:6px;font-size:11px;overflow-x:auto;white-space:pre">create table auction_data (
-  user_key text primary key,
-  data jsonb not null,
-  updated_at timestamptz default now()
-);
-alter table auction_data enable row level security;
-create policy "open" on auction_data for all using (true) with check (true);</pre>
+        ข้อมูลทั้งหมดเก็บบน Cloud — เปิดเครื่องไหนก็เข้าที่ลิงก์เดิมแล้วใส่ PIN ได้เลย ไม่ต้องตั้งค่าอะไรอีก
       </div>
-      <div class="form-group" style="margin-bottom:8px">
-        <label class="form-label">Project URL</label>
-        <input class="form-input" id="set-sb-url" placeholder="https://xxxxxxxxxxx.supabase.co">
-      </div>
-      <div class="form-group" style="margin-bottom:8px">
-        <label class="form-label">anon / public key</label>
-        <input class="form-input" type="password" id="set-sb-key" placeholder="eyJhbGciOiJIUzI1NiIs...">
-      </div>
-      <div class="form-group" style="margin-bottom:10px">
-        <label class="form-label">User Key <span style="font-weight:400">(ใช้ sync ข้ามเครื่อง — เก็บไว้ให้ดี)</span></label>
-        <div style="display:flex;gap:8px">
-          <input class="form-input" id="set-sb-userkey" placeholder="กด สร้างรหัส" style="flex:1">
-          <button class="btn btn-ghost btn-sm" onclick="genUserKey()">สร้างรหัส</button>
-        </div>
-        <div style="font-size:11px;color:var(--gray);margin-top:4px">เครื่องอื่นใส่รหัสเดิมแล้วกด ⬇️ Sync เพื่อดึงข้อมูล</div>
-      </div>
+      <div id="cloud-status" style="background:white;border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-size:13px;margin-bottom:10px">—</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" onclick="testSupabase()">🔌 ทดสอบการเชื่อมต่อ</button>
         <button class="btn btn-primary btn-sm" onclick="syncFromSupabase()">⬇️ Sync จาก Cloud</button>
+        <button class="btn btn-ghost btn-sm" onclick="changePin()">🔑 เปลี่ยน PIN</button>
+        <button class="btn btn-danger btn-sm" onclick="doLogout()">🚪 ออกจากระบบ</button>
       </div>
+      <div style="font-size:11px;color:var(--gray);margin-top:6px">เปลี่ยน PIN แล้วมีผลทุกเครื่องทันที · ออกจากระบบไม่ลบข้อมูลบน Cloud</div>
     </div>
 
     <!-- Backup / Restore -->
@@ -1094,6 +1127,20 @@ create policy "open" on auction_data for all using (true) with check (true);</pr
   </div>
 </div>
 
+<!-- ── เลือกรูปจากคลัง (กู้รูปที่เคยอัปโหลดแล้วหลุดจากทรัพย์) ── -->
+<div class="modal-overlay" id="modal-imgpick">
+  <div class="modal" style="max-width:640px">
+    <h3>🗂️ รูปที่เคยอัปโหลดไว้</h3>
+    <div style="font-size:12.5px;color:var(--gray);margin-bottom:12px">
+      กดที่รูปเพื่อใช้เป็นรูปของทรัพย์นี้ · <span style="color:var(--amber);font-weight:700">🔸 ไม่ได้ใช้</span> คือรูปที่ยังไม่ถูกผูกกับทรัพย์ใบไหน
+    </div>
+    <div id="imgpick-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:9px;max-height:60vh;overflow-y:auto"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-imgpick')">ปิด</button>
+    </div>
+  </div>
+</div>
+
 <div class="lightbox" id="lightbox" onclick="this.classList.remove('open')">
   <button class="lightbox-close" onclick="event.stopPropagation();document.getElementById('lightbox').classList.remove('open')">✕</button>
   <img id="lightbox-img" src="" />
@@ -1104,6 +1151,17 @@ create policy "open" on auction_data for all using (true) with check (true);</pr
 <div id="print-area"></div>
 
 <script>
+// ═══════════════════════════════════════════════
+//  SUPABASE (แพตเทิร์นเดียวกับระบบตอกบัตร)
+//  ฝังค่าไว้ในโค้ดเลย → เปิดเครื่องไหนก็ใช้ได้ทันที ไม่ต้องตั้งค่าอะไรก่อน
+//  ปลอดภัยเพราะ RLS เปิดอยู่: anon key เปล่า ๆ อ่าน/เขียนอะไรไม่ได้เลย
+//  ต้องล็อกอินด้วย PIN ก่อน (auth.users → owner@auction.local) ถึงจะเห็นข้อมูล
+// ═══════════════════════════════════════════════
+const SB_URL   = 'https://rjpzmaeiopiqtsjaksed.supabase.co';
+const SB_KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJqcHptYWVpb3BpcXRzamFrc2VkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxMTU2MjEsImV4cCI6MjA5MzY5MTYyMX0.o4Doz1Tx64yQq-RoYBDJzZTYdqPY6M8j11dyd-pwALs';
+const USER_KEY = 'sirikul_auction_2026';
+const AUTH_EMAIL = 'owner@auction.local';
+
 // ═══════════════════════════════════════════════
 //  STATE
 // ═══════════════════════════════════════════════
@@ -1124,7 +1182,7 @@ function setSyncStatus(state, msg) {
 }
 
 let S = {
-  settings: { supabaseUrl:'', supabaseKey:'', userKey:'' },
+  settings: {},   // ค่า Supabase ฝังในโค้ดแล้ว (SB_URL/SB_KEY/USER_KEY) ไม่เก็บรายเครื่องอีก
   docTypes: [
     { id: uid(), name: 'ใบมอบอำนาจการประมูลทรัพย์' },
     { id: uid(), name: 'ใบอนุมัติคำร้องขอขายเวลา' },
@@ -1172,10 +1230,36 @@ function loadS() {
     }
   });
   if (!S.settings)  S.settings  = {};
-  // Cloud credentials are per-device only, entered via ⚙️ Settings — never shipped as defaults here.
-  // (A previous version hardcoded real Supabase credentials in this public source file — removed.)
+  // ค่า Supabase ฝังไว้ในโค้ดแล้ว (SB_URL / SB_KEY / USER_KEY ด้านบนสุด) — เครื่องใหม่ใช้ได้ทันที
+  // key ที่ฝังเป็น anon key เปล่า ๆ เปิดดู source ได้ไม่เป็นไร เพราะ RLS บังคับให้ต้องล็อกอินก่อนถึงเห็นข้อมูล
+  // ล้างค่าเก่าที่เคยกรอกรายเครื่องทิ้ง กันสับสนว่าใช้ตัวไหนอยู่
+  delete S.settings.supabaseUrl; delete S.settings.supabaseKey; delete S.settings.userKey;
   buildSnap();  // baseline snapshot สำหรับตรวจจับ record ที่เปลี่ยน (item 14)
 }
+// อ่านรูปจากช่อง preview ตอนกดบันทึกทรัพย์
+// กับดัก: img.src ของ <img> ที่ไม่มี src จะคืน "URL ของหน้าเว็บ" ไม่ใช่ค่าว่าง
+// (spec บอกให้ resolve "" เทียบ base URL) โค้ดเดิมเช็คแค่ startsWith('http')
+// เลยบันทึก URL หน้าเว็บลงไปเป็นรูป → การ์ดโชว์ไอคอนรูปแตก
+// แก้: อ่านจาก attribute ตรง ๆ แล้วรับเฉพาะ data: หรือไฟล์รูปที่มานามสกุลรูปจริง
+function pickImgSrc(elId, prevVal) {
+  // กล่อง preview ถูกซ่อน = ผู้ใช้ไม่มีรูป หรือเพิ่งกดลบรูป → ต้องได้ค่าว่างจริง ๆ
+  const preview = document.getElementById(elId.replace('-thumb', '-preview'));
+  if (!preview || preview.style.display === 'none') return '';
+  const raw = (document.getElementById(elId)?.getAttribute('src') || '').trim();
+  if (!raw) return prevVal || '';
+  return isImageSrc(raw) ? raw : (prevVal || '');
+}
+
+// รับเฉพาะรูปจริง — กัน URL ของหน้าเว็บเองหลุดเข้ามาเป็นรูป
+function isImageSrc(s) {
+  s = String(s || '').trim();
+  if (s.startsWith('data:image/')) return true;
+  if (!/^https?:\/\//i.test(s)) return false;
+  if (s.endsWith('/')) return false;                       // URL หน้าเว็บ ไม่ใช่ไฟล์
+  if (s.includes('/storage/v1/object/')) return true;      // ไฟล์ใน Supabase Storage
+  return /\.(jpe?g|png|gif|webp|avif|heic)(\?|#|$)/i.test(s);
+}
+
 function saveS() {
   S.lastModified = new Date().toISOString();
   stampChanged();  // ประทับเวลาต่อ record ที่เปลี่ยนจริง (item 14 — กัน sync ทับกัน)
@@ -1228,12 +1312,89 @@ function mergeCloud(localArr, cloudArr, pulledAt) {
 // ── Supabase client (per-entity tables, mirrors ระบบตอกบัตร pattern) ──
 let sb = null;
 function initSb() {
-  const cfg = S.settings;
-  if (!cfg?.supabaseUrl || !cfg?.supabaseKey) return null;
   if (sb) return sb;
   if (typeof supabase === 'undefined') return null;
-  sb = supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey);
+  sb = supabase.createClient(SB_URL, SB_KEY, {
+    auth: { persistSession: true, autoRefreshToken: true, storageKey: 'auction_auth' }
+  });
   return sb;
+}
+
+// ── LOGIN GATE (แพตเทิร์นตอกบัตร: PIN → Supabase Auth จริง) ──────────
+// ไม่เทียบ PIN ที่ฝั่ง client — ส่งไปให้ Supabase ตรวจ ถ้าผิดก็ไม่ได้ token
+// ไม่มี token = RLS บล็อกทุกอย่าง ข้อมูลไม่หลุดแม้จะเปิด view-source ดู key
+let AUTHED = false;
+let loginPinBuf = '';
+
+async function hasSession() {
+  const client = initSb();
+  if (!client) return false;
+  try { const { data } = await client.auth.getSession(); return !!data?.session; }
+  catch(e) { return false; }
+}
+
+function showLoginGate() {
+  loginPinBuf = '';
+  updateLoginDots();
+  document.getElementById('loginPinErr').textContent = '';
+  document.getElementById('loginGate').style.display = 'flex';
+}
+function hideLoginGate() { document.getElementById('loginGate').style.display = 'none'; }
+function updateLoginDots() {
+  document.querySelectorAll('#loginDots .lp-dot').forEach((d, i) => d.classList.toggle('f', i < loginPinBuf.length));
+}
+function lpk(d) {
+  if (loginPinBuf.length >= 6) return;
+  loginPinBuf += d; updateLoginDots();
+  document.getElementById('loginPinErr').textContent = '';
+}
+function lpdel() { loginPinBuf = loginPinBuf.slice(0, -1); updateLoginDots(); document.getElementById('loginPinErr').textContent = ''; }
+
+async function submitLoginPin() {
+  const errEl = document.getElementById('loginPinErr');
+  if (loginPinBuf.length < 4) { errEl.textContent = 'PIN อย่างน้อย 4 หลัก'; return; }
+  const client = initSb();
+  if (!client) { errEl.textContent = 'โหลดไลบรารีไม่สำเร็จ — เช็คอินเทอร์เน็ตแล้วรีเฟรช'; return; }
+  errEl.textContent = 'กำลังเข้าสู่ระบบ...';
+  const { data, error } = await client.auth.signInWithPassword({
+    email: AUTH_EMAIL, password: 'auction::' + loginPinBuf
+  });
+  if (error || !data?.session) {
+    // แยกให้ชัดระหว่าง "PIN ผิด" กับ "เน็ต/เซิร์ฟเวอร์มีปัญหา" จะได้ไม่ไล่แก้ผิดจุด
+    errEl.textContent = /fetch|network/i.test(error?.message || '')
+      ? 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ — เช็คอินเทอร์เน็ตแล้วลองใหม่'
+      : 'PIN ไม่ถูกต้อง ลองใหม่';
+    loginPinBuf = ''; updateLoginDots();
+    return;
+  }
+  AUTHED = true;
+  hideLoginGate();
+  await afterLogin();
+}
+
+async function afterLogin() {
+  const ok = await loadFromCloud();
+  if (ok) { renderAll(); setupRealtime(); }
+}
+
+async function doLogout() {
+  if (!confirm('ออกจากระบบ?\nข้อมูลบน Cloud ยังอยู่ครบ — ล็อกอินใหม่ก็เห็นเหมือนเดิม')) return;
+  const client = initSb();
+  try { await client.auth.signOut(); } catch(e) {}
+  AUTHED = false;
+  closeModal('modal-settings');
+  showLoginGate();
+}
+
+async function changePin() {
+  const a = prompt('ตั้ง PIN ใหม่ (ตัวเลข 4-6 หลัก)');
+  if (!a) return;
+  if (!/^[0-9]{4,6}$/.test(a)) { toast('❌ PIN ต้องเป็นตัวเลข 4-6 หลัก', 'error'); return; }
+  if (prompt('พิมพ์ PIN ใหม่อีกครั้งเพื่อยืนยัน') !== a) { toast('❌ PIN สองครั้งไม่ตรงกัน', 'error'); return; }
+  const client = initSb();
+  const { error } = await client.rpc('auction_set_pin', { p_pin: a });
+  if (error) { toast('❌ เปลี่ยน PIN ไม่สำเร็จ: ' + error.message, 'error'); return; }
+  toast('✓ เปลี่ยน PIN แล้ว — เครื่องอื่นต้องใช้ PIN ใหม่ตอนล็อกอินครั้งหน้า', 'success');
 }
 
 // Coalescing sync: if one is in flight, queue at most one re-run.
@@ -1251,7 +1412,7 @@ function scheduleSync() {
 
 async function syncToCloud() {
   const client = initSb();
-  const uk = S.settings?.userKey;
+  const uk = USER_KEY;
   if (!client || !uk) return;
   setSyncStatus('syncing', '');
   const stamp = new Date().toISOString();
@@ -1282,11 +1443,13 @@ async function syncToCloud() {
 // Initial cloud load — fetch all entities from per-entity tables and adopt.
 async function loadFromCloud() {
   const client = initSb();
-  const uk = S.settings?.userKey;
-  if (!client || !uk) {
-    setSyncStatus('error', '⚠️ ยังไม่ตั้งค่า Supabase (กด ⚙️ เพื่อตั้งค่า)');
+  const uk = USER_KEY;
+  if (!client) {
+    setSyncStatus('error', '⚠️ โหลดไลบรารี Supabase ไม่ได้ — เช็คอินเทอร์เน็ตแล้วรีเฟรช');
     return false;
   }
+  // ไม่มี session = RLS ไม่คืนข้อมูลอยู่แล้ว → เด้งหน้าใส่ PIN แทนที่จะโชว์หน้าเปล่า
+  if (!(await hasSession())) { AUTHED = false; showLoginGate(); return false; }
   setSyncStatus('syncing', '');
   try {
     const [propsRes, expRes, dtRes] = await Promise.all([
@@ -1327,7 +1490,15 @@ async function loadFromCloud() {
     setSyncStatus('ok', '');
     return true;
   } catch (e) {
-    setSyncStatus('error', `❌ เชื่อม Cloud ไม่ได้: ${e.message} <button onclick="loadFromCloud().then(ok=>{if(ok){renderAll()}})" style="margin-left:8px;padding:3px 10px;border-radius:6px;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;font:inherit;font-weight:700">🔄 ลองใหม่</button>`);
+    // "Failed to fetch" = ยิงไปไม่ถึงเซิร์ฟเวอร์เลย ไม่ใช่ข้อมูลผิด
+    // สาเหตุที่เจอบ่อยสุดคือ Supabase project ถูก pause (free tier หลับเมื่อไม่มี request 7 วัน)
+    const offlineish = /failed to fetch|networkerror|load failed/i.test(e.message || '');
+    const hint = !navigator.onLine
+      ? 'เครื่องนี้ออฟไลน์อยู่ — ต่อเน็ตแล้วลองใหม่ (ข้อมูลในเครื่องยังอยู่ครบ)'
+      : offlineish
+        ? 'ติดต่อเซิร์ฟเวอร์ไม่ได้ — ส่วนใหญ่เกิดจาก Supabase project ถูกพักอัตโนมัติ เข้า supabase.com แล้วกด Restore project'
+        : 'ลองใหม่อีกครั้ง';
+    setSyncStatus('error', `❌ เชื่อม Cloud ไม่ได้: ${e.message} — ${hint} <button onclick="loadFromCloud().then(ok=>{if(ok){renderAll()}})" style="margin-left:8px;padding:3px 10px;border-radius:6px;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;font:inherit;font-weight:700">🔄 ลองใหม่</button>`);
     return false;
   }
 }
@@ -1348,7 +1519,7 @@ function renderAll() {
 let _rtChannel = null;
 function setupRealtime() {
   const client = initSb();
-  const uk = S.settings?.userKey;
+  const uk = USER_KEY;
   if (!client || !uk) return;
   if (_rtChannel) { try { client.removeChannel(_rtChannel); } catch(e) {} }
   _rtChannel = client.channel('auction-sync-' + uk)
@@ -1360,7 +1531,7 @@ function setupRealtime() {
 
 async function refetchTable(which) {
   const client = initSb();
-  const uk = S.settings?.userKey;
+  const uk = USER_KEY;
   if (!client || !uk || _syncing) return; // skip while our own sync is in flight
   const pulledAt = S._pulledAt || 0;
   if (which === 'props') {
@@ -2238,6 +2409,16 @@ function renderProps() {
         </div>`;
     }).join('');
 
+    // รูปย่อหัวการ์ด: ใช้รูปทรัพย์ก่อน ไม่มีค่อยใช้รูปรายละเอียด ไม่มีอีกก็ไปหยิบจากรูปเอกสาร
+    const thumbSrc = [p.imgProp, p.imgDetail, ...(p.docs||[]).flatMap(d => d.images||[]).map(im => im.data)]
+      .find(isImageSrc) || '';
+    // onerror: ถ้ารูปโหลดไม่ขึ้น (เช่น Storage ล่ม) สลับเป็นกรอบว่างแทนไอคอนรูปแตก
+    const thumb = thumbSrc
+      ? `<img class="prop-thumb" src="${thumbSrc}" alt="" loading="lazy"
+             onclick="event.stopPropagation();showLightbox('${thumbSrc}')" title="ดูรูปใหญ่"
+             onerror="this.outerHTML='&lt;div class=&quot;prop-thumb-empty&quot; title=&quot;รูปโหลดไม่ขึ้น&quot;&gt;🖼️&lt;/div&gt;'">`
+      : `<div class="prop-thumb-empty" title="ยังไม่มีรูป">🏠</div>`;
+
     const renoItems = S.expenses.filter(e=>e.propId===p.id);
     const renoStats = expenseStats(renoItems);
     const renoTotal = renoStats.total;
@@ -2248,6 +2429,7 @@ function renderProps() {
       <div class="prop-card ${p.status||'watching'}" id="pp-${p.id}">
         <div class="prop-header" onclick="toggleProp('${p.id}')">
           <div class="prop-num">${i+1}</div>
+          ${thumb}
           <div class="prop-info">
             <div class="prop-name">${p.code?`<span style="font-size:12px;font-weight:700;background:var(--blue-lt);color:var(--blue);padding:1px 7px;border-radius:5px;margin-right:6px">${p.code}</span>`:''}${p.name}</div>
             <div class="prop-sub">
@@ -2265,9 +2447,9 @@ function renderProps() {
           </div>
         </div>
         <div class="prop-body">
-          ${(p.imgProp||p.imgDetail)?`<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-            ${p.imgProp?`<img src="${p.imgProp}" style="height:90px;border-radius:8px;object-fit:cover;border:1.5px solid var(--border);cursor:pointer" onclick="window.open('${p.imgProp}','_blank')" title="รูปทรัพย์">`:'' }
-            ${p.imgDetail?`<img src="${p.imgDetail}" style="height:90px;border-radius:8px;object-fit:cover;border:1.5px solid var(--border);cursor:pointer" onclick="window.open('${p.imgDetail}','_blank')" title="รูปรายละเอียด">`:'' }
+          ${(isImageSrc(p.imgProp)||isImageSrc(p.imgDetail))?`<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+            ${isImageSrc(p.imgProp)?`<img src="${p.imgProp}" style="height:90px;border-radius:8px;object-fit:cover;border:1.5px solid var(--border);cursor:zoom-in" onclick="showLightbox('${p.imgProp}')" title="รูปทรัพย์">`:'' }
+            ${isImageSrc(p.imgDetail)?`<img src="${p.imgDetail}" style="height:90px;border-radius:8px;object-fit:cover;border:1.5px solid var(--border);cursor:zoom-in" onclick="showLightbox('${p.imgDetail}')" title="รูปรายละเอียด">`:'' }
           </div>`:''}
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
             ${p.code?`<span class="badge badge-blue">🔖 ${p.code}</span>`:''}
@@ -2537,8 +2719,8 @@ function saveProp() {
     mapUrl:     document.getElementById('prop-map').value.trim(),
     targetRound,
     rounds,
-    imgProp:   (s => (s.startsWith('http')||s.startsWith('data:')) ? s : (editId?(S.props.find(x=>x.id===editId)||{}).imgProp||'':''))(document.getElementById('img-prop-thumb').src||''),
-    imgDetail: (s => (s.startsWith('http')||s.startsWith('data:')) ? s : (editId?(S.props.find(x=>x.id===editId)||{}).imgDetail||'':''))(document.getElementById('img-detail-thumb').src||''),
+    imgProp:   pickImgSrc('img-prop-thumb',   editId && (S.props.find(x=>x.id===editId)||{}).imgProp),
+    imgDetail: pickImgSrc('img-detail-thumb', editId && (S.props.find(x=>x.id===editId)||{}).imgDetail),
   };
   if (editId) {
     const p = S.props.find(x=>x.id===editId);
@@ -2577,7 +2759,7 @@ function savePropActualSell(propId, val) {
 
 async function deleteCloudProp(id) {
   const client = initSb();
-  const uk = S.settings?.userKey;
+  const uk = USER_KEY;
   if (!client || !uk) return;
   try {
     await client.from('auction_expenses').delete().eq('prop_id', id).eq('user_key', uk);
@@ -2587,14 +2769,14 @@ async function deleteCloudProp(id) {
 
 async function deleteCloudExpense(id) {
   const client = initSb();
-  const uk = S.settings?.userKey;
+  const uk = USER_KEY;
   if (!client || !uk) return;
   try { await client.from('auction_expenses').delete().eq('id', id).eq('user_key', uk); } catch (e) {}
 }
 
 async function deleteCloudDocType(id) {
   const client = initSb();
-  const uk = S.settings?.userKey;
+  const uk = USER_KEY;
   if (!client || !uk) return;
   try { await client.from('auction_doc_types').delete().eq('id', id).eq('user_key', uk); } catch (e) {}
 }
@@ -2662,6 +2844,50 @@ async function handlePropImg(input, type) {
   else      { toast('⚠️ บันทึกรูปชั่วคราว (ไม่มีอินเตอร์เน็ต)', ''); }
 }
 
+// ── คลังรูป: ดึงรายชื่อไฟล์ใน bucket มาให้เลือก ──────────────────
+// มีไว้กู้รูปที่อัปโหลดขึ้นไปแล้วแต่หลุดจากทรัพย์ (บั๊ก img.src เดิม)
+let _imgPickTarget = null;
+async function openImgPick(type) {
+  _imgPickTarget = type;
+  const grid = document.getElementById('imgpick-grid');
+  grid.innerHTML = '<div style="grid-column:1/-1;color:var(--gray);padding:18px;text-align:center">กำลังโหลด...</div>';
+  openModal('modal-imgpick');
+  const client = initSb();
+  const { data, error } = await client.storage.from('auction-images')
+    .list(USER_KEY, { limit: 300, sortBy: { column: 'created_at', order: 'desc' } });
+  if (error || !data?.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;color:var(--gray);padding:18px;text-align:center">${error ? 'โหลดไม่สำเร็จ: '+error.message : 'ยังไม่มีรูปในคลัง'}</div>`;
+    return;
+  }
+  // รูปไหนถูกใช้อยู่แล้วบ้าง — จะได้ชี้ว่าอันไหนคือรูปที่หลุดไป
+  const used = new Set();
+  const scan = o => { const t = JSON.stringify(o||''); const m = t.match(/auction-images\/[^"'\\ )]+/g); (m||[]).forEach(x => used.add(x.split('auction-images/')[1])); };
+  S.props.forEach(scan); S.expenses.forEach(scan);
+
+  grid.innerHTML = data.filter(f => f.name && f.id).map(f => {
+    const path = `${USER_KEY}/${f.name}`;
+    const url  = `${SB_URL}/storage/v1/object/public/auction-images/${path}`;
+    const isUsed = used.has(path);
+    const kb = f.metadata?.size ? Math.round(f.metadata.size/1024) + ' KB' : '';
+    return `<div style="border:1.5px solid ${isUsed?'var(--border)':'#FCD34D'};border-radius:9px;overflow:hidden;cursor:pointer;background:#FAFAFA"
+                 onclick="applyPickedImg('${url}')" title="${isUsed?'ใช้อยู่กับทรัพย์บางรายการ':'ยังไม่ถูกใช้ที่ไหน'}">
+      <img src="${url}" loading="lazy" style="width:100%;height:88px;object-fit:cover;display:block">
+      <div style="font-size:10px;padding:3px 5px;color:var(--gray);display:flex;justify-content:space-between;gap:4px">
+        <span>${isUsed ? '' : '🔸 ไม่ได้ใช้'}</span><span>${kb}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function applyPickedImg(url) {
+  const thumbId   = _imgPickTarget === 'prop' ? 'img-prop-thumb'   : 'img-detail-thumb';
+  const previewId = _imgPickTarget === 'prop' ? 'img-prop-preview' : 'img-detail-preview';
+  document.getElementById(thumbId).src = url;
+  document.getElementById(previewId).style.display = '';
+  closeModal('modal-imgpick');
+  toast('✓ เลือกรูปแล้ว — กดบันทึกทรัพย์เพื่อยืนยัน', 'success');
+}
+
 function clearPropImg(type) {
   if (type==='prop') {
     document.getElementById('img-prop-thumb').src='';
@@ -2721,25 +2947,29 @@ function fileToBase64Compressed(file) {
 }
 
 async function uploadToStorage(base64, filename) {
-  const cfg = S.settings;
-  if (!cfg?.supabaseUrl || !cfg?.supabaseKey) return null;
+  const client = initSb();
+  if (!client) return null;
   try {
+    // Storage เปิดให้เขียนเฉพาะคนที่ล็อกอินแล้ว → ต้องส่ง access token ไม่ใช่ anon key
+    const { data: sess } = await client.auth.getSession();
+    const token = sess?.session?.access_token;
+    if (!token) return null;
     const res = await fetch(base64);
     const blob = await res.blob();
     const ext = (filename.split('.').pop() || 'jpg').replace(/[^a-zA-Z0-9]/g,'');
-    const path = `${cfg.userKey||'default'}/${Date.now()}_${Math.random().toString(36).slice(2,6)}.${ext}`;
-    const up = await fetch(`${cfg.supabaseUrl}/storage/v1/object/auction-images/${path}`, {
+    const path = `${USER_KEY}/${Date.now()}_${Math.random().toString(36).slice(2,6)}.${ext}`;
+    const up = await fetch(`${SB_URL}/storage/v1/object/auction-images/${path}`, {
       method: 'POST',
       headers: {
-        'apikey': cfg.supabaseKey,
-        'Authorization': 'Bearer ' + cfg.supabaseKey,
+        'apikey': SB_KEY,
+        'Authorization': 'Bearer ' + token,
         'Content-Type': blob.type || 'image/jpeg',
         'x-upsert': 'true'
       },
       body: blob
     });
     if (!up.ok) return null;
-    return `${cfg.supabaseUrl}/storage/v1/object/public/auction-images/${path}`;
+    return `${SB_URL}/storage/v1/object/public/auction-images/${path}`;
   } catch(e) { return null; }
 }
 
@@ -2830,39 +3060,36 @@ async function runAutoSync()  { const ok = await loadFromCloud(); if (ok) render
 
 // ── Settings functions ─────────────────────────
 function openSettings() {
-  const g = id => document.getElementById(id);
-  g('set-sb-url').value      = S.settings?.supabaseUrl || '';
-  g('set-sb-key').value      = S.settings?.supabaseKey || '';
-  g('set-sb-userkey').value  = S.settings?.userKey     || '';
+  refreshCloudStatus();
   openModal('modal-settings');
+  calcStorageUsage();
 }
 
-function saveSettings() {
-  if (!S.settings) S.settings = {};
-  S.settings.supabaseUrl = document.getElementById('set-sb-url').value.trim().replace(/\/$/,'');
-  S.settings.supabaseKey = document.getElementById('set-sb-key').value.trim();
-  S.settings.userKey     = document.getElementById('set-sb-userkey').value.trim();
-  saveS(); closeModal('modal-settings');
-  toast('✓ บันทึกการตั้งค่าแล้ว', 'success');
-}
+// ไม่มีอะไรให้กรอกแล้ว (URL/key/userKey ฝังในโค้ด) — ปุ่มบันทึกแค่ปิดหน้าต่าง
+function saveSettings() { closeModal('modal-settings'); }
 
-function genUserKey() {
-  document.getElementById('set-sb-userkey').value =
-    'u_' + Math.random().toString(36).slice(2,9) + Date.now().toString(36);
+async function refreshCloudStatus() {
+  const el = document.getElementById('cloud-status');
+  if (!el) return;
+  el.innerHTML = 'กำลังตรวจสอบ...';
+  const client = initSb();
+  if (!client) { el.innerHTML = '❌ โหลดไลบรารี Supabase ไม่ได้'; return; }
+  const { data: sess } = await client.auth.getSession();
+  if (!sess?.session) { el.innerHTML = '🔒 ยังไม่ได้ล็อกอิน'; return; }
+  try {
+    const { count, error } = await client.from('auction_props')
+      .select('id', { count: 'exact', head: true }).eq('user_key', USER_KEY);
+    if (error) throw error;
+    el.innerHTML = `✅ เชื่อมต่อแล้ว · ทรัพย์บน Cloud <strong>${count ?? '-'}</strong> รายการ`;
+  } catch(e) {
+    el.innerHTML = `⚠️ เชื่อมต่อไม่ได้: ${e.message}`;
+  }
 }
-
 
 async function testSupabase() {
-  const url = document.getElementById('set-sb-url').value.trim().replace(/\/$/,'');
-  const key = document.getElementById('set-sb-key').value.trim();
-  if (!url || !key) { toast('กรุณากรอก URL และ Key','error'); return; }
-  toast('⏳ กำลังทดสอบ Supabase...','');
-  try {
-    const res = await fetch(`${url}/rest/v1/auction_data?limit=1`, {
-      headers: { 'apikey': key, 'Authorization': 'Bearer ' + key }
-    });
-    toast(res.ok ? '✓ เชื่อมต่อ Supabase สำเร็จ!' : '❌ ไม่สำเร็จ — ตรวจ URL/Key หรือสร้างตารางก่อน', res.ok?'success':'error');
-  } catch(e) { toast('❌ เชื่อมต่อไม่ได้','error'); }
+  toast('⏳ กำลังทดสอบ...', '');
+  await refreshCloudStatus();
+  toast('✓ ตรวจสอบเสร็จ — ดูผลในกล่อง Cloud', 'success');
 }
 
 function calcStorageUsage() {
@@ -2901,7 +3128,7 @@ async function confirmClearProps() {
   calcStorageUsage();
   toast('✓ ลบทรัพย์ทั้งหมดแล้ว', 'success');
   const client = initSb();
-  const uk = S.settings?.userKey;
+  const uk = USER_KEY;
   if (client && uk) {
     try {
       await client.from('auction_expenses').delete().eq('user_key', uk);
@@ -4078,15 +4305,24 @@ updateBadges();
   if (lastTab !== 'props') switchTab(lastTab);
 })();
 
-// Cloud sync (clock-in pattern): load from per-entity tables, then subscribe to realtime.
-// Other devices' changes flow back via realtime — no polling, no manual refresh.
-loadFromCloud().then(ok => {
-  if (ok) { renderAll(); setupRealtime(); }
+// Cloud sync (clock-in pattern): ล็อกอินก่อน → โหลดจาก cloud → subscribe realtime
+// เครื่องใหม่ที่ไม่มี localStorage เลย ก็ได้ข้อมูลครบจาก cloud ทันทีหลังใส่ PIN
+(async () => {
+  if (await hasSession()) { AUTHED = true; await afterLogin(); }
+  else showLoginGate();
+})();
+
+// พิมพ์ PIN ด้วยคีย์บอร์ดได้ (สะดวกกว่าบนคอม)
+document.addEventListener('keydown', e => {
+  if (document.getElementById('loginGate').style.display !== 'flex') return;
+  if (/^[0-9]$/.test(e.key))      { lpk(e.key); e.preventDefault(); }
+  else if (e.key === 'Backspace') { lpdel();    e.preventDefault(); }
+  else if (e.key === 'Enter')     { submitLoginPin(); e.preventDefault(); }
 });
 
 // Re-pull on tab focus / online — covers cases where the realtime socket dropped.
-window.addEventListener('focus',  () => { loadFromCloud().then(ok => ok && renderAll()); });
-window.addEventListener('online', () => { loadFromCloud().then(ok => ok && renderAll()); });
+window.addEventListener('focus',  () => { if (AUTHED) loadFromCloud().then(ok => ok && renderAll()); });
+window.addEventListener('online', () => { if (AUTHED) loadFromCloud().then(ok => ok && renderAll()); });
 
 
 // ═══════════════════════════════════════════════
