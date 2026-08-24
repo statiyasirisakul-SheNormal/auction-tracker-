@@ -2384,16 +2384,22 @@ function renderProps() {
     const allRoundDates = (p.rounds||[]).map(r=>(r&&typeof r==='object'?r.date:'')).filter(Boolean);
     const firstDate = p.date || allRoundDates[0] || '';
     const daysLeft = daysUntil(firstDate);
-    // find next upcoming round date
+    // งดขายทุกนัด → ไม่ต้องนับถอยหลัง ขึ้นป้ายงดขายที่หัวการ์ดแทน
+    const roundsWithData = (p.rounds||[]).filter(r=>r&&typeof r==='object'&&(r.date||r.note));
+    const allHalted = roundsWithData.length>0 && roundsWithData.every(r=>isHaltedNote(r.note));
+    // find next upcoming round date (ข้ามนัดที่งดขาย — นับถอยหลังให้เฉพาะนัดที่ยังขายจริง)
     const today = new Date(); today.setHours(0,0,0,0);
     const nextRound = (p.rounds||[]).map((r,ri)=>{
       const d = r&&typeof r==='object'?r.date:'';
       if (!d) return null;
+      if (isHaltedNote(r&&r.note)) return null;
       const dt = new Date(d); dt.setHours(0,0,0,0);
       return { ri, dt, daysLeft: Math.round((dt-today)/86400000) };
     }).filter(Boolean).sort((a,b)=>a.dt-b.dt).find(x=>x.daysLeft>=0);
     let dateChip = '';
-    if (nextRound) {
+    if (allHalted) {
+      dateChip = `<span class="badge badge-red">⛔ งดขาย</span>`;
+    } else if (nextRound) {
       const dl = nextRound.daysLeft;
       if      (dl === 0) dateChip = `<span class="badge badge-red">🔴 นัดที่${nextRound.ri+1} วันนี้!</span>`;
       else if (dl <= 3)  dateChip = `<span class="badge badge-red">⚠️ นัดที่${nextRound.ri+1} อีก ${dl} วัน</span>`;
