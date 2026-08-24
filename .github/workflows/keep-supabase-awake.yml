@@ -1,0 +1,23 @@
+name: keep-supabase-awake
+
+on:
+  schedule:
+    - cron: '0 3 */3 * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ping REST + Storage
+        run: |
+          SB="https://rjpzmaeiopiqtsjaksed.supabase.co"
+          K="eyJhbGci••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••"
+          code=$(curl -s -o /dev/null -w '%{http_code}' "$SB/rest/v1/auction_props?select=id&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K")
+          echo "REST  -> HTTP $code"
+          scode=$(curl -s -o /dev/null -w '%{http_code}' "$SB/storage/v1/object/public/auction-images/")
+          echo "Storage -> HTTP $scode"
+          if [ "$code" = "000" ]; then
+            echo "::error::ติดต่อ Supabase ไม่ได้ — project อาจถูก pause ให้เข้า supabase.com กด Restore project"
+            exit 1
+          fi
