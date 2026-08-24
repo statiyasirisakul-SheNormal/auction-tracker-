@@ -213,6 +213,15 @@ input[type="file"] { display:none; }
 .round-tile.target  { border-color:#F59E0B; background:var(--amber-lt); box-shadow:0 0 0 2px #FCD34D55; }
 .round-tile.joined  { border-color:var(--blue); background:var(--blue-lt); }
 .round-tile.skipped { opacity:.6; background:#F9FAFB; }
+/* งดขาย / งดบังคับคดี — แถบแดงบาง ๆ ให้สะดุดตาแต่ไม่กลบราคา */
+.round-tile.halted  { border-color:#FCA5A5; background:#FEF2F2; }
+.round-tile.halted .round-price { color:#B91C1C; text-decoration:line-through; text-decoration-thickness:1.5px; opacity:.75; }
+.round-halt-bar { margin:5px -8px -10px; padding:3px 4px; background:#FEE2E2; color:#B91C1C;
+  font-size:9.5px; font-weight:800; border-top:1px solid #FCA5A5;
+  border-radius:0 0 7px 7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+/* หมายเหตุทั่วไป (ที่ไม่ใช่งดขาย) — โชว์เป็นตัวเล็กใต้วันที่ */
+.round-note { font-size:9px; color:#6B7280; margin-top:3px; line-height:1.3;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; word-break:break-word; }
 .round-num   { font-size:10px; font-weight:700; color:var(--gray); letter-spacing:.5px; margin-bottom:4px; }
 .round-price { font-size:13px; font-weight:800; color:var(--navy); line-height:1.2; }
 .round-disc  { font-size:10px; margin-top:4px; padding:2px 6px; border-radius:4px; display:inline-block; font-weight:700; }
@@ -1248,6 +1257,16 @@ function pickImgSrc(elId, prevVal) {
   const raw = (document.getElementById(elId)?.getAttribute('src') || '').trim();
   if (!raw) return prevVal || '';
   return isImageSrc(raw) ? raw : (prevVal || '');
+}
+
+// กันข้อความที่พิมพ์เอง (หมายเหตุ) พังหน้าเว็บ/ยิงสคริปต์ ตอนเอาไปต่อใน innerHTML
+const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// หมายเหตุที่แปลว่า "รอบนี้ไม่ได้ขาย" → ให้ไทล์ขึ้นแถบแดง
+// เขียนได้หลายแบบ (งดขาย / งด ขาย / งดการบังคับคดี / ถอนการยึด) เลยจับแบบหลวม ๆ
+function isHaltedNote(note) {
+  const t = String(note || '').replace(/\s+/g, '');
+  return /งดขาย|งดการขาย|งดบังคับคดี|งดการบังคับคดี|ถอนการยึด|ถอนการบังคับคดี/.test(t);
 }
 
 // รับเฉพาะรูปจริง — กัน URL ของหน้าเว็บเองหลุดเข้ามาเป็นรูป
@@ -2388,7 +2407,8 @@ function renderProps() {
       const rDate= rObj&&typeof rObj==='object' ? rObj.date : '';
       const rNote= rObj&&typeof rObj==='object' ? rObj.note : '';
       const isTarget = ri === (p.targetRound||0);
-      const cls  = rSt==='joined'?'joined': rSt==='skipped'?'skipped': isTarget?'target':'';
+      const halted = isHaltedNote(rNote);   // งดขาย / งดบังคับคดี → แถบแดง
+      const cls  = (halted?'halted ':'') + (rSt==='joined'?'joined': rSt==='skipped'?'skipped': isTarget?'target':'');
       const icon = rSt==='joined'?'✓': rSt==='skipped'?'—': isTarget?'🎯':'';
       const price = base ? fmtNum(Math.floor(base*(1-r.disc)))+' ฿' : '—';
       const dL = rDate ? Math.round((new Date(rDate).setHours(0,0,0,0)-today.getTime())/86400000) : null;
@@ -2397,15 +2417,22 @@ function renderProps() {
       const calSaved = !!localStorage.getItem(calKey);
       const lineCtrl = '';
       const calBtn = rDate ? `<div onclick="event.stopPropagation()" style="margin-top:3px;text-align:center"><button onclick="addRoundToCalendar('${p.id}',${ri})" style="font-size:10px;background:${calSaved?'#F0FDF4':'#EFF6FF'};color:${calSaved?'#15803D':'#1D4ED8'};border:1px solid ${calSaved?'#86EFAC':'#BFDBFE'};border-radius:4px;padding:2px 6px;cursor:pointer;font-weight:700">${calSaved?'✓ บันทึกแล้ว':'📅 ปฏิทิน'}</button></div>` : '';
+      // หมายเหตุจากหน้าแก้ไข → โชว์บนไทล์ด้วย ไม่ใช่ซ่อนไว้ใน tooltip อย่างเดียว
+      const noteHtml = rNote
+        ? (halted ? '' : `<div class="round-note">📝 ${escapeHtml(rNote)}</div>`)
+        : '';
+      const haltBar = halted ? `<div class="round-halt-bar" title="${escapeHtml(rNote)}">⛔ ${escapeHtml(rNote)}</div>` : '';
       return `
-        <div class="round-tile ${cls}" onclick="cycleRound('${p.id}',${ri})" title="${rNote||'คลิกเปลี่ยนสถานะ'}">
+        <div class="round-tile ${cls}" onclick="cycleRound('${p.id}',${ri})" title="${escapeHtml(rNote||'คลิกเปลี่ยนสถานะ')}">
           <div class="round-num">นัดที่ ${ri+1}</div>
           <div class="round-price">${price}</div>
           <div class="round-disc ${r.cls}">${r.discLabel}</div>
           ${dateLabel}
+          ${noteHtml}
           ${lineCtrl}
           ${calBtn}
           <span class="round-status">${icon}</span>
+          ${haltBar}
         </div>`;
     }).join('');
 
