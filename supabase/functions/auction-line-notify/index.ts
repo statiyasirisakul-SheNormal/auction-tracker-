@@ -31,6 +31,10 @@ function fmtTH(iso: string): string {
 function money(n: number): string {
   return (Number(n) || 0).toLocaleString("en-US");
 }
+// เขียนได้หลายแบบ (งดขาย / งด ขาย / งดการบังคับคดี / ถอนการยึด) เลยจับแบบหลวม ๆ (ตรงกับ isHaltedNote ใน index.html)
+function isHaltedNote(note: unknown): boolean {
+  return /งดขาย|งดการขาย|งดบังคับคดี|งดการบังคับคดี|ถอนการยึด|ถอนการบังคับคดี/.test(String(note || ""));
+}
 
 async function sendLine(token: string, to: string, text: string) {
   const res = await fetch("https://api.line.me/v2/bot/message/push", {
@@ -45,12 +49,12 @@ Deno.serve(async (_req) => {
   try {
     const SB_URL = Deno.env.get("SUPABASE_URL")!;                 // มีให้อัตโนมัติ
     const SB_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;    // มีให้อัตโนมัติ
-    const LINE_TOKEN = Deno.env.get("LINE_CHANNEL_ACCESS_TOKEN")!;
+    const LINE_TOKEN = Deno.env.get("LINE_TOKEN") || Deno.env.get("LINE_CHANNEL_ACCESS_TOKEN")!;
     const LINE_TARGET = Deno.env.get("LINE_TARGET_ID")!;
     const DAYS = parseInt(Deno.env.get("NOTIFY_DAYS_BEFORE") || "3");
 
     if (!LINE_TOKEN || !LINE_TARGET) {
-      return new Response(JSON.stringify({ ok: false, error: "ยังไม่ได้ตั้ง LINE_CHANNEL_ACCESS_TOKEN / LINE_TARGET_ID" }), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ ok: false, error: "ยังไม่ได้ตั้ง LINE_TOKEN / LINE_TARGET_ID" }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
     const sb = createClient(SB_URL, SB_KEY);
     const today = todayBangkok();
@@ -69,6 +73,7 @@ Deno.serve(async (_req) => {
       const round = (p.rounds || [])[ti];
       const rDate = round && typeof round === "object" ? round.date : "";
       if (!rDate) continue;
+      if (isHaltedNote(round && round.note)) continue;      // นัดนี้งดขายแล้ว ไม่ต้องเตือน
 
       const diff = daysBetween(today, rDate);
       if (diff !== DAYS) continue;                          // เตือนเฉพาะเมื่อเหลือ N วันพอดี
