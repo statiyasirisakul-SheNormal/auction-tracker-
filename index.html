@@ -2372,11 +2372,13 @@ function renderProps() {
   const openIds = new Set(
     [...document.querySelectorAll('.prop-card.expanded')].map(e => e.id.replace('pp-',''))
   );
-  if (!S.props.length) {
+  // ทรัพย์ที่ขายแล้วย้ายไปอยู่แท็บ "✅ ขายแล้ว" โดยเฉพาะ ไม่ต้องโชว์ซ้ำในลิสต์นี้
+  const activeProps = S.props.filter(p => !isSold(p));
+  if (!activeProps.length) {
     el.innerHTML = `<div class="empty"><div class="empty-icon">🏠</div><p>ยังไม่มีทรัพย์ที่เล็ง</p></div>`;
     updateBadges(); return;
   }
-  el.innerHTML = S.props.map((p,i) => {
+  el.innerHTML = activeProps.map((p,i) => {
     const base = Number(p.appraisal)||Number(p.price)||0;
     const si = stageInfo(p.status||'watching');
 
