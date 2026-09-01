@@ -2407,6 +2407,12 @@ function renderProps() {
       else               dateChip = `<span class="badge badge-blue">นัดที่${nextRound.ri+1} อีก ${dl} วัน</span>`;
     }
 
+    // 🎯 นัดที่เลือกไว้เข้าซื้อ (targetRound) — โชว์บนหัวการ์ดเลย ไม่ต้องกางดู
+    const targetIdx = p.targetRound||0;
+    const targetObj = (p.rounds||[])[targetIdx];
+    const targetDate = targetObj&&typeof targetObj==='object' ? targetObj.date : '';
+    const targetChip = `<span class="badge badge-amber" title="นัดที่เลือกไว้เข้าซื้อ">🎯 นัดที่${targetIdx+1}${targetDate?' · '+fmtDate(targetDate):''}</span>`;
+
     const roundsHtml = ROUNDS.map((r,ri) => {
       const rObj = (p.rounds||[])[ri];
       const rSt  = rObj&&typeof rObj==='object' ? (rObj.status||'pending') : (rObj||'pending');
@@ -2470,6 +2476,7 @@ function renderProps() {
             </div>
           </div>
           <div class="prop-badges" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            ${targetChip}
             ${dateChip}
             <span class="badge ${si.badge}">${si.icon} ${si.label}</span>
           </div>
