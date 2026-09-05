@@ -1072,6 +1072,12 @@ input, select, textarea { font-size: 16px !important; }
       </div>
     </div>
     <div class="form-group">
+      <label class="form-label">วิธีโอนคืน</label>
+      <select class="form-select" id="settle-pay">
+        <option>โอนเงิน</option><option>เงินสด</option>
+      </select>
+    </div>
+    <div class="form-group">
       <label class="form-label">หมายเหตุ</label>
       <input class="form-input" id="settle-note" placeholder="เช่น โอนผ่านธนาคาร / เคลียร์รอบเดือน" />
     </div>
@@ -1778,7 +1784,7 @@ function settleBoxHtml(propId) {
         ${settles.map(s=>`
           <div style="display:flex;align-items:center;gap:6px;font-size:11px;padding:2px 0">
             <span style="color:var(--gray);min-width:66px">${fmtDate(s.date)}</span>
-            <span style="flex:1">${s.from==='partner'?'🤝 หุ้นส่วนโอนคืน':'👤 ฉันโอนคืน'}${s.note?` <span style="color:var(--gray)">· ${s.note}</span>`:''}</span>
+            <span style="flex:1">${s.from==='partner'?'🤝 หุ้นส่วนโอนคืน':'👤 ฉันโอนคืน'}${s.pay?` <span style="color:var(--gray)">(${s.pay})</span>`:''}${s.note?` <span style="color:var(--gray)">· ${s.note}</span>`:''}</span>
             <b style="color:${s.from==='partner'?'var(--blue)':'var(--green)'}">${fmtPrice(s.amount)}</b>
             <button onclick="deleteSettlement('${propId}','${s.id}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:12px;padding:0 2px" title="ลบ">✕</button>
           </div>`).join('')}
@@ -3536,6 +3542,7 @@ function openSettle(propId) {
     ? Math.abs(Math.round(netOwe*100)/100).toLocaleString('th-TH', { minimumFractionDigits: (Math.abs(netOwe)%1?2:0), maximumFractionDigits: 2 })
     : '';
   document.getElementById('settle-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('settle-pay').value = 'โอนเงิน';
   document.getElementById('settle-note').value = '';
   document.getElementById('settle-info').innerHTML = Math.abs(netOwe) < 0.5
     ? `🏠 <b>${prop.name}</b><br>✓ ยอดเคลียร์กันแล้ว — บันทึกเพิ่มได้ถ้ามีการโอนคืนรอบใหม่`
@@ -3552,8 +3559,9 @@ function saveSettle() {
   if (!amount || amount <= 0) { alert('กรุณากรอกจำนวนเงินที่โอนคืน'); return; }
   if (!dateISO) { alert('กรุณากรอกวันที่'); return; }
   const from = (document.querySelector('input[name="settle-from"]:checked')||{}).value || 'me';
+  const pay  = document.getElementById('settle-pay').value;
   if (!Array.isArray(prop.settlements)) prop.settlements = [];
-  prop.settlements.push({ id: uid(), date: dateISO, amount, from, note: document.getElementById('settle-note').value.trim() });
+  prop.settlements.push({ id: uid(), date: dateISO, amount, from, pay, note: document.getElementById('settle-note').value.trim() });
   renoActiveProp = propId;
   saveS(); renderReno(); renderProps(); closeModal('modal-settle');
   if (typeof renderSold === 'function') renderSold();
