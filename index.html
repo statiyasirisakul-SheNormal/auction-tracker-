@@ -1702,6 +1702,29 @@ function propNetOwe(propId) {
   return { rawBal, income, paidBack, netOwe: rawBal + income - paidBack };
 }
 
+// ข้อความล้วนบอกตรงๆ ว่า "ขายได้เท่าไหร่ แต่ละคนควรได้สุทธิเท่าไหร่ ตอนนี้ใครถือเงินไปแล้วเท่าไหร่"
+// (เฉพาะทรัพย์ที่ขายแล้ว — ให้เห็นที่มาก่อนไปถึงยอดที่ต้องโอนสุดท้าย)
+function saleSettlementNarrative(propId) {
+  const p = S.props.find(x => x.id === propId);
+  const sold = p ? Number(p.actualSell)||0 : 0;
+  if (!p || !sold) return '';
+  const ps    = expenseStats(S.expenses.filter(e => e.propId === propId));
+  const gross = sold - propCosts(p).totalCost;
+  const net   = gross / 2;
+  const myEnt      = ps.myPaid + net;       // ยอดที่ฉันควรได้รับสุทธิรวม (ทุนคืน + กำไร)
+  const partnerEnt = ps.partnerPaid + net;  // ยอดที่หุ้นส่วนควรได้รับสุทธิรวม
+  const receipts     = saleReceipts(p);
+  const myRecv      = receipts.filter(r=>r.receiver!=='partner').reduce((s,r)=>s+r.amount,0);
+  const partnerRecv = receipts.filter(r=>r.receiver==='partner').reduce((s,r)=>s+r.amount,0);
+  return `
+    <div style="font-size:12px;color:#374151;line-height:2;margin-bottom:10px;background:#F8FAFC;border:1px solid #E5E7EB;border-radius:8px;padding:9px 11px">
+      💵 ขายบ้านได้ <b>${fmtPrice(sold)}</b> <span style="color:var(--gray)">(กำไรรวม ${gross>=0?'+':''}${fmtPrice(Math.round(gross))})</span><br>
+      👤 ฉันควรได้รับสุทธิรวม <b style="color:var(--green)">${fmtPrice(Math.round(myEnt))}</b> <span style="color:var(--gray);font-size:10.5px">(ทุนที่จ่ายไป ${fmtNum(ps.myPaid)} + กำไรส่วนตัว ${fmtNum(Math.round(net))})</span><br>
+      🤝 หุ้นส่วนควรได้รับสุทธิรวม <b style="color:var(--blue)">${fmtPrice(Math.round(partnerEnt))}</b> <span style="color:var(--gray);font-size:10.5px">(ทุนที่จ่ายไป ${fmtNum(ps.partnerPaid)} + กำไรส่วนตัว ${fmtNum(Math.round(net))})</span>
+      ${(myRecv>0||partnerRecv>0) ? `<br><span style="color:var(--gray);font-size:10.5px">📥 ตอนนี้ถือเงินจากผู้ซื้อไว้แล้ว — ฉัน ${fmtNum(myRecv)} ฿ / หุ้นส่วน ${fmtNum(partnerRecv)} ฿</span>` : ''}
+    </div>`;
+}
+
 // กล่องสรุป "ค้างสุทธิ" + ประวัติโอนคืน — ใช้ร่วมกันทั้งแท็บค่าใช้จ่ายและแท็บขายแล้ว
 // (รวมค่าใช้จ่าย + รายรับจากการขาย ก่อนหักยอดโอนคืน ให้ตรงกับ netBalanceForProps เสมอ)
 function settleBoxHtml(propId) {
@@ -1711,6 +1734,7 @@ function settleBoxHtml(propId) {
     ? `<span style="color:var(--green)">✓ เคลียร์แล้ว</span>`
     : (netOwe > 0 ? `<span style="color:var(--green)">หุ้นส่วนติดฉัน ${fmtPrice(netOwe)}</span>` : `<span style="color:var(--red)">ฉันติดหุ้นส่วน ${fmtPrice(-netOwe)}</span>`);
   return `
+    ${saleSettlementNarrative(propId)}
     <div style="border:1px solid ${Math.abs(netOwe)<0.5?'#86EFAC':'#FCD34D'};border-radius:9px;padding:8px 11px;margin-bottom:12px;background:${Math.abs(netOwe)<0.5?'#F0FDF4':'#FFFBEB'}">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
         <div style="font-size:12px;color:#374151">
@@ -2361,6 +2385,9 @@ function renderSaleReceipts(p) {
   return `
     <div style="border-top:1px dashed #86EFAC;margin-top:8px;padding-top:10px;display:flex;flex-direction:column;gap:9px">
       <div style="font-size:12px;font-weight:800;color:var(--green)">💰 การรับเงินจากการขาย</div>
+      <div style="font-size:10.5px;color:var(--gray);line-height:1.6;background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:6px 8px">
+        ⚠️ กรอกเฉพาะเงินที่ <b>เข้ากระเป๋า/บัญชีของฉันหรือหุ้นส่วนจริงๆ</b> เท่านั้น — ถ้ายอดคงเหลือถูกตัดตรงไปโปะแบงก์/ปิดวงเงินที่ยืมมาซื้อ/ค่านายหน้า โดยไม่เคยเข้ามือใครเลย <b>ห้ามกรอกตรงนี้</b> ให้ไปบันทึกเป็นรายการค่าใช้จ่ายแทน (หารครึ่งอัตโนมัติอยู่แล้ว) ไม่งั้นยอดค้างสุทธิด้านล่างจะผิดได้มาก
+      </div>
       ${inputRow('🧾','มัดจำที่ได้รับ','saleDeposit','saleDepositReceiver',dep,'เช่น 100,000',p.saleDepositReceiver)}
       ${inputRow('⏳','ยอดคงเหลือ','saleRemaining','saleRemainingReceiver',rem, suggestRem>0?('≈ '+suggestRem.toLocaleString('th-TH')):'ยอดที่รับเพิ่ม',p.saleRemainingReceiver)}
       <div style="font-size:11px;color:var(--gray);display:flex;gap:14px;flex-wrap:wrap">
@@ -4244,7 +4271,6 @@ function showSoldDetail(id) {
   const costs = propCosts(p);
   const items = [...S.expenses.filter(e => e.propId === id)].sort((a,b)=>b.date.localeCompare(a.date));
   const ps = expenseStats(items);
-  const gross = sold ? sold - costs.totalCost : null;
   const el = document.getElementById('sold-detail');
   el.innerHTML = `
     <div class="card" style="border:2px solid #86EFAC">
@@ -4274,11 +4300,6 @@ function showSoldDetail(id) {
               onblur="savePropActualSell('${p.id}',this.value)"
               style="flex:1;min-width:140px;border:1.5px solid var(--green);border-radius:7px;padding:6px 10px;font-size:14px;font-weight:700;color:var(--green);background:white;outline:none">
           </div>
-          ${gross!==null ? `
-          <div style="border-top:1px solid #BBF7D0;padding-top:8px;display:flex;gap:16px;flex-wrap:wrap">
-            <span style="font-size:12px;color:var(--gray)">กำไรรวม: <strong style="color:${gross>=0?'var(--green)':'var(--red)'}">${gross>=0?'+':''}${fmtNum(Math.round(gross))}</strong> ฿</span>
-            <span style="font-size:13px;font-weight:700;color:var(--navy)">กำไรส่วนตัว (÷2): <strong style="color:${gross/2>=0?'var(--green)':'var(--red)'};font-size:15px">${gross/2>=0?'+':''}${fmtNum(Math.round(gross/2))}</strong> ฿</span>
-          </div>` : ''}
           ${renderSaleReceipts(p)}
         </div>
       </div>
