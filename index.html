@@ -598,7 +598,7 @@ input, select, textarea { font-size: 16px !important; }
     <div class="card">
       <div class="card-header">
         <div class="card-title">🔨 บันทึกค่าใช้จ่าย</div>
-        <button class="btn btn-success btn-sm" onclick="openModal('modal-reno')">+ เพิ่มรายการ</button>
+        <button class="btn btn-success btn-sm" onclick="openRenoForProp('')">+ เพิ่มรายการ</button>
       </div>
       <div id="reno-summary-bar"></div>
 
@@ -953,7 +953,7 @@ input, select, textarea { font-size: 16px !important; }
     <input type="hidden" id="reno-edit-id" />
     <div class="form-row">
       <div class="form-group">
-        <label class="form-label">ทรัพย์ *</label>
+        <label class="form-label" id="reno-prop-label">ทรัพย์ *</label>
         <select class="form-select" id="reno-prop-sel"></select>
       </div>
       <div class="form-group">
@@ -1692,6 +1692,46 @@ function netBalanceForProps(propIds) {
   return rawBalance + income - settled;
 }
 
+// ยอดค้างสุทธิของทรัพย์ชิ้นเดียว (ตัวเลขล้วน ไม่มี HTML) — ให้ตรงกับ netBalanceForProps([propId]) เสมอ
+// ใช้ร่วมกันทั้ง settleBoxHtml() และ openSettle() กันคำนวณคนละสูตรแล้วยอดไม่ตรงกัน
+function propNetOwe(propId) {
+  const p        = S.props.find(x => x.id === propId);
+  const rawBal   = expenseStats(S.expenses.filter(e => e.propId === propId)).balance;
+  const income   = p ? saleIncomeBalance(p) : 0;
+  const paidBack = settlementSigned(propId);
+  return { rawBal, income, paidBack, netOwe: rawBal + income - paidBack };
+}
+
+// กล่องสรุป "ค้างสุทธิ" + ประวัติโอนคืน — ใช้ร่วมกันทั้งแท็บค่าใช้จ่ายและแท็บขายแล้ว
+// (รวมค่าใช้จ่าย + รายรับจากการขาย ก่อนหักยอดโอนคืน ให้ตรงกับ netBalanceForProps เสมอ)
+function settleBoxHtml(propId) {
+  const { rawBal, income, paidBack, netOwe } = propNetOwe(propId);
+  const settles  = [...propSettlements(propId)].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const oweShort = Math.abs(netOwe) < 0.5
+    ? `<span style="color:var(--green)">✓ เคลียร์แล้ว</span>`
+    : (netOwe > 0 ? `<span style="color:var(--green)">หุ้นส่วนติดฉัน ${fmtPrice(netOwe)}</span>` : `<span style="color:var(--red)">ฉันติดหุ้นส่วน ${fmtPrice(-netOwe)}</span>`);
+  return `
+    <div style="border:1px solid ${Math.abs(netOwe)<0.5?'#86EFAC':'#FCD34D'};border-radius:9px;padding:8px 11px;margin-bottom:12px;background:${Math.abs(netOwe)<0.5?'#F0FDF4':'#FFFBEB'}">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <div style="font-size:12px;color:#374151">
+          🔄 ค้างสุทธิ: <b style="font-size:13px">${oweShort}</b>
+          <span style="color:var(--gray);font-size:10px">· ค่าใช้จ่าย ${rawBal>=0?'+':''}${fmtNum(Math.round(rawBal))} + รายรับขาย ${income>=0?'+':''}${fmtNum(Math.round(income))} − โอนคืนแล้ว ${fmtNum(Math.abs(paidBack))}</span>
+        </div>
+        <button class="btn btn-primary btn-xs" onclick="openSettle('${propId}')">+ บันทึกยอดโอนคืน</button>
+      </div>
+      ${settles.length ? `
+      <div style="margin-top:6px;border-top:1px dashed #E5E7EB;padding-top:5px">
+        ${settles.map(s=>`
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;padding:2px 0">
+            <span style="color:var(--gray);min-width:66px">${fmtDate(s.date)}</span>
+            <span style="flex:1">${s.from==='partner'?'🤝 หุ้นส่วนโอนคืน':'👤 ฉันโอนคืน'}${s.note?` <span style="color:var(--gray)">· ${s.note}</span>`:''}</span>
+            <b style="color:${s.from==='partner'?'var(--blue)':'var(--green)'}">${fmtPrice(s.amount)}</b>
+            <button onclick="deleteSettlement('${propId}','${s.id}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:12px;padding:0 2px" title="ลบ">✕</button>
+          </div>`).join('')}
+      </div>` : ''}
+    </div>`;
+}
+
 function fmtPrice(n) { return fmtNum(n)+' ฿'; }
 function fmtDate(d)  { if (!d) return ''; return new Date(d+'T00:00:00').toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'}); }
 
@@ -2336,12 +2376,16 @@ function savePropSaleField(id, field, val) {
   if (v === (Number(p[field])||0)) return;
   p[field] = v; saveS(); renderProps();
   if (typeof renderSummary==='function' && document.getElementById('tab-summary')?.classList.contains('active')) renderSummary();
+  if (typeof renderSold === 'function') renderSold();
+  if (typeof refreshSoldDetailIfOpen === 'function') refreshSoldDetailIfOpen(id);
 }
 function setPropSaleReceiver(id, field, who) {
   const p = S.props.find(x=>x.id===id); if(!p) return;
   if (p[field] === who) return;
   p[field] = who; saveS(); renderProps();
   if (typeof renderSummary==='function' && document.getElementById('tab-summary')?.classList.contains('active')) renderSummary();
+  if (typeof renderSold === 'function') renderSold();
+  if (typeof refreshSoldDetailIfOpen === 'function') refreshSoldDetailIfOpen(id);
 }
 
 // จำว่ารายการค่าใช้จ่าย/เอกสารของทรัพย์ไหนถูกกางอยู่ (ย่อไว้เป็นค่าเริ่มต้น กันการ์ดยาว)
@@ -2783,6 +2827,8 @@ function savePropActualBuy(propId, val) {
   if (v === (p.actualBuy||0)) return;
   p.actualBuy = v;
   saveS(); renderProps();
+  if (typeof renderSold === 'function') renderSold();
+  if (typeof refreshSoldDetailIfOpen === 'function') refreshSoldDetailIfOpen(propId);
 }
 
 function savePropActualSell(propId, val) {
@@ -2797,6 +2843,7 @@ function savePropActualSell(propId, val) {
   if (v > 0 && renoActiveProp === propId) renoActiveProp = '';  // ขายแล้ว → เอาออกจากบ้านที่เลือกในหน้าค่าใช้จ่าย
   saveS(); renderProps(); renderReno(); updateBadges();
   if (typeof renderSold === 'function') renderSold();
+  if (typeof refreshSoldDetailIfOpen === 'function') refreshSoldDetailIfOpen(propId);
 }
 
 async function deleteCloudProp(id) {
@@ -3233,6 +3280,10 @@ function openRenoForProp(propId) {
         }
       }
       sel.value = propId;
+      // เปิดจากการ์ดบ้านที่ระบุแล้ว → ล็อกทรัพย์ไว้เลย กันเลือกผิดหลังตอนกรอกฟอร์ม
+      sel.disabled = !!propId;
+      const lbl = document.getElementById('reno-prop-label');
+      if (lbl) lbl.innerHTML = propId ? 'ทรัพย์ * 🔒 (ล็อกไว้)' : 'ทรัพย์ *';
     }
   }, 60);
 }
@@ -3348,13 +3399,16 @@ function saveReno() {
   renoActiveProp = propId;   // แสดงรายการของบ้านที่เพิ่งบันทึกค้างไว้
   saveS(); renderReno(); renderProps(); closeModal('modal-reno'); clearRenoForm();
   if (typeof renderSold === 'function') renderSold();
+  if (typeof refreshSoldDetailIfOpen === 'function') refreshSoldDetailIfOpen(propId);
   toast('✓ บันทึกรายการค่าใช้จ่ายแล้ว','success');
 }
 
 async function deleteExpense(id) {
   if (!confirm('ลบรายการนี้?')) return;
+  const propId = (S.expenses.find(x=>x.id===id)||{}).propId;
   S.expenses = S.expenses.filter(x=>x.id!==id); saveS(); renderReno(); renderProps();
   if (typeof renderSold === 'function') renderSold();
+  if (typeof refreshSoldDetailIfOpen === 'function') refreshSoldDetailIfOpen(propId);
   await deleteCloudExpense(id);
 }
 
@@ -3363,6 +3417,8 @@ function toggleExpenseSettled(id) {
   if (!e) return;
   e.settled = !e.settled;
   saveS(); renderReno(); renderProps();
+  if (typeof renderSold === 'function') renderSold();
+  if (typeof refreshSoldDetailIfOpen === 'function') refreshSoldDetailIfOpen(e.propId);
 }
 // สลับว่ารายการนี้นับเป็นค่ารีโนเวท หรือ ต้นทุนซื้อ/ค่าธรรมเนียม (ไม่รวมในงบรีโนเวท)
 function toggleExpenseReno(id) {
@@ -3377,6 +3433,8 @@ function toggleExpensePayer(id) {
   if (!e) return;
   e.payer = (e.payer === 'partner') ? 'me' : 'partner';
   saveS(); renderReno(); renderProps();
+  if (typeof renderSold === 'function') renderSold();
+  if (typeof refreshSoldDetailIfOpen === 'function') refreshSoldDetailIfOpen(e.propId);
 }
 
 // ── ยอดโอนคืน (ตัดบัญชีเป็นยอด) ──
@@ -3384,8 +3442,7 @@ function openSettle(propId) {
   const prop = S.props.find(p=>p.id===propId);
   if (!prop) return;
   document.getElementById('settle-prop-id').value = propId;
-  const rawBal   = expenseStats(S.expenses.filter(e=>e.propId===propId)).balance;
-  const netOwe   = rawBal - settlementSigned(propId);
+  const { netOwe } = propNetOwe(propId);   // รวมรายรับจากการขายด้วย ไม่ใช่แค่บิลค่าใช้จ่าย
   // ตั้งค่าเริ่มต้น: ทิศทาง + จำนวน ตามยอดค้างสุทธิ
   const fromMe = netOwe < 0;  // ติดลบ = ฉันติดหุ้นส่วน → ฉันโอนคืน
   document.getElementById(fromMe ? 'settle-from-me' : 'settle-from-partner').checked = true;
@@ -3413,6 +3470,8 @@ function saveSettle() {
   prop.settlements.push({ id: uid(), date: dateISO, amount, from, note: document.getElementById('settle-note').value.trim() });
   renoActiveProp = propId;
   saveS(); renderReno(); renderProps(); closeModal('modal-settle');
+  if (typeof renderSold === 'function') renderSold();
+  if (typeof refreshSoldDetailIfOpen === 'function') refreshSoldDetailIfOpen(propId);
   toast('✓ บันทึกยอดโอนคืนแล้ว','success');
 }
 
@@ -3422,6 +3481,8 @@ function deleteSettlement(propId, sid) {
   if (!confirm('ลบรายการโอนคืนนี้?')) return;
   prop.settlements = prop.settlements.filter(s=>s.id!==sid);
   saveS(); renderReno(); renderProps();
+  if (typeof renderSold === 'function') renderSold();
+  if (typeof refreshSoldDetailIfOpen === 'function') refreshSoldDetailIfOpen(propId);
 }
 
 function editExpense(id) {
@@ -3431,6 +3492,10 @@ function editExpense(id) {
   openModal('modal-reno');
   setTimeout(() => {
     const sel = document.getElementById('reno-prop-sel');
+    // แก้ไขรายการเดิม — ปลดล็อกเสมอ เผื่อบันทึกผิดบ้านไว้แล้วต้องแก้
+    if (sel) sel.disabled = false;
+    const lbl = document.getElementById('reno-prop-label');
+    if (lbl) lbl.innerHTML = 'ทรัพย์ *';
     // ถ้า property ไม่อยู่ใน dropdown (เช่นไม่ใช่ won แล้ว) ให้เพิ่มเข้าไปชั่วคราว
     if (sel && e.propId && ![...sel.options].some(o=>o.value===e.propId)) {
       const prop = S.props.find(p=>p.id===e.propId);
@@ -3546,41 +3611,13 @@ function renderReno() {
     return;
   }
 
-  // ── แผงยอดค้าง + ยอดโอนคืน (ตัดบัญชีเป็นยอด) ──
-  const rawBal   = expenseStats(S.expenses.filter(e=>e.propId===filterPropId)).balance;
-  const paidBack = settlementSigned(filterPropId);      // + = หุ้นส่วนโอนคืนแล้ว, − = ฉันโอนคืนแล้ว
-  const netOwe   = rawBal - paidBack;                    // ค้างสุทธิ
-  const settles  = [...propSettlements(filterPropId)].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  const oweTxt = Math.abs(netOwe) < 0.5
-    ? `✓ เคลียร์ยอดกันเรียบร้อยแล้ว`
-    : (netOwe > 0 ? `🤝 หุ้นส่วนต้องโอนคืนฉันอีก <b>${fmtPrice(netOwe)}</b>` : `👤 ฉันต้องโอนคืนหุ้นส่วนอีก <b>${fmtPrice(-netOwe)}</b>`);
-  const oweShort = Math.abs(netOwe) < 0.5
-    ? `<span style="color:var(--green)">✓ เคลียร์แล้ว</span>`
-    : (netOwe > 0 ? `<span style="color:var(--green)">หุ้นส่วนติดฉัน ${fmtPrice(netOwe)}</span>` : `<span style="color:var(--red)">ฉันติดหุ้นส่วน ${fmtPrice(-netOwe)}</span>`);
+  // ── แผงยอดค้าง + ยอดโอนคืน (ตัดบัญชีเป็นยอด) — ใช้สูตรร่วมกับแท็บขายแล้ว (รวมรายรับจากการขายด้วยเสมอ) ──
   headEl.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:20px 0 8px">
       <div style="font-size:15px;font-weight:800;color:var(--navy)">🧾 ค่าใช้จ่ายบ้านนี้</div>
       <button class="btn btn-success btn-sm" onclick="openRenoForProp('${filterPropId}')">+ เพิ่มค่าใช้จ่ายบ้านนี้</button>
     </div>
-    <div style="border:1px solid ${Math.abs(netOwe)<0.5?'#86EFAC':'#FCD34D'};border-radius:9px;padding:8px 11px;margin-bottom:12px;background:${Math.abs(netOwe)<0.5?'#F0FDF4':'#FFFBEB'}">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-        <div style="font-size:12px;color:#374151">
-          🔄 ค้างสุทธิ: <b style="font-size:13px">${oweShort}</b>
-          <span style="color:var(--gray);font-size:10px">· บิล ${rawBal>=0?'+':''}${fmtNum(rawBal)} − โอนคืน ${fmtNum(Math.abs(paidBack))}</span>
-        </div>
-        <button class="btn btn-primary btn-xs" onclick="openSettle('${filterPropId}')">+ บันทึกยอดโอนคืน</button>
-      </div>
-      ${settles.length ? `
-      <div style="margin-top:6px;border-top:1px dashed #E5E7EB;padding-top:5px">
-        ${settles.map(s=>`
-          <div style="display:flex;align-items:center;gap:6px;font-size:11px;padding:2px 0">
-            <span style="color:var(--gray);min-width:66px">${fmtDate(s.date)}</span>
-            <span style="flex:1">${s.from==='partner'?'🤝 หุ้นส่วนโอนคืน':'👤 ฉันโอนคืน'}${s.note?` <span style="color:var(--gray)">· ${s.note}</span>`:''}</span>
-            <b style="color:${s.from==='partner'?'var(--blue)':'var(--green)'}">${fmtPrice(s.amount)}</b>
-            <button onclick="deleteSettlement('${filterPropId}','${s.id}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:12px;padding:0 2px" title="ลบ">✕</button>
-          </div>`).join('')}
-      </div>` : ''}
-    </div>`;
+    ${settleBoxHtml(filterPropId)}`;
 
   let list = S.expenses.filter(e=>e.propId===filterPropId);
   if (renoCatFilter) list = list.filter(e=>e.cat===renoCatFilter);
@@ -4193,22 +4230,63 @@ function soldCardHTML({ p, sold, costs, net, isP }) {
     </div>`;
 }
 
+let soldDetailOpenId = '';   // บ้านที่เปิดดูรายละเอียดอยู่ในแท็บ "ขายแล้ว" — ใช้รีเฟรชอัตโนมัติเมื่อแก้ราคา/มัดจำ
+function closeSoldDetail() {
+  soldDetailOpenId = '';
+  const el = document.getElementById('sold-detail');
+  if (el) el.innerHTML = '';
+}
 function showSoldDetail(id) {
   const p = S.props.find(x => x.id === id);
   if (!p) return;
+  soldDetailOpenId = id;
   const sold  = Number(p.actualSell) || 0;
   const costs = propCosts(p);
   const items = [...S.expenses.filter(e => e.propId === id)].sort((a,b)=>b.date.localeCompare(a.date));
   const ps = expenseStats(items);
+  const gross = sold ? sold - costs.totalCost : null;
   const el = document.getElementById('sold-detail');
   el.innerHTML = `
     <div class="card" style="border:2px solid #86EFAC">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
         <span style="font-size:16px;font-weight:800;color:var(--navy)">🏠 ${p.name} — รายละเอียดย้อนหลัง</span>
-        <button onclick="document.getElementById('sold-detail').innerHTML=''" style="margin-left:auto;background:none;border:1.5px solid var(--border);border-radius:6px;padding:3px 10px;cursor:pointer;font-size:12px;color:var(--gray)">✕ ปิด</button>
+        <button onclick="closeSoldDetail()" style="margin-left:auto;background:none;border:1.5px solid var(--border);border-radius:6px;padding:3px 10px;cursor:pointer;font-size:12px;color:var(--gray)">✕ ปิด</button>
       </div>
+
+      <!-- ราคาซื้อ/ขาย + กำไร÷2 + การรับเงินจากการขาย + ค้างสุทธิ — แก้ไขได้จากตรงนี้เลย ไม่ต้องย้อนไปแท็บทรัพย์ -->
+      <div style="background:#F0FDF4;border-radius:9px;padding:12px 14px;border:1px solid #BBF7D0;margin-bottom:14px">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span style="font-size:13px;font-weight:700;color:var(--navy);white-space:nowrap;min-width:160px">🏷 ราคาที่ซื้อทรัพย์ได้</span>
+            <input type="text" inputmode="numeric"
+              value="${(Number(p.actualBuy)||Number(p.calcCustomBid))>0 ? (Number(p.actualBuy)||Number(p.calcCustomBid)).toLocaleString('th-TH') : ''}"
+              placeholder="กรอกราคาที่ประมูลได้ (฿)"
+              oninput="fmtNumInput(this)"
+              onblur="savePropActualBuy('${p.id}',this.value)"
+              style="flex:1;min-width:140px;border:1.5px solid var(--navy);border-radius:7px;padding:6px 10px;font-size:14px;font-weight:700;color:var(--navy);background:white;outline:none">
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span style="font-size:13px;font-weight:700;color:var(--green);white-space:nowrap;min-width:160px">💵 ราคาที่ขายได้จริง</span>
+            <input type="text" inputmode="numeric"
+              value="${sold>0 ? sold.toLocaleString('th-TH') : ''}"
+              placeholder="กรอกราคาที่ขายได้ (฿)"
+              oninput="fmtNumInput(this)"
+              onblur="savePropActualSell('${p.id}',this.value)"
+              style="flex:1;min-width:140px;border:1.5px solid var(--green);border-radius:7px;padding:6px 10px;font-size:14px;font-weight:700;color:var(--green);background:white;outline:none">
+          </div>
+          ${gross!==null ? `
+          <div style="border-top:1px solid #BBF7D0;padding-top:8px;display:flex;gap:16px;flex-wrap:wrap">
+            <span style="font-size:12px;color:var(--gray)">กำไรรวม: <strong style="color:${gross>=0?'var(--green)':'var(--red)'}">${gross>=0?'+':''}${fmtNum(Math.round(gross))}</strong> ฿</span>
+            <span style="font-size:13px;font-weight:700;color:var(--navy)">กำไรส่วนตัว (÷2): <strong style="color:${gross/2>=0?'var(--green)':'var(--red)'};font-size:15px">${gross/2>=0?'+':''}${fmtNum(Math.round(gross/2))}</strong> ฿</span>
+          </div>` : ''}
+          ${renderSaleReceipts(p)}
+        </div>
+      </div>
+
+      ${settleBoxHtml(id)}
+
       <div style="font-size:13px;color:var(--gray);margin-bottom:12px;line-height:1.9">
-        💵 ราคาขาย: <b style="color:var(--green)">${fmtNum(sold)} ฿</b> · ค่าธรรมเนียมโอน/ภาษี (ประมาณการ ไม่ถูกหักจริง): <b style="color:var(--navy)">${fmtNum(Math.round(costs.fees))} ฿</b> · ค่าใช้จ่ายจริงที่หัก: <b style="color:var(--red)">${fmtNum(Math.round(costs.expTotal))} ฿</b>
+        ค่าธรรมเนียมโอน/ภาษี (ประมาณการ ไม่ถูกหักจริง): <b style="color:var(--navy)">${fmtNum(Math.round(costs.fees))} ฿</b> · ค่าใช้จ่ายจริงที่หัก: <b style="color:var(--red)">${fmtNum(Math.round(costs.expTotal))} ฿</b>
       </div>
       ${items.length ? `
       <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
@@ -4227,6 +4305,10 @@ function showSoldDetail(id) {
       </table></div>` : `<div style="font-size:13px;color:var(--gray)">— ไม่มีรายการค่าใช้จ่ายของบ้านนี้ —</div>`}
     </div>`;
   setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'start'}),50);
+}
+// รีเฟรชแผงรายละเอียดในแท็บขายแล้ว ถ้าบ้านนี้เปิดค้างอยู่ (เรียกหลังแก้ราคา/มัดจำ/ผู้รับเงิน)
+function refreshSoldDetailIfOpen(id) {
+  if (soldDetailOpenId === id) showSoldDetail(id);
 }
 
 async function deleteSoldProp(id) {
