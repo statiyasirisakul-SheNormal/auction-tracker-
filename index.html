@@ -1728,21 +1728,51 @@ function saleSettlementNarrative(propId) {
 // กล่องสรุป "ค้างสุทธิ" + ประวัติโอนคืน — ใช้ร่วมกันทั้งแท็บค่าใช้จ่ายและแท็บขายแล้ว
 // (รวมค่าใช้จ่าย + รายรับจากการขาย ก่อนหักยอดโอนคืน ให้ตรงกับ netBalanceForProps เสมอ)
 function settleBoxHtml(propId) {
+  const p = S.props.find(x => x.id === propId);
   const { rawBal, income, paidBack, netOwe } = propNetOwe(propId);
   const settles  = [...propSettlements(propId)].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const oweShort = Math.abs(netOwe) < 0.5
     ? `<span style="color:var(--green)">✓ เคลียร์แล้ว</span>`
     : (netOwe > 0 ? `<span style="color:var(--green)">หุ้นส่วนติดฉัน ${fmtPrice(netOwe)}</span>` : `<span style="color:var(--red)">ฉันติดหุ้นส่วน ${fmtPrice(-netOwe)}</span>`);
+
+  // แยกยอดที่ต้องโอนเป็น "คืนทุน" (เงินตัวเองที่จ่ายไปแล้วแต่ยังไม่ได้คืน) + "คืนกำไร" (ส่วนแบ่งกำไรที่ยังไม่ได้รับ)
+  // เทียบสิทธิ์ที่ควรได้รับ (ทุนที่จ่ายไป + กำไรคนละครึ่ง) กับเงินที่ถือจากผู้ซื้อไปแล้วจริงของฝ่ายที่ควรได้รับ
+  let breakdownHtml = '';
+  const sold = p ? Number(p.actualSell)||0 : 0;
+  if (p && sold > 0 && Math.abs(netOwe) >= 0.5) {
+    const ps   = expenseStats(S.expenses.filter(e => e.propId === propId));
+    const net  = (sold - propCosts(p).totalCost) / 2;
+    const receipts     = saleReceipts(p);
+    const myRecv      = receipts.filter(r=>r.receiver!=='partner').reduce((s,r)=>s+r.amount,0);
+    const partnerRecv = receipts.filter(r=>r.receiver==='partner').reduce((s,r)=>s+r.amount,0);
+    const recipientIsMe = netOwe > 0;   // + = หุ้นส่วนติดฉัน → ฉันคือฝ่ายที่ควรได้รับเพิ่ม
+    const who   = recipientIsMe ? 'ฉัน' : 'หุ้นส่วน';
+    const rPaid = recipientIsMe ? ps.myPaid : ps.partnerPaid;
+    const rRecv = recipientIsMe ? myRecv : partnerRecv;
+    const capitalShort = Math.max(0, rPaid - rRecv);          // คืนทุน — ยังไม่ได้คืนเท่าที่จ่ายไปเอง
+    const heldOverCapital = Math.max(0, rRecv - rPaid);       // ถือเงินเกินทุนตัวเองไปแล้วเท่าไหร่ (นับเป็นกำไรที่ได้แล้วบางส่วน)
+    const profitShort = Math.max(0, net - heldOverCapital);   // คืนกำไร — ส่วนแบ่งกำไรที่ยังไม่ได้รับ
+    breakdownHtml = `
+      <div style="margin-top:6px;padding-top:6px;border-top:1px dashed #E5E7EB;font-size:11px;color:#374151;line-height:2">
+        📦 แยกยอดที่ต้องโอนให้${who}:
+        ${capitalShort>=0.5 ? `<div>• คืนทุน (${who}จ่ายไปแล้วแต่ยังไม่ได้คืน): <b>${fmtPrice(Math.round(capitalShort))}</b></div>` : ''}
+        ${profitShort>=0.5  ? `<div>• คืนกำไร (ส่วนแบ่งกำไรของ${who}ที่ยังไม่ได้รับ): <b>${fmtPrice(Math.round(profitShort))}</b></div>` : ''}
+        ${Math.abs(paidBack)>=0.5 ? `<div>• หักยอดที่โอนคืนกันไปแล้วก่อนหน้านี้: <b>${fmtNum(Math.abs(paidBack))} ฿</b></div>` : ''}
+      </div>`;
+  } else if (Math.abs(netOwe) >= 0.5) {
+    breakdownHtml = `<div style="margin-top:4px;font-size:10px;color:var(--gray)">· ค่าใช้จ่ายที่จ่ายไม่เท่ากัน ${rawBal>=0?'+':''}${fmtNum(Math.round(rawBal))} − โอนคืนแล้ว ${fmtNum(Math.abs(paidBack))} ฿ <span style="opacity:.8">(ยังไม่ขาย จึงยังไม่มีเงินขายมาคิดรวม)</span></div>`;
+  }
+
   return `
     ${saleSettlementNarrative(propId)}
     <div style="border:1px solid ${Math.abs(netOwe)<0.5?'#86EFAC':'#FCD34D'};border-radius:9px;padding:8px 11px;margin-bottom:12px;background:${Math.abs(netOwe)<0.5?'#F0FDF4':'#FFFBEB'}">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
         <div style="font-size:12px;color:#374151">
           🔄 ค้างสุทธิ: <b style="font-size:13px">${oweShort}</b>
-          <span style="color:var(--gray);font-size:10px">· ค่าใช้จ่าย ${rawBal>=0?'+':''}${fmtNum(Math.round(rawBal))} + รายรับขาย ${income>=0?'+':''}${fmtNum(Math.round(income))} − โอนคืนแล้ว ${fmtNum(Math.abs(paidBack))}</span>
         </div>
         <button class="btn btn-primary btn-xs" onclick="openSettle('${propId}')">+ บันทึกยอดโอนคืน</button>
       </div>
+      ${breakdownHtml}
       ${settles.length ? `
       <div style="margin-top:6px;border-top:1px dashed #E5E7EB;padding-top:5px">
         ${settles.map(s=>`
