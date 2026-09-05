@@ -2427,6 +2427,35 @@ function renderSaleReceipts(p) {
       ${received>0?`<div style="font-size:12px;font-weight:700;color:${net>=0?'var(--green)':'var(--red)'};background:#ECFDF5;border-radius:6px;padding:6px 10px" title="+ = หุ้นส่วนติดฉัน, − = ฉันติดหุ้นส่วน (รวมค่าใช้จ่าย + การขาย − ยอดโอนคืน)">🔄 ยอดสุทธิระหว่างกัน (รวมทุกอย่าง): <b>${net>=0?'+':''}${fmtNum(Math.round(net))} ฿</b> ${net>=0?'· หุ้นส่วนติดฉัน':'· ฉันติดหุ้นส่วน'}</div>`:''}
     </div>`;
 }
+// ราคาซื้อ/ขายจริง + การรับเงินจากการขาย (มัดจำ/ยอดคงเหลือ) — ใช้ร่วมกันทั้งแท็บค่าใช้จ่ายและแท็บขายแล้ว
+// กันไม่ให้ทรัพย์ที่ขายแล้วเข้าถึงช่องกรอกพวกนี้ไม่ได้ ไม่ว่าจะเปิดดูจากแท็บไหน
+function saleInputsHtml(p) {
+  const sold = Number(p.actualSell) || 0;
+  return `
+    <div style="background:#F0FDF4;border-radius:9px;padding:12px 14px;border:1px solid #BBF7D0;margin-bottom:14px">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-size:13px;font-weight:700;color:var(--navy);white-space:nowrap;min-width:160px">🏷 ราคาที่ซื้อทรัพย์ได้</span>
+          <input type="text" inputmode="numeric"
+            value="${(Number(p.actualBuy)||Number(p.calcCustomBid))>0 ? (Number(p.actualBuy)||Number(p.calcCustomBid)).toLocaleString('th-TH') : ''}"
+            placeholder="กรอกราคาที่ประมูลได้ (฿)"
+            oninput="fmtNumInput(this)"
+            onblur="savePropActualBuy('${p.id}',this.value)"
+            style="flex:1;min-width:140px;border:1.5px solid var(--navy);border-radius:7px;padding:6px 10px;font-size:14px;font-weight:700;color:var(--navy);background:white;outline:none">
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-size:13px;font-weight:700;color:var(--green);white-space:nowrap;min-width:160px">💵 ราคาที่ขายได้จริง</span>
+          <input type="text" inputmode="numeric"
+            value="${sold>0 ? sold.toLocaleString('th-TH') : ''}"
+            placeholder="กรอกราคาที่ขายได้ (฿)"
+            oninput="fmtNumInput(this)"
+            onblur="savePropActualSell('${p.id}',this.value)"
+            style="flex:1;min-width:140px;border:1.5px solid var(--green);border-radius:7px;padding:6px 10px;font-size:14px;font-weight:700;color:var(--green);background:white;outline:none">
+        </div>
+        ${renderSaleReceipts(p)}
+      </div>
+    </div>`;
+}
 function savePropSaleField(id, field, val) {
   const p = S.props.find(x=>x.id===id); if(!p) return;
   const v = parseNumInput(val);
@@ -3669,11 +3698,13 @@ function renderReno() {
   }
 
   // ── แผงยอดค้าง + ยอดโอนคืน (ตัดบัญชีเป็นยอด) — ใช้สูตรร่วมกับแท็บขายแล้ว (รวมรายรับจากการขายด้วยเสมอ) ──
+  const filterProp = S.props.find(x=>x.id===filterPropId);
   headEl.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:20px 0 8px">
       <div style="font-size:15px;font-weight:800;color:var(--navy)">🧾 ค่าใช้จ่ายบ้านนี้</div>
       <button class="btn btn-success btn-sm" onclick="openRenoForProp('${filterPropId}')">+ เพิ่มค่าใช้จ่ายบ้านนี้</button>
     </div>
+    ${filterProp && isSold(filterProp) ? saleInputsHtml(filterProp) : ''}
     ${settleBoxHtml(filterPropId)}`;
 
   let list = S.expenses.filter(e=>e.propId===filterPropId);
@@ -4297,7 +4328,6 @@ function showSoldDetail(id) {
   const p = S.props.find(x => x.id === id);
   if (!p) return;
   soldDetailOpenId = id;
-  const sold  = Number(p.actualSell) || 0;
   const costs = propCosts(p);
   const items = [...S.expenses.filter(e => e.propId === id)].sort((a,b)=>b.date.localeCompare(a.date));
   const ps = expenseStats(items);
@@ -4309,30 +4339,8 @@ function showSoldDetail(id) {
         <button onclick="closeSoldDetail()" style="margin-left:auto;background:none;border:1.5px solid var(--border);border-radius:6px;padding:3px 10px;cursor:pointer;font-size:12px;color:var(--gray)">✕ ปิด</button>
       </div>
 
-      <!-- ราคาซื้อ/ขาย + กำไร÷2 + การรับเงินจากการขาย + ค้างสุทธิ — แก้ไขได้จากตรงนี้เลย ไม่ต้องย้อนไปแท็บทรัพย์ -->
-      <div style="background:#F0FDF4;border-radius:9px;padding:12px 14px;border:1px solid #BBF7D0;margin-bottom:14px">
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <span style="font-size:13px;font-weight:700;color:var(--navy);white-space:nowrap;min-width:160px">🏷 ราคาที่ซื้อทรัพย์ได้</span>
-            <input type="text" inputmode="numeric"
-              value="${(Number(p.actualBuy)||Number(p.calcCustomBid))>0 ? (Number(p.actualBuy)||Number(p.calcCustomBid)).toLocaleString('th-TH') : ''}"
-              placeholder="กรอกราคาที่ประมูลได้ (฿)"
-              oninput="fmtNumInput(this)"
-              onblur="savePropActualBuy('${p.id}',this.value)"
-              style="flex:1;min-width:140px;border:1.5px solid var(--navy);border-radius:7px;padding:6px 10px;font-size:14px;font-weight:700;color:var(--navy);background:white;outline:none">
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <span style="font-size:13px;font-weight:700;color:var(--green);white-space:nowrap;min-width:160px">💵 ราคาที่ขายได้จริง</span>
-            <input type="text" inputmode="numeric"
-              value="${sold>0 ? sold.toLocaleString('th-TH') : ''}"
-              placeholder="กรอกราคาที่ขายได้ (฿)"
-              oninput="fmtNumInput(this)"
-              onblur="savePropActualSell('${p.id}',this.value)"
-              style="flex:1;min-width:140px;border:1.5px solid var(--green);border-radius:7px;padding:6px 10px;font-size:14px;font-weight:700;color:var(--green);background:white;outline:none">
-          </div>
-          ${renderSaleReceipts(p)}
-        </div>
-      </div>
+      <!-- ราคาซื้อ/ขาย + การรับเงินจากการขาย + ค้างสุทธิ — แก้ไขได้จากตรงนี้เลย ไม่ต้องย้อนไปแท็บทรัพย์ -->
+      ${saleInputsHtml(p)}
 
       ${settleBoxHtml(id)}
 
