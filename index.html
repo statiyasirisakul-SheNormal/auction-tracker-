@@ -4511,10 +4511,14 @@ renderProps();
 updateBadges();
 
 // Restore whichever tab was open before the last refresh (default: ทรัพย์).
+// เรียกผ่าน setTimeout เพื่อรอให้ script ทั้งไฟล์รันจบก่อน — ไม่งั้นถ้า lastTab เป็น
+// "calc" (หรือแท็บอื่นที่พึ่ง const ซึ่งอยู่ถัดลงไปในไฟล์ เช่น fmtN/fmtB) จะชน TDZ
+// error ("Cannot access ... before initialization") กลางไฟล์ script ทั้งก้อนหยุดทำงาน
+// (ฟีเจอร์ทุกอย่างที่ประกาศหลังจุดนี้ในไฟล์จะพังไปด้วย ไม่ใช่แค่แท็บคำนวณ)
 (() => {
   let lastTab = 'props';
   try { lastTab = localStorage.getItem('acktion_lasttab') || 'props'; } catch(e) {}
-  if (lastTab !== 'props') switchTab(lastTab);
+  if (lastTab !== 'props') setTimeout(() => switchTab(lastTab), 0);
 })();
 
 // Cloud sync (clock-in pattern): ล็อกอินก่อน → โหลดจาก cloud → subscribe realtime
