@@ -2551,6 +2551,16 @@ function renderProps() {
     const targetDate = targetObj&&typeof targetObj==='object' ? targetObj.date : '';
     const targetChip = `<span class="badge badge-amber" title="นัดที่เลือกไว้เข้าซื้อ">🎯 นัดที่${targetIdx+1}${targetDate?' · '+fmtDate(targetDate):''}</span>`;
 
+    // ⚠️ นัดที่วันที่ผ่านไปแล้วแต่ยังไม่ได้กรอกหมายเหตุ (ลืมเช็คผลว่าเกิดอะไรขึ้น) — เตือนที่หัวการ์ดเลย
+    const missingNoteRound = (p.rounds||[]).map((r,ri)=>{
+      if (!r || typeof r!=='object' || !r.date || (r.note||'').trim()) return null;
+      const dt = new Date(r.date); dt.setHours(0,0,0,0);
+      return dt <= today ? { ri, date: r.date } : null;
+    }).filter(Boolean).sort((a,b)=>a.date.localeCompare(b.date))[0];
+    const checkChip = missingNoteRound
+      ? `<span class="badge badge-red" title="ถึงวันนัดแล้วแต่ยังไม่ได้กรอกหมายเหตุผลการประมูล">🔎 เช็คนัดที่${missingNoteRound.ri+1} · ${fmtDate(missingNoteRound.date)}</span>`
+      : '';
+
     const roundsHtml = ROUNDS.map((r,ri) => {
       const rObj = (p.rounds||[])[ri];
       const rSt  = rObj&&typeof rObj==='object' ? (rObj.status||'pending') : (rObj||'pending');
@@ -2616,6 +2626,7 @@ function renderProps() {
           <div class="prop-badges" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
             ${targetChip}
             ${dateChip}
+            ${checkChip}
             <span class="badge ${si.badge}">${si.icon} ${si.label}</span>
           </div>
           <div class="prop-actions" onclick="event.stopPropagation()" style="display:flex;gap:5px;">
@@ -2974,6 +2985,7 @@ async function deleteProp(id) {
 
 // ── Property form helpers ─────────────────────
 const ROUND_DISC_LABELS = ['ราคาเต็ม (รอบ 1)','ลด 10% (รอบ 2)','ลด 20% (รอบ 3)','ลด 30% (รอบ 4)','ลด 30% (รอบ 5)','ลด 30% (รอบ 6)'];
+const ROUND_NOTE_OPTIONS = ['ไม่สู้ราคา','งดขาย','งดบังคับคดี','ขายได้'];
 
 function renderPropRoundsTable(rounds, targetRound) {
   const tbody = document.getElementById('prop-rounds-tbody');
@@ -2996,7 +3008,16 @@ function renderPropRoundsTable(rounds, targetRound) {
           style="font-size:12px;padding:5px 8px;min-width:110px">
       </td>
       <td style="padding:7px 8px">
-        <input type="text" class="form-input" id="round-note-${i}" value="${(r.note||'').replace(/"/g,'&quot;')}" placeholder="เช่น งดขาย" style="font-size:12px;padding:5px 8px">
+        ${(()=>{
+          const cur = r.note||'';
+          const extraOpt = cur && !ROUND_NOTE_OPTIONS.includes(cur)
+            ? `<option value="${cur.replace(/"/g,'&quot;')}" selected>${escapeHtml(cur)}</option>` : '';
+          return `<select class="form-select" id="round-note-${i}" style="font-size:12px;padding:5px 8px;min-width:130px">
+            <option value="">— ไม่มี —</option>
+            ${extraOpt}
+            ${ROUND_NOTE_OPTIONS.map(o=>`<option value="${o}" ${cur===o?'selected':''}>${o}</option>`).join('')}
+          </select>`;
+        })()}
       </td>
     </tr>`;
   }).join('');
