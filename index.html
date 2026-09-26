@@ -2182,11 +2182,29 @@ function landMapButton(p) {
 // ยังไม่มีรูป/ลิงก์แผนที่กรมที่ดิน → เปิด LandsMaps ให้ค้นเอง + คัดลอกเลขโฉนดไว้วาง
 // (LandsMaps ไม่มีลิงก์ตรงไปแปลงตามเลขโฉนด ต้องเลือกจังหวัด/อำเภอ/เลขโฉนดในหน้าเว็บ)
 function landMapFallback(p) {
-  return `<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openLandsMaps('${escapeHtml(p.deed || '')}')" title="ยังไม่มีรูปแผนที่กรมที่ดิน — เปิด LandsMaps ค้นด้วยเลขโฉนด">🔎 ค้นใน LandsMaps${p.deed ? ' (โฉนด ' + escapeHtml(p.deed) + ')' : ''}</button>`;
+  return `<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openLandsMaps('${escapeHtml(p.deed || '')}','${p.id}')" title="ยังไม่มีรูปแผนที่กรมที่ดิน — เปิด LandsMaps ค้นด้วยเลขโฉนด">🔎 ค้นใน LandsMaps${p.deed ? ' (โฉนด ' + escapeHtml(p.deed) + ')' : ''}</button>`;
 }
-function openLandsMaps(deed) {
-  if (deed && navigator.clipboard) navigator.clipboard.writeText(deed).then(() => toast('📋 คัดลอกเลขโฉนด ' + deed + ' แล้ว — วางในช่องค้นหาของ LandsMaps')).catch(() => {});
-  window.open('https://landsmaps.dol.go.th/', '_blank');
+// ลิงก์ตรงไปที่แปลงใน LandsMaps: ?qrcodeToken=base64("รหัสจังหวัด,รหัสอำเภอ,เลขโฉนด") เช่น "41,01,76993"
+// (รูปแบบเดียวกับลิงก์ QR ที่ LandsMaps ให้มาในผลค้นหา) · รหัสจังหวัดตามรายการใน LandsMaps
+const DOL_PROV = {กระบี่:81,กรุงเทพมหานคร:10,กาญจนบุรี:71,กาฬสินธุ์:46,กำแพงเพชร:62,ขอนแก่น:40,จันทบุรี:22,ฉะเชิงเทรา:24,ชลบุรี:20,ชัยนาท:18,ชัยภูมิ:36,ชุมพร:86,เชียงราย:57,เชียงใหม่:50,ตรัง:92,ตราด:23,ตาก:63,นครนายก:26,นครปฐม:73,นครพนม:48,นครราชสีมา:30,นครศรีธรรมราช:80,นครสวรรค์:60,นนทบุรี:12,นราธิวาส:96,น่าน:55,บึงกาฬ:38,บุรีรัมย์:31,ปทุมธานี:13,ประจวบคีรีขันธ์:77,ปราจีนบุรี:25,ปัตตานี:94,พระนครศรีอยุธยา:14,พะเยา:56,พังงา:82,พัทลุง:93,พิจิตร:66,พิษณุโลก:65,เพชรบุรี:76,เพชรบูรณ์:67,แพร่:54,ภูเก็ต:83,มหาสารคาม:44,มุกดาหาร:49,แม่ฮ่องสอน:58,ยโสธร:35,ยะลา:95,ร้อยเอ็ด:45,ระนอง:85,ระยอง:21,ราชบุรี:70,ลพบุรี:16,ลำปาง:52,ลำพูน:51,เลย:42,ศรีสะเกษ:33,สกลนคร:47,สงขลา:90,สตูล:91,สมุทรปราการ:11,สมุทรสงคราม:75,สมุทรสาคร:74,สระแก้ว:27,สระบุรี:19,สิงห์บุรี:17,สุโขทัย:64,สุพรรณบุรี:72,สุราษฎร์ธานี:84,สุรินทร์:32,หนองคาย:43,หนองบัวลำภู:39,อ่างทอง:15,อำนาจเจริญ:37,อุดรธานี:41,อุตรดิตถ์:53,อุทัยธานี:61,อุบลราชธานี:34};
+// รหัสอำเภอ: อำเภอเมืองเป็น 01 ทุกจังหวัด · อำเภออื่นจำจากที่เคยค้นเจอ (p.dolAmphur) ไม่งั้นเปิดหน้าค้นหาปกติ
+function landsMapsLink(p) {
+  if (!p) return 'https://landsmaps.dol.go.th/';
+  if (p.landMapUrl && /landsmaps\.dol\.go\.th/.test(p.landMapUrl)) return p.landMapUrl;
+  const led = p.led || {};
+  const prov = DOL_PROV[(led.changwat || '').trim()];
+  const amp = p.dolAmphur || (/^เมือง/.test(led.amphoe || '') ? '01' : '');
+  const deed = String(p.deed || '').replace(/\D/g, '');
+  if (!prov || !amp || !deed) return 'https://landsmaps.dol.go.th/';
+  return 'https://landsmaps.dol.go.th?qrcodeToken=' + btoa(`${prov},${amp},${deed}`);
+}
+function openLandsMaps(deed, id) {
+  const p = id ? findAnyProp(id) : null;
+  const url = landsMapsLink(p);
+  const direct = url.includes('qrcodeToken');
+  if (!direct && deed && navigator.clipboard) navigator.clipboard.writeText(deed).then(() => toast('📋 คัดลอกเลขโฉนด ' + deed + ' แล้ว — วางในช่องค้นหาของ LandsMaps')).catch(() => {});
+  if (direct) toast('🔎 เปิด LandsMaps ที่แปลงโฉนด ' + deed);
+  window.open(url, '_blank');
 }
 // รอบสำรวจใช้ "ทรัพย์รอสำรวจ" (S.pool) ที่มาจาก PDF — ยังไม่อยู่หน้าทรัพย์
 function surveyCandidates() { return S.pool || []; }
@@ -2628,7 +2646,7 @@ function renderDolLL() {
         </div>
         <div style="display:flex;gap:5px">
           ${p.deed ? `<button class="btn btn-ghost btn-xs" onclick="copyText('${escapeHtml(p.deed)}','เลขโฉนด')">📋 โฉนด</button>` : ''}
-          <button class="btn btn-primary btn-xs" onclick="openLandsMaps('${escapeHtml(p.deed || '')}')">🔎 LandsMaps</button>
+          <button class="btn btn-primary btn-xs" onclick="openLandsMaps('${escapeHtml(p.deed || '')}','${p.id}')">🔎 LandsMaps</button>
         </div>
       </div>
       <div style="display:flex;gap:6px;align-items:center">
