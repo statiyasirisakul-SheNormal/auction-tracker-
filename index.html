@@ -125,6 +125,10 @@ body { font-family:'Sarabun','Segoe UI',sans-serif; background:var(--bg); color:
 }
 /* ปุ่ม +/− ของ Leaflet ตั้ง z-index 1000 มาเอง → ลอยทับหน้าต่าง popup ต้องกดให้ต่ำกว่า modal */
 .leaflet-top, .leaflet-bottom { z-index:450 !important; }
+/* หน้าวาด: ปิดการเลือกข้อความ/เมนูกดค้างของ iPad (ฝ่ามือ/ปลายปากกาไปโดนตัวหนังสือ → เด้งแถบ "คัดลอก") ยกเว้นช่องพิมพ์ */
+#sketch-overlay, #sketch-overlay * { -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent; }
+#sketch-overlay textarea { -webkit-user-select:text; user-select:text; -webkit-touch-callout:default; }
+#sk-canvas { -webkit-user-drag:none; }
 .dol-num { width:30px; height:30px; border-radius:50%; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px; }
 .modal-overlay.open { display:flex; }
 .modal {
@@ -2924,6 +2928,9 @@ function skDown(e) {
   }
   if (SK.cur) return;   // กำลังเขียนอยู่ (อีกนิ้ว/ฝ่ามือ) ไม่รับเพิ่ม
   e.preventDefault();
+  // มีตัวหนังสือถูกเลือกค้างอยู่ (แถบคัดลอกโผล่) → ล้างทิ้ง แล้วปิดคีย์บอร์ดถ้าพิมพ์ค้างอยู่
+  try { const sel = window.getSelection(); if (sel && sel.rangeCount) sel.removeAllRanges(); } catch(err) {}
+  if (document.activeElement && document.activeElement.id === 'sk-text') document.activeElement.blur();
   try { document.getElementById('sk-canvas').setPointerCapture(e.pointerId); } catch(err) {}   // บางเบราว์เซอร์โยน error ได้ — ไม่ให้ขวางการเขียน
   skMeasure();
   const pt = skPoint(e);
@@ -3058,6 +3065,13 @@ function sketchCardBlock(p) {
   const cv = document.getElementById('sk-canvas');
   if (!cv) return;
   cv.addEventListener('pointerdown', skDown);
+  // iPad: กดค้าง/ลากบนจอ = เลือกข้อความ + แว่นขยาย + เมนูคัดลอก → ปิดทั้งหมดในหน้าวาด (ยกเว้นช่องพิมพ์)
+  const ov = document.getElementById('sketch-overlay');
+  const notText = e => !(e.target && e.target.closest && e.target.closest('textarea'));
+  ov.addEventListener('selectstart', e => { if (notText(e)) e.preventDefault(); });
+  ov.addEventListener('contextmenu', e => { if (notText(e)) e.preventDefault(); });
+  cv.addEventListener('touchstart', e => e.preventDefault(), { passive: false });   // กันแว่นขยาย/เมนูของ iOS บนกระดาษ
+  cv.addEventListener('touchmove', e => { if (!SK?.pan) e.preventDefault(); }, { passive: false });
   cv.addEventListener('pointermove', skMove);
   cv.addEventListener('pointerup', skUp);
   cv.addEventListener('pointercancel', skUp);
