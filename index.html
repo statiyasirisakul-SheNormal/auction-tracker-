@@ -1054,6 +1054,7 @@ input, select, textarea { font-size: 16px !important; }
       <textarea id="sk-text" class="form-textarea" placeholder="📝 พิมพ์บันทึกตรงนี้ — สภาพทรัพย์ มีคนอยู่ไหม ทางเข้า เพื่อนบ้าน สิ่งที่ต้องซ่อม..." style="min-height:110px;font-size:15px;margin-bottom:10px;background:#fff" oninput="skTextChanged()"></textarea>
       <div id="sk-wrap" style="position:relative;background:#fff;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.08);overflow:hidden">
         <canvas id="sk-canvas" style="display:block;width:100%;touch-action:none;cursor:crosshair"></canvas>
+        <canvas id="sk-live" style="position:absolute;left:0;top:0;width:100%;pointer-events:none"></canvas>
       </div>
       <div style="text-align:center;font-size:11px;color:var(--gray);margin:8px 0 24px">เขียนด้วย Apple Pencil ได้เลย · นิ้วใช้เลื่อนจอเมื่อระบบเจอปากกา · บันทึกอัตโนมัติ</div>
     </div>
@@ -1713,9 +1714,9 @@ function setupRealtime() {
   if (!client || !uk) return;
   if (_rtChannel) { try { client.removeChannel(_rtChannel); } catch(e) {} }
   _rtChannel = client.channel('auction-sync-' + uk)
-    .on('postgres_changes', { event:'*', schema:'public', table:'auction_props',     filter:`user_key=eq.${uk}` }, () => refetchTable('props'))
-    .on('postgres_changes', { event:'*', schema:'public', table:'auction_expenses',  filter:`user_key=eq.${uk}` }, () => refetchTable('expenses'))
-    .on('postgres_changes', { event:'*', schema:'public', table:'auction_doc_types', filter:`user_key=eq.${uk}` }, () => refetchTable('docTypes'))
+    .on('postgres_changes', { event:'*', schema:'public', table:'auction_props',     filter:`user_key=eq.${uk}` }, () => queueRefetch('props'))
+    .on('postgres_changes', { event:'*', schema:'public', table:'auction_expenses',  filter:`user_key=eq.${uk}` }, () => queueRefetch('expenses'))
+    .on('postgres_changes', { event:'*', schema:'public', table:'auction_doc_types', filter:`user_key=eq.${uk}` }, () => queueRefetch('docTypes'))
     .subscribe();
 }
 
@@ -1741,7 +1742,16 @@ async function refetchTable(which) {
   S._pulledAt = Date.now();
   buildSnap();
   try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
+  // เปิดหน้าบันทึก/วาดอยู่ → ยังไม่วาดหน้าเว็บด้านหลังใหม่ (กันกระตุกระหว่างเขียน) ค่อยวาดตอนปิด
+  if (typeof SK !== 'undefined' && SK) { _renderAfterSketch = true; return; }
   renderAll();
+}
+// Realtime ส่งมา 1 ครั้งต่อ 1 แถว — sync ทีเดียว 30 ทรัพย์ = 30 ครั้ง → รวบให้ดึงข้อมูลแค่ครั้งเดียว
+let _renderAfterSketch = false;
+const _refetchTimers = {};
+function queueRefetch(which) {
+  clearTimeout(_refetchTimers[which]);
+  _refetchTimers[which] = setTimeout(() => refetchTable(which), 800);
 }
 
 function uid() { return '_'+Math.random().toString(36).slice(2,9)+Date.now().toString(36); }
@@ -2757,6 +2767,7 @@ function openSketch(id) {
   document.body.style.overflow = 'hidden';
   skSetTool('pen'); skSetColor(0); skSetSize(1); skUpdateFingerBtn();
   requestAnimationFrame(skResize);
+  skLoadPF().then(() => { if (SK) skRedraw(); });
 }
 function closeSketch() {
   if (!SK) return;
@@ -2764,7 +2775,8 @@ function closeSketch() {
   document.getElementById('sketch-overlay').style.display = 'none';
   document.body.style.overflow = '';
   SK = null;
-  if (document.getElementById('tab-survey')?.classList.contains('active')) renderSurvey(); else renderProps();
+  if (_renderAfterSketch) { _renderAfterSketch = false; renderAll(); }
+  else if (document.getElementById('tab-survey')?.classList.contains('active')) renderSurvey(); else renderProps();
 }
 function skSetTool(t) { SK.tool = t; document.querySelectorAll('.sk-tool').forEach(b => b.className = 'btn btn-xs sk-tool ' + (b.dataset.tool === t ? 'btn-primary' : 'btn-ghost')); }
 function skSetColor(i) { SK.color = SK_COLORS[i]; if (SK.tool === 'er') skSetTool('pen');
@@ -2775,23 +2787,47 @@ function skToggleFinger() { SK.finger = { auto: 'draw', draw: 'pan', pan: 'auto'
 function skUpdateFingerBtn() { document.getElementById('sk-finger').textContent = { auto: '✋ นิ้ว: อัตโนมัติ', draw: '✋ นิ้ว: วาด', pan: '✋ นิ้ว: เลื่อนจอ' }[SK.finger]; }
 function skFingerPans() { return SK.finger === 'pan' || (SK.finger === 'auto' && SK.penSeen); }
 
-function skScale() { return document.getElementById('sk-wrap').clientWidth / SK_W; }
+// ── ประสิทธิภาพ (iPad หน่วงถ้าวาดทั้งแผ่นใหม่ทุกจุดของปากกา) ──
+//  • 2 ชั้น: sk-canvas = เส้นที่เขียนเสร็จแล้ว, sk-live = เส้นที่กำลังเขียน (โปร่งใส วางทับ)
+//  • ปากกา: วาดต่อเฉพาะ "ช่วงใหม่" ลงชั้น live · ไฮไลต์: วาดเส้นเดียวนั้นใหม่ (กันรอยทับเข้ม)
+//  • วาดอย่างมากครั้งละ 1 เฟรมจอ (requestAnimationFrame) รวมจุดของปากกาที่มาถี่ ๆ
+//  • เส้นบรรทัดกระดาษเป็น CSS background ไม่ต้องวาดใน canvas
+//  • จำตำแหน่ง canvas ตอนเริ่มเส้น ไม่อ่าน layout ทุกจุด
+let _skDpr = 1, _skSc = 1, _skRect = null, _skRaf = 0;
+// หมึกปากกาใช้ perfect-freehand (ไลบรารีเดียวกับที่ tldraw / Excalidraw ใช้) — เส้นลื่น ปลายเรียว ตามแรงกด Apple Pencil
+// โหลดไม่ได้ (ออฟไลน์) → ใช้ตัววาดเดิมแทนอัตโนมัติ ข้อมูลเส้นรูปแบบเดียวกัน
+let _pf = null, _pfLoading = null;
+function skLoadPF() {
+  if (_pf) return Promise.resolve(_pf);
+  if (!_pfLoading) _pfLoading = import('https://cdn.jsdelivr.net/npm/perfect-freehand@1.2.3/+esm')
+    .then(m => (_pf = m.getStroke || m.default?.getStroke || null))
+    .catch(() => { _pfLoading = null; return null; });
+  return _pfLoading;
+}
+function pfPath(ctx, outline) {
+  if (outline.length < 2) return;
+  ctx.beginPath(); ctx.moveTo(outline[0][0], outline[0][1]);
+  for (let i = 1; i < outline.length; i++) {
+    const [x0, y0] = outline[i], [x1, y1] = outline[(i + 1) % outline.length];
+    ctx.quadraticCurveTo(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2);
+  }
+  ctx.closePath(); ctx.fill();
+}
+function skScale() { return _skSc; }
+function skCtx(id) { return document.getElementById(id).getContext('2d', { desynchronized: true }); }
 function skResize() {
   if (!SK) return;
-  const cv = document.getElementById('sk-canvas'), dpr = window.devicePixelRatio || 1, sc = skScale();
-  cv.width = Math.round(SK_W * sc * dpr); cv.height = Math.round(SK.h * sc * dpr);
-  cv.style.height = Math.round(SK.h * sc) + 'px';
+  _skDpr = Math.min(window.devicePixelRatio || 1, 2);
+  _skSc = document.getElementById('sk-wrap').clientWidth / SK_W;
+  const W = Math.round(SK_W * _skSc * _skDpr), H = Math.round(SK.h * _skSc * _skDpr), cssH = Math.round(SK.h * _skSc) + 'px';
+  ['sk-canvas', 'sk-live'].forEach(id => { const c = document.getElementById(id); c.width = W; c.height = H; c.style.height = cssH; });
+  // เส้นบรรทัดทุก 40 หน่วย + เส้นแบ่งหน้าทุก SK_PAGE (วาดด้วย CSS)
+  const wrap = document.getElementById('sk-wrap'), l = 40 * _skSc, pg = SK_PAGE * _skSc;
+  wrap.style.backgroundColor = '#fff';
+  wrap.style.backgroundImage = `repeating-linear-gradient(to bottom, transparent 0, transparent ${pg - 1}px, #CBD5E1 ${pg - 1}px, #CBD5E1 ${pg}px), repeating-linear-gradient(to bottom, transparent 0, transparent ${l - 1}px, #E5EDF7 ${l - 1}px, #E5EDF7 ${l}px)`;
   skRedraw();
 }
-function skPaper(ctx, sc, h) {
-  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, SK_W * sc, h * sc);
-  ctx.strokeStyle = '#E5EDF7'; ctx.lineWidth = 1;
-  for (let y = 40; y < h; y += 40) { ctx.beginPath(); ctx.moveTo(0, y * sc); ctx.lineTo(SK_W * sc, y * sc); ctx.stroke(); }
-  ctx.strokeStyle = '#CBD5E1'; ctx.setLineDash([6, 6]);   // เส้นแบ่งหน้า
-  for (let y = SK_PAGE; y < h; y += SK_PAGE) { ctx.beginPath(); ctx.moveTo(0, y * sc); ctx.lineTo(SK_W * sc, y * sc); ctx.stroke(); }
-  ctx.setLineDash([]);
-}
-function skDrawStroke(ctx, s, sc) {
+function skDrawStroke(ctx, s, sc, from = 3) {
   const p = s.p; if (p.length < 3) return;
   ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = s.c;
   if (s.t === 'hl') {
@@ -2800,10 +2836,16 @@ function skDrawStroke(ctx, s, sc) {
     for (let i = 3; i < p.length; i += 3) ctx.lineTo(p[i] * sc, p[i + 1] * sc);
     if (p.length === 3) ctx.lineTo(p[0] * sc + .1, p[1] * sc);
     ctx.stroke();
+  } else if (_pf) {
+    // perfect-freehand: แปลงจุด+แรงกดเป็นรูปทรงเส้นหมึก แล้วเติมสี (m = ไม่มีแรงกดจริง → จำลองจากความเร็ว)
+    const pts = []; for (let i = 0; i < p.length; i += 3) pts.push([p[i] * sc, p[i + 1] * sc, (p[i + 2] || 50) / 100]);
+    ctx.fillStyle = s.c;
+    pfPath(ctx, _pf(pts, { size: s.w * 2.4 * sc, thinning: .6, smoothing: .55, streamline: .45, simulatePressure: !!s.m,
+      start: { taper: 0, cap: true }, end: { taper: 0, cap: true }, last: !SK || SK.cur !== s }));
   } else {
-    // ปากกา: ความหนาตามแรงกด ต่อทีละช่วงด้วยเส้นโค้งผ่านจุดกึ่งกลาง ให้ลื่นไม่หยัก
-    if (p.length === 3) { ctx.fillStyle = s.c; ctx.beginPath(); ctx.arc(p[0] * sc, p[1] * sc, s.w * .5 * sc, 0, 7); ctx.fill(); }
-    for (let i = 3; i < p.length; i += 3) {
+    // ตัววาดสำรอง: ความหนาตามแรงกด ต่อทีละช่วงด้วยเส้นโค้งผ่านจุดกึ่งกลาง
+    if (p.length === 3 && from <= 3) { ctx.fillStyle = s.c; ctx.beginPath(); ctx.arc(p[0] * sc, p[1] * sc, s.w * .5 * sc, 0, 7); ctx.fill(); }
+    for (let i = Math.max(3, from); i < p.length; i += 3) {
       const x0 = p[i - 3], y0 = p[i - 2], x1 = p[i], y1 = p[i + 1];
       const pr = (p[i + 2] || 50) / 100;
       ctx.lineWidth = Math.max(.6, s.w * (.35 + pr * 1.1)) * sc;
@@ -2815,19 +2857,34 @@ function skDrawStroke(ctx, s, sc) {
   }
   ctx.restore();
 }
+// วาดชั้นเส้นที่เสร็จแล้วใหม่ทั้งแผ่น — เรียกเฉพาะตอน ย่อ/ขยาย, ย้อน, ลบ, ล้าง
 function skRedraw() {
-  const cv = document.getElementById('sk-canvas'), ctx = cv.getContext('2d'), dpr = window.devicePixelRatio || 1, sc = skScale();
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  skPaper(ctx, sc, SK.h);
-  SK.strokes.forEach(s => skDrawStroke(ctx, s, sc));
-  if (SK.cur) skDrawStroke(ctx, SK.cur, sc);
+  const ctx = skCtx('sk-canvas');
+  ctx.setTransform(_skDpr, 0, 0, _skDpr, 0, 0);
+  ctx.clearRect(0, 0, SK_W * _skSc, SK.h * _skSc);
+  SK.strokes.forEach(s => skDrawStroke(ctx, s, _skSc));
+  const live = skCtx('sk-live'); live.setTransform(_skDpr, 0, 0, _skDpr, 0, 0); live.clearRect(0, 0, SK_W * _skSc, SK.h * _skSc);
+  if (SK.cur) { SK.cur.drawn = 0; skFlushLive(); }
 }
+// วาดเส้นที่กำลังเขียน (ชั้น live) — ปากกาวาดต่อเฉพาะช่วงที่ยังไม่ได้วาด
+function skFlushLive() {
+  _skRaf = 0;
+  if (!SK || !SK.cur) return;
+  const ctx = skCtx('sk-live'), s = SK.cur;
+  ctx.setTransform(_skDpr, 0, 0, _skDpr, 0, 0);
+  // ไฮไลต์ / perfect-freehand: รูปทรงปลายเส้นเปลี่ยนตามจุดใหม่ → วาดเส้นนี้ใหม่ทั้งเส้น (เฉพาะเส้นเดียว ไม่ใช่ทั้งแผ่น)
+  if (s.t === 'hl' || _pf) { ctx.clearRect(0, 0, SK_W * _skSc, SK.h * _skSc); skDrawStroke(ctx, s, _skSc); }
+  else skDrawStroke(ctx, s, _skSc, s.drawn || 3);
+  s.drawn = s.p.length;
+}
+function skSchedule() { if (!_skRaf) _skRaf = requestAnimationFrame(skFlushLive); }
 function skPoint(e) {
-  const r = document.getElementById('sk-canvas').getBoundingClientRect(), sc = skScale();
+  const r = _skRect || document.getElementById('sk-canvas').getBoundingClientRect();
   // เมาส์/นิ้วไม่มีแรงกด (pressure 0.5 หรือ 0) → ใช้กลาง ๆ
   const pr = e.pointerType === 'pen' && e.pressure > 0 ? e.pressure : .5;
-  return [Math.round((e.clientX - r.left) / sc), Math.round((e.clientY - r.top) / sc), Math.round(pr * 100)];
+  return [Math.round((e.clientX - r.left) / _skSc), Math.round((e.clientY - r.top) / _skSc), Math.round(pr * 100)];
 }
+let _skEraseRaf = 0;
 function skEraseAt(x, y) {
   const R = 14, hit = [];
   SK.strokes.forEach((s, idx) => { for (let i = 0; i < s.p.length; i += 3) if (Math.hypot(s.p[i] - x, s.p[i + 1] - y) < R + s.w) { hit.push(idx); break; } });
@@ -2835,7 +2892,9 @@ function skEraseAt(x, y) {
   const removed = hit.map(i => [i, SK.strokes[i]]);
   SK.strokes = SK.strokes.filter((s, i) => !hit.includes(i));
   SK.undo.push({ del: removed }); SK.redo = [];
-  skRedraw(); skDirty();
+  // ลากยางลบผ่านหลายเส้น → วาดใหม่ครั้งเดียวต่อเฟรม
+  if (!_skEraseRaf) _skEraseRaf = requestAnimationFrame(() => { _skEraseRaf = 0; if (SK) skRedraw(); });
+  skDirty();
 }
 function skDown(e) {
   if (!SK) return;
@@ -2846,10 +2905,12 @@ function skDown(e) {
   if (SK.cur) return;   // กำลังเขียนอยู่ (อีกนิ้ว/ฝ่ามือ) ไม่รับเพิ่ม
   e.preventDefault();
   try { document.getElementById('sk-canvas').setPointerCapture(e.pointerId); } catch(err) {}   // บางเบราว์เซอร์โยน error ได้ — ไม่ให้ขวางการเขียน
+  _skRect = document.getElementById('sk-canvas').getBoundingClientRect();
   const pt = skPoint(e);
   if (SK.tool === 'er') { SK.erasing = e.pointerId; skEraseAt(pt[0], pt[1]); return; }
-  SK.cur = { t: SK.tool, c: SK.color, w: SK_SIZES[SK.size].w, p: pt, id: e.pointerId };
-  skRedraw();
+  SK.cur = { t: SK.tool, c: SK.color, w: SK_SIZES[SK.size].w, p: pt, id: e.pointerId, drawn: 0 };
+  if (e.pointerType !== 'pen') SK.cur.m = 1;   // นิ้ว/เมาส์ไม่มีแรงกด → ให้ perfect-freehand จำลองจากความเร็ว
+  skSchedule();
 }
 function skMove(e) {
   if (!SK) return;
@@ -2864,16 +2925,21 @@ function skMove(e) {
     p.push(...pt);
   }
   // เขียนเลยท้ายกระดาษ → ต่อหน้าให้อัตโนมัติ
-  if (SK.cur.p[SK.cur.p.length - 2] > SK.h - 60) { SK.h += SK_PAGE; skResize(); } else skRedraw();
+  if (SK.cur.p[SK.cur.p.length - 2] > SK.h - 60) { SK.h += SK_PAGE; skResize(); _skRect = document.getElementById('sk-canvas').getBoundingClientRect(); }
+  else skSchedule();
 }
 function skUp(e) {
   if (!SK) return;
   if (SK.pan && e.pointerId === SK.pan.id) { SK.pan = null; return; }
-  if (SK.erasing === e.pointerId) { SK.erasing = null; return; }
+  if (SK.erasing === e.pointerId) { SK.erasing = null; _skRect = null; return; }
   if (!SK.cur || e.pointerId !== SK.cur.id) return;
-  const s = SK.cur; delete s.id; SK.cur = null;
+  if (_skRaf) { cancelAnimationFrame(_skRaf); _skRaf = 0; }
+  const s = SK.cur; delete s.id; delete s.drawn; SK.cur = null; _skRect = null;
   SK.strokes.push(s); SK.undo.push({ add: s }); SK.redo = [];
-  skRedraw(); skDirty();
+  // ย้ายเส้นที่เขียนเสร็จจากชั้น live ลงชั้นหลัก — วาดเส้นเดียว ไม่ต้องวาดทั้งแผ่น
+  const main = skCtx('sk-canvas'); main.setTransform(_skDpr, 0, 0, _skDpr, 0, 0); skDrawStroke(main, s, _skSc);
+  const live = skCtx('sk-live'); live.setTransform(_skDpr, 0, 0, _skDpr, 0, 0); live.clearRect(0, 0, SK_W * _skSc, SK.h * _skSc);
+  skDirty();
 }
 function skUndo() {
   const a = SK.undo.pop(); if (!a) return;
@@ -2897,34 +2963,57 @@ function skClear() {
 function skAddPage() { SK.h += SK_PAGE; skResize(); skDirty();
   const sc = document.getElementById('sk-scroll'); setTimeout(() => sc.scrollTo({ top: sc.scrollHeight, behavior: 'smooth' }), 50); }
 function skTextChanged() { skDirty(); }
-// บันทึกอัตโนมัติหลังหยุดเขียน 1.5 วิ (ไม่ sync ทุกเส้น กันเน็ตหนัก)
+// ── การบันทึก (เดิม sync ขึ้น Cloud ทุก 1.5 วิ → ส่งทุกทรัพย์ขึ้นไป + Cloud เด้งกลับมาวาดหน้าเว็บใหม่ทั้งหน้า = รวน) ──
+//  • ระหว่างเขียน: หยุด 1.5 วิ → เก็บลงเครื่องอย่างเดียว (เร็ว ไม่ใช้เน็ต)
+//  • ขึ้น Cloud: ตอนกด "✓ เสร็จ", ตอนสลับแอป/ปิดแท็บ, หรือหยุดเขียนนาน 20 วิ
 function skDirty() {
-  SK.dirty = true; document.getElementById('sk-saved').textContent = '● ยังไม่บันทึก';
-  clearTimeout(SK.timer); SK.timer = setTimeout(() => skSave(false), 1500);
+  SK.dirty = SK.cloudDirty = true; document.getElementById('sk-saved').textContent = '● กำลังเขียน';
+  clearTimeout(SK.timer); SK.timer = setTimeout(() => skSave('local'), 1500);
+  clearTimeout(SK.cloudTimer); SK.cloudTimer = setTimeout(() => skSave('cloud'), 20000);
 }
-function skSave(final) {
-  if (!SK || !SK.dirty) return;
-  const p = findAnyProp(SK.id); if (!p) return;
+// หาจุดล่างสุดของภาพ (วนลูปธรรมดา — Math.max(...array) พังเมื่อจุดเยอะเกินแสนจุด)
+function skMaxY(strokes) { let m = 0; for (const s of strokes) for (let i = 1; i < s.p.length; i += 3) if (s.p[i] > m) m = s.p[i]; return m; }
+function skWriteProp() {
+  const p = findAnyProp(SK.id); if (!p) return null;
   const text = document.getElementById('sk-text').value.trim();
   if (p.pool) { if (text || p.survey) { if (!p.survey) p.survey = {}; p.survey.note = text; } }
   else p.notes = text;
   // ความสูงเก็บเท่าที่ใช้จริง (ปัดขึ้นเป็นหน้า) · ไม่มีเส้นเลย = ลบ sketch ทิ้ง
   if (SK.strokes.length) {
-    const maxY = Math.max(...SK.strokes.flatMap(s => s.p.filter((v, i) => i % 3 === 1)));
-    p.sketch = { h: Math.max(SK_PAGE, Math.ceil((maxY + 40) / SK_PAGE) * SK_PAGE, SK.h), strokes: SK.strokes.map(s => ({ t: s.t, c: s.c, w: s.w, p: s.p })) };
+    const maxY = skMaxY(SK.strokes);
+    p.sketch = { h: Math.max(SK_PAGE, Math.ceil((maxY + 40) / SK_PAGE) * SK_PAGE, SK.h), strokes: SK.strokes.map(s => ({ t: s.t, c: s.c, w: s.w, p: s.p, ...(s.m ? { m: 1 } : {}) })) };
   } else delete p.sketch;
-  delete p._sketchThumb;
-  SK.dirty = false; clearTimeout(SK.timer);
-  saveS();
-  const el = document.getElementById('sk-saved'); if (el) el.textContent = final ? '' : '✓ บันทึกแล้ว';
+  return p;
 }
+function skSave(mode) {
+  if (!SK) return;
+  const el = document.getElementById('sk-saved');
+  if (mode === 'local') {
+    if (!SK.dirty) return;
+    if (!skWriteProp()) return;
+    SK.dirty = false;
+    try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
+    if (el) el.textContent = '✓ บันทึกในเครื่องแล้ว';
+    return;
+  }
+  // cloud / true (ตอนปิด)
+  if (!SK.dirty && !SK.cloudDirty) return;
+  if (!skWriteProp()) return;
+  SK.dirty = SK.cloudDirty = false;
+  clearTimeout(SK.timer); clearTimeout(SK.cloudTimer);
+  saveS();
+  if (el) el.textContent = mode === true ? '' : '☁️ บันทึกขึ้น Cloud แล้ว';
+}
+// สลับแอป / ปิดแท็บ / ล็อกจอ ระหว่างเขียน → ขึ้น Cloud ทันที กันงานหาย
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && SK) skSave('cloud'); });
+window.addEventListener('pagehide', () => { if (SK) skSave('cloud'); });
 // รูปย่อภาพวาดสำหรับการ์ด (วาดจากเส้นจริง แคชไว้ไม่ต้องวาดใหม่ทุกครั้ง)
 const _skThumbCache = new Map();
 function sketchThumb(p, px = 260) {
   if (!hasSketch(p)) return '';
   const key = p.id + ':' + p.sketch.strokes.map(s => s.p.length + s.c).join(',') + ':' + p.sketch.h;
   if (_skThumbCache.has(key)) return _skThumbCache.get(key);
-  const maxY = Math.max(...p.sketch.strokes.flatMap(s => s.p.filter((v, i) => i % 3 === 1)));
+  const maxY = skMaxY(p.sketch.strokes);
   const h = Math.min(p.sketch.h, Math.max(400, maxY + 40)), sc = px / SK_W;
   const cv = document.createElement('canvas'); cv.width = px; cv.height = Math.round(h * sc);
   const ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);
