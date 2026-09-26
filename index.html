@@ -123,6 +123,9 @@ body { font-family:'Sarabun','Segoe UI',sans-serif; background:var(--bg); color:
   display:none; align-items:center; justify-content:center;
   z-index:500; padding:20px; overflow-y:auto;
 }
+/* ปุ่ม +/− ของ Leaflet ตั้ง z-index 1000 มาเอง → ลอยทับหน้าต่าง popup ต้องกดให้ต่ำกว่า modal */
+.leaflet-top, .leaflet-bottom { z-index:450 !important; }
+.dol-num { width:30px; height:30px; border-radius:50%; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px; }
 .modal-overlay.open { display:flex; }
 .modal {
   background:white; border-radius:16px; padding:26px;
@@ -796,6 +799,7 @@ input, select, textarea { font-size: 16px !important; }
         <div class="card-title">🧭 สำรวจทรัพย์ — จัดเส้นทาง</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-primary btn-sm" onclick="openPoolPdfModal()">+ เพิ่มทรัพย์สำรวจ</button>
+          <button class="btn btn-amber btn-sm" id="survey-dol-btn" onclick="openDolLL()" style="display:none">📍 ใส่พิกัดจากกรมที่ดิน</button>
           <button class="btn btn-ghost btn-sm" id="survey-regeo-btn" onclick="surveyRegeocode()" style="display:none">🔎 หาพิกัดใหม่ด้วย Google</button>
           <button class="btn btn-ghost btn-sm" onclick="surveyResetDone()">↺ ล้างสถานะ "ไปแล้ว"</button>
           <button class="btn btn-primary btn-sm" onclick="surveyPlan()">🧭 จัดเรียงเส้นทาง</button>
@@ -1003,6 +1007,23 @@ input, select, textarea { font-size: 16px !important; }
       <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-pdf')">✕ ปิด</button>
     </div>
     <div id="pdf-view-pages" style="max-height:75vh;overflow:auto;background:#F1F5F9;border-radius:9px;padding:8px"></div>
+  </div>
+</div>
+
+<!-- ใส่พิกัดจากกรมที่ดิน ทีละหลายทรัพย์ -->
+<div class="modal-overlay" id="modal-dol-ll">
+  <div class="modal modal-wide" style="max-width:820px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <h3 style="margin:0;flex:1">📍 ใส่พิกัดจากกรมที่ดิน (LandsMaps)</h3>
+      <button class="btn btn-ghost btn-sm" onclick="closeDolLL()">✕ ปิด</button>
+    </div>
+    <div style="font-size:12px;color:#374151;line-height:1.7;background:var(--blue-lt);border-radius:9px;padding:9px 12px;margin-bottom:10px">
+      1) กด <b>🔎 LandsMaps</b> (คัดลอกเลขโฉนดให้แล้ว) → ติ๊ก "I am human" ครั้งแรกครั้งเดียว<br>
+      2) ใน LandsMaps เลือกจังหวัด/อำเภอตามแถว → วางเลขโฉนด → ค้นหา<br>
+      3) คัดลอกพิกัดแปลง (ละติจูด, ลองจิจูด) มาวางในช่องของแถวนั้น → ขึ้น ✓ = บันทึกแล้ว<br>
+      4) ครบแล้วกด <b>ปิด</b> แล้วกด 🧭 จัดเรียงเส้นทาง
+    </div>
+    <div id="dol-ll-list" style="max-height:62vh;overflow:auto"></div>
   </div>
 </div>
 
@@ -2041,6 +2062,14 @@ function parseLatLng(str) {
    || s.match(/[?&]ll=(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/)
    || s.match(/!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)/);
   if (m) return { lat:+m[1], lng:+m[2] };
+  // ข้อความที่คัดลอกมาจาก LandsMaps/ที่อื่น เช่น "ละติจูด 17.41023 ลองจิจูด 102.82311" หรือ "17.41023 102.82311"
+  // → หยิบทศนิยม 2 ตัวแรกที่เป็นพิกัดในไทยได้ (lat 5–21, lng 97–106)
+  const nums = (s.match(/\d{1,3}\.\d{3,}/g) || []).map(Number);
+  for (let i = 0; i + 1 < nums.length; i++) {
+    const [a, b] = [nums[i], nums[i + 1]];
+    if (a >= 5 && a <= 21 && b >= 97 && b <= 106) return { lat:a, lng:b };
+    if (b >= 5 && b <= 21 && a >= 97 && a <= 106) return { lat:b, lng:a };
+  }
   return null;
 }
 let _mapFilter = 'all';
@@ -2578,6 +2607,58 @@ function surveyCardHtml(x, total, open) {
     </div>`;
 }
 
+// ── หน้าใส่พิกัดจากกรมที่ดินทีละหลายทรัพย์ ──
+// เรียงตามลำดับเส้นทาง (ที่ยังเป็นพิกัดประมาณขึ้นก่อน) · วางพิกัดแล้วบันทึกทันทีไม่ต้องกดอะไรเพิ่ม
+function openDolLL() { renderDolLL(); openModal('modal-dol-ll'); }
+function closeDolLL() { closeModal('modal-dol-ll'); renderSurvey(); }
+function renderDolLL() {
+  const rows = [...S.pool].sort((a, b) => {
+    const na = a.llApprox || !parseLatLng(a.mapUrl) ? 0 : 1, nb = b.llApprox || !parseLatLng(b.mapUrl) ? 0 : 1;
+    return na - nb || (a.survey?.order || 999) - (b.survey?.order || 999);
+  });
+  document.getElementById('dol-ll-list').innerHTML = rows.map(p => {
+    const done = !p.llApprox && parseLatLng(p.mapUrl);
+    const led = p.led || {};
+    return `<div id="dolrow-${p.id}" style="padding:10px 6px;border-bottom:1px solid var(--border);${done ? 'background:#F0FDF4' : ''}">
+      <div style="display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin-bottom:7px">
+        <div class="dol-num" style="background:${done ? 'var(--green)' : '#D97706'}">${p.survey?.order || '•'}</div>
+        <div style="flex:1;min-width:150px">
+          <div style="font-weight:700;font-size:13px">${p.code ? `<span class="badge badge-blue" style="margin-right:4px">${escapeHtml(p.code)}</span>` : ''}โฉนด <b style="font-size:15px">${escapeHtml(p.deed || '—')}</b></div>
+          <div style="font-size:11px;color:var(--gray)">จ.${escapeHtml(led.changwat || '—')} · อ.${escapeHtml(led.amphoe || '—')} · ต.${escapeHtml(led.tambon || '—')}</div>
+        </div>
+        <div style="display:flex;gap:5px">
+          ${p.deed ? `<button class="btn btn-ghost btn-xs" onclick="copyText('${escapeHtml(p.deed)}','เลขโฉนด')">📋 โฉนด</button>` : ''}
+          <button class="btn btn-primary btn-xs" onclick="openLandsMaps('${escapeHtml(p.deed || '')}')">🔎 LandsMaps</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input class="form-input" style="font-size:12px;padding:6px 9px;flex:1" placeholder="วางพิกัดแปลง เช่น 17.41023, 102.82311"
+          value="${done ? escapeHtml(p.mapUrl) : ''}" onchange="dolSetLL('${p.id}', this)">
+        <span id="dolok-${p.id}" style="font-size:18px;width:22px;text-align:center">${done ? '✅' : ''}</span>
+      </div>
+    </div>`;
+  }).join('') || '<div class="empty"><p>ยังไม่มีทรัพย์รอสำรวจ</p></div>';
+}
+function dolSetLL(id, input) {
+  const p = S.pool.find(x => x.id === id); if (!p) return;
+  const v = input.value.trim(); if (!v) return;
+  const ll = parseLatLng(v);
+  const ok = document.getElementById('dolok-' + id);
+  if (!ll) { ok.textContent = '❌'; toast('❌ อ่านพิกัดไม่ออก — ใส่แบบ 17.41023, 102.82311', 'error'); return; }
+  p.mapUrl = `${ll.lat}, ${ll.lng}`; delete p.llApprox; p.llLevel = 'DOL';
+  if (p.survey) { delete p.survey.order; delete p.survey.leg; }
+  _surveyGeom = null;
+  saveS();
+  input.value = p.mapUrl;
+  ok.textContent = '✅';
+  document.getElementById('dolrow-' + id).style.background = '#F0FDF4';
+  const left = S.pool.filter(x => x.llApprox || !parseLatLng(x.mapUrl)).length;
+  toast(left ? `✓ บันทึกแล้ว — เหลืออีก ${left} หลัง` : '✓ ครบทุกหลังแล้ว — ปิดหน้านี้แล้วกด 🧭 จัดเรียงเส้นทาง', 'success');
+}
+function copyText(t, what) {
+  if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => toast(`📋 คัดลอก${what || ''} ${t} แล้ว`)).catch(() => {});
+}
+
 // วางพิกัดจริงที่หาได้จาก LandsMaps / Google Maps
 function surveySetLL(id, val) {
   _surveyGeom = null;   // เส้นทางถนนเดิมไม่ตรงกับรายการแล้ว → วาดเส้นประแทนจนกว่าจะจัดใหม่
@@ -2796,6 +2877,9 @@ async function renderSurvey() {
     startable.map(x => `<option value="${x.p.id}">🏠 เริ่มที่ ${escapeHtml((x.p.code ? x.p.code + ' — ' : '') + x.p.name)}</option>`).join('');
   startEl.value = ['city', 'gps'].includes(startSel) || startable.some(x => x.p.id === startSel) ? startSel : 'city';
 
+  const needLL = S.pool.filter(p => p.llApprox || !parseLatLng(p.mapUrl)).length;
+  const dolBtn = document.getElementById('survey-dol-btn');
+  if (dolBtn) { dolBtn.style.display = S.pool.length ? '' : 'none'; dolBtn.textContent = `📍 ใส่พิกัดจากกรมที่ดิน${needLL ? ` (เหลือ ${needLL})` : ' ✓'}`; }
   const regeo = document.getElementById('survey-regeo-btn');
   if (regeo) regeo.style.display = gmapsKey() && S.pool.some(p => p.llApprox || !parseLatLng(p.mapUrl)) ? '' : 'none';
 
