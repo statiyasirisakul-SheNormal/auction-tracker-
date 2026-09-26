@@ -2839,17 +2839,29 @@ async function renderSurvey() {
   }
   _smapLayers.forEach(l => _smap.removeLayer(l)); _smapLayers = [];
   const bounds = [];
-  // หมุดที่พิกัดซ้ำกัน (พิกัดประมาณระดับตำบลเดียวกัน) → กางเป็นวงรอบจุดเดิม ไม่งั้นทับกันจนเห็นเลขเดียว
+  // พิกัดประมาณ (กลางตำบล) ที่ซ้ำกัน = ไม่รู้ตำแหน่งจริงของแต่ละหลัง → รวมเป็นหมุดกลุ่มเดียว
+  // ห้ามกางกระจายเป็นวง: จะดูเหมือนตำแหน่งจริง (เคยตกลงไปกลางหนองประจักษ์)
+  const label = (x, i) => ordered.length ? (x.p.survey?.done ? '✓' : i + 1) : '•';
   const sameSpot = {};
-  pins.forEach(x => { const k = x.ll.lat.toFixed(5) + ',' + x.ll.lng.toFixed(5); (sameSpot[k] ||= []).push(x); });
-  const spread = new Map();
+  pins.forEach((x, i) => { if (!x.p.llApprox) return; const k = x.ll.lat.toFixed(5) + ',' + x.ll.lng.toFixed(5); (sameSpot[k] ||= []).push([x, i]); });
+  const grouped = new Set();
   Object.values(sameSpot).forEach(g => {
     if (g.length < 2) return;
-    const r = 0.0022 * Math.max(1, g.length / 5);   // ~250 ม. ขยายตามจำนวน — ซูมระดับเมืองยังแยกเลขออก
-    g.forEach((x, k) => { const a = 2 * Math.PI * k / g.length;
-      spread.set(x, [x.ll.lat + r * Math.sin(a), x.ll.lng + r * Math.cos(a) / Math.cos(x.ll.lat * Math.PI / 180)]); });
+    g.forEach(([x]) => grouped.add(x));
+    const [x0] = g[0];
+    const nums = g.map(([x, i]) => label(x, i)).join(', ');
+    const place = x0.p.led?.tambon ? 'ต.' + x0.p.led.tambon : (x0.p.loc || '');
+    const icon = L.divIcon({ className: '', iconSize: [64, 30], iconAnchor: [32, 15],
+      html: `<div style="height:30px;padding:0 10px;border-radius:15px;background:#D97706;color:#fff;border:2px dashed #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;gap:4px;font:800 12px sans-serif;white-space:nowrap">≈ ×${g.length}</div>` });
+    const mk = L.marker([x0.ll.lat, x0.ll.lng], { icon }).addTo(_smap)
+      .bindPopup(`<b>≈ ${escapeHtml(place)} — ${g.length} ทรัพย์ (ลำดับ ${nums})</b><br>
+        <span style="font-size:11px;color:#B45309">ยังไม่รู้ตำแหน่งจริงของแต่ละหลัง — หมุดนี้คือกลางตำบล</span>
+        <div style="font-size:12px;margin-top:4px">${g.map(([x, i]) => `${label(x, i)}. ${escapeHtml(x.p.code || '')} ${escapeHtml(x.p.name || '')}`).join('<br>')}</div>`);
+    _smapLayers.push(mk); bounds.push([x0.ll.lat, x0.ll.lng]);
   });
+  const spread = new Map();
   pins.forEach((x, i) => {
+    if (grouped.has(x)) return;
     const done = x.p.survey?.done, label = ordered.length ? (done ? '✓' : i + 1) : '•';
     const approx = !!x.p.llApprox;
     // พิกัดประมาณ = หมุดส้มขอบประ (ยังไม่ใช่ตำแหน่งแปลงจริง)
