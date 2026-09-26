@@ -125,10 +125,6 @@ body { font-family:'Sarabun','Segoe UI',sans-serif; background:var(--bg); color:
 }
 /* ปุ่ม +/− ของ Leaflet ตั้ง z-index 1000 มาเอง → ลอยทับหน้าต่าง popup ต้องกดให้ต่ำกว่า modal */
 .leaflet-top, .leaflet-bottom { z-index:450 !important; }
-/* หน้าวาด: ปิดการเลือกข้อความ/เมนูกดค้างของ iPad (ฝ่ามือ/ปลายปากกาไปโดนตัวหนังสือ → เด้งแถบ "คัดลอก") ยกเว้นช่องพิมพ์ */
-#sketch-overlay, #sketch-overlay * { -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent; }
-#sketch-overlay textarea { -webkit-user-select:text; user-select:text; -webkit-touch-callout:default; }
-#sk-canvas { -webkit-user-drag:none; }
 .dol-num { width:30px; height:30px; border-radius:50%; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px; }
 .modal-overlay.open { display:flex; }
 .modal {
@@ -1031,41 +1027,20 @@ input, select, textarea { font-size: 16px !important; }
   </div>
 </div>
 
-<!-- หน้าบันทึกรายละเอียด: พิมพ์ + เขียน/วาดอิสระ (รองรับ Apple Pencil) -->
-<div id="sketch-overlay" style="display:none;position:fixed;inset:0;z-index:600;background:#E2E8F0;flex-direction:column">
-  <div style="background:var(--navy);color:#fff;padding:8px 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-    <div id="sk-title" style="font-weight:800;font-size:14px;flex:1;min-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📝 บันทึกรายละเอียด</div>
-    <span id="sk-saved" style="font-size:11px;opacity:.75"></span>
-    <button class="btn btn-sm" style="background:#fff;color:var(--navy)" onclick="closeSketch()">✓ เสร็จ</button>
+<!-- หน้าบันทึกรายละเอียด: Excalidraw (วาด/เขียน/รูปทรง/ข้อความ/แทรกรูป) + ช่องพิมพ์บันทึก -->
+<div id="sketch-overlay" style="display:none;position:fixed;inset:0;z-index:600;background:#fff;flex-direction:column">
+  <div style="background:var(--navy);color:#fff;padding:7px 10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+    <div id="sk-title" style="font-weight:800;font-size:14px;flex:1;min-width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📝 บันทึกรายละเอียด</div>
+    <button class="btn btn-xs" style="background:rgba(255,255,255,.15);color:#fff" onclick="skToggleText()">📝 ข้อความ</button>
+    <button class="btn btn-xs" id="sk-ins-prop" style="background:rgba(255,255,255,.15);color:#fff" onclick="skInsertImage('prop')">🖼 แทรกรูปทรัพย์</button>
+    <button class="btn btn-xs" id="sk-ins-land" style="background:rgba(255,255,255,.15);color:#fff" onclick="skInsertImage('land')">🗺 แทรกแผนที่</button>
+    <span id="sk-saved" style="font-size:11px;opacity:.8"></span>
+    <button class="btn btn-sm" id="sk-done" style="background:#fff;color:var(--navy)" onclick="closeSketch()">✓ เสร็จ</button>
   </div>
-  <div id="sk-toolbar" style="background:#fff;border-bottom:1px solid var(--border);padding:6px 8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-    <button class="btn btn-xs sk-tool" data-tool="pen" onclick="skSetTool('pen')">✏️ ปากกา</button>
-    <button class="btn btn-xs sk-tool" data-tool="hl" onclick="skSetTool('hl')">🖍 ไฮไลต์</button>
-    <button class="btn btn-xs sk-tool" data-tool="er" onclick="skSetTool('er')">🧽 ยางลบ</button>
-    <span style="width:1px;height:22px;background:var(--border)"></span>
-    <span id="sk-colors" style="display:flex;gap:5px"></span>
-    <span style="width:1px;height:22px;background:var(--border)"></span>
-    <span id="sk-sizes" style="display:flex;gap:4px"></span>
-    <span style="flex:1"></span>
-    <button class="btn btn-ghost btn-xs" id="sk-finger" onclick="skToggleFinger()" title="ใช้นิ้ววาด หรือใช้นิ้วเลื่อนจอ">✋ นิ้ว: อัตโนมัติ</button>
-    <button class="btn btn-ghost btn-xs" onclick="skUndo()">↩</button>
-    <button class="btn btn-ghost btn-xs" onclick="skRedo()">↪</button>
-    <button class="btn btn-ghost btn-xs" onclick="skAddPage()">+ เพิ่มหน้า</button>
-    <button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="skClear()">🗑 ล้างภาพวาด</button>
+  <div id="sk-textbox" style="display:none;padding:8px 10px;background:#F8FAFC;border-bottom:1px solid var(--border)">
+    <textarea id="sk-text" class="form-textarea" placeholder="📝 พิมพ์บันทึก — สภาพทรัพย์ มีคนอยู่ไหม ทางเข้า เพื่อนบ้าน สิ่งที่ต้องซ่อม..." style="min-height:70px;font-size:15px;margin:0;background:#fff" oninput="skTextChanged()"></textarea>
   </div>
-  <div style="flex:1;position:relative;min-height:0">
-  <div id="sk-scroll" style="position:absolute;inset:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:12px">
-    <div style="max-width:900px;margin:0 auto">
-      <textarea id="sk-text" class="form-textarea" placeholder="📝 พิมพ์บันทึกตรงนี้ — สภาพทรัพย์ มีคนอยู่ไหม ทางเข้า เพื่อนบ้าน สิ่งที่ต้องซ่อม..." style="min-height:110px;font-size:15px;margin-bottom:10px;background:#fff" oninput="skTextChanged()"></textarea>
-      <div id="sk-wrap" style="position:relative;background:#fff;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.08);overflow:hidden">
-        <canvas id="sk-canvas" style="display:block;width:100%;touch-action:none;cursor:crosshair"></canvas>
-      </div>
-      <div style="text-align:center;font-size:11px;color:var(--gray);margin:8px 0 24px">เขียนด้วย Apple Pencil ได้เลย · นิ้วใช้เลื่อนจอเมื่อระบบเจอปากกา · บันทึกอัตโนมัติ</div>
-    </div>
-  </div>
-  <!-- ชั้นเส้นที่กำลังเขียน: ขนาดเท่าจอ (ไม่ใช่ทั้งแผ่น) → iPad วาดทับได้เร็ว -->
-  <canvas id="sk-live" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
-  </div>
+  <div id="ex-root" style="flex:1;position:relative;min-height:0"></div>
 </div>
 
 <!-- Add survey property from PDF -->
@@ -2744,316 +2719,166 @@ function copyText(t, what) {
 }
 
 // ═══════════════════════════════════════════════
-//  หน้าบันทึกรายละเอียด (พิมพ์ + เขียนอิสระ / Apple Pencil)
-//  เก็บภาพวาดเป็น "เส้น" (vector) ใน p.sketch = { h, strokes:[{t,c,w,p:[x,y,แรงกด×100,...]}] }
-//  พิกัดอิงกระดาษกว้าง 1000 หน่วยเสมอ → เปิดจอไหนก็ได้ภาพเดิม คมทุกขนาด
-//  ข้อความใช้ p.survey.note เดิม (ตอนกด "เก็บทรัพย์" ต่อท้ายหมายเหตุให้อยู่แล้ว)
+//  หน้าบันทึกรายละเอียด — ใช้ Excalidraw (ระบบวาดโอเพนซอร์ส MIT, หมึก perfect-freehand, รองรับ Apple Pencil)
+//  ได้ความสามารถแบบ GoodNotes: ปากกา/ไฮไลต์/ยางลบ, เลือกด้วยบ่วงแล้วย้าย-ย่อ-หมุน, รูปทรง, ลูกศร,
+//  กล่องข้อความบนกระดาษ, แทรกรูปแล้ววาดทับ, ซูมสองนิ้ว, โหมดปากกากันฝ่ามือ, ย้อน/ทำซ้ำ
+//
+//  ข้อมูล: p.sketchX = { elements:[...], files:{ fileId:{ url, mimeType } } } · p.sketchThumb = URL รูปย่อ (PNG ใน Storage)
+//  รูปที่แทรกเก็บใน Storage เป็น URL (ฐานข้อมูลไม่บวม) — ตอนเปิดหน้าโหลดมาแปลงเป็น dataURL ให้ Excalidraw
+//  (ถ้าส่ง URL ตรง ๆ ภาพจะติด "tainted canvas" ทำรูปย่อ/ส่งออกไม่ได้)
+//  ข้อความพิมพ์: ทรัพย์รอสำรวจ = survey.note · ทรัพย์หน้าแรก = notes
+//  ภาพวาดแบบเก่า (p.sketch เส้น vector) แปลงเป็นเส้นของ Excalidraw ให้อัตโนมัติตอนเปิด
 // ═══════════════════════════════════════════════
-const SK_W = 1000, SK_PAGE = 1400;
-const SK_COLORS = ['#111827', '#DC2626', '#2563EB', '#16A34A', '#F59E0B'];
-const SK_SIZES = [{ k: 'S', w: 2 }, { k: 'M', w: 4 }, { k: 'L', w: 8 }];
-let SK = null;
+const EX_VER = '0.18.1', REACT_VER = '18.3.1';
+let EXL = null, _exLoading = null;
+function loadExcalidraw() {
+  if (EXL) return Promise.resolve(EXL);
+  if (!_exLoading) {
+    window.EXCALIDRAW_ASSET_PATH = `https://esm.sh/@excalidraw/excalidraw@${EX_VER}/dist/prod/`;
+    const css = document.createElement('link');
+    css.rel = 'stylesheet'; css.href = `https://esm.sh/@excalidraw/excalidraw@${EX_VER}/dist/prod/index.css`;
+    document.head.appendChild(css);
+    _exLoading = Promise.all([
+      import(`https://esm.sh/react@${REACT_VER}`),
+      import(`https://esm.sh/react-dom@${REACT_VER}/client`),
+      import(`https://esm.sh/@excalidraw/excalidraw@${EX_VER}?deps=react@${REACT_VER},react-dom@${REACT_VER}`),
+    ]).then(([React, RD, EX]) => (EXL = { React, RD, EX }))
+      .catch(e => { _exLoading = null; throw e; });
+  }
+  return _exLoading;
+}
 
-function hasSketch(p) { return !!(p.sketch?.strokes?.length); }
-function openSketch(id) {
+let SK = null;
+function hasSketch(p) { return !!(p.sketchX?.elements?.length || p.sketch?.strokes?.length); }
+
+async function urlToDataURL(url) {
+  if (String(url).startsWith('data:')) return url;
+  const b = await (await fetch(url)).blob();
+  return await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(b); });
+}
+const dataURLtoBlob = async d => (await fetch(d)).blob();
+
+// ภาพวาดแบบเก่า (เส้น vector ของเราเอง) → เส้น freedraw ของ Excalidraw
+function legacyToElements(sk) {
+  return (sk.strokes || []).filter(s => s.p?.length >= 3).map((s, i) => {
+    const p = s.p, x0 = p[0], y0 = p[1], pts = [], prs = [];
+    let minX = 0, minY = 0, maxX = 0, maxY = 0;
+    for (let k = 0; k < p.length; k += 3) {
+      const dx = p[k] - x0, dy = p[k + 1] - y0;
+      pts.push([dx, dy]); prs.push((p[k + 2] || 50) / 100);
+      minX = Math.min(minX, dx); minY = Math.min(minY, dy); maxX = Math.max(maxX, dx); maxY = Math.max(maxY, dy);
+    }
+    return { type: 'freedraw', id: 'old' + i + '_' + Math.random().toString(36).slice(2, 8), x: x0, y: y0,
+      width: maxX - minX, height: maxY - minY, points: pts, pressures: prs, simulatePressure: !!s.m,
+      strokeColor: s.c, strokeWidth: s.t === 'hl' ? Math.min(4, s.w * 2) : Math.max(1, s.w / 2),
+      opacity: s.t === 'hl' ? 35 : 100, roughness: 0, backgroundColor: 'transparent' };
+  });
+}
+
+async function openSketch(id) {
   const p = findAnyProp(id); if (!p) return;
-  const sk = p.sketch || {};
-  SK = { id, strokes: (sk.strokes || []).map(s => ({ ...s, p: [...s.p] })), redo: [], undo: [],
-         h: sk.h || SK_PAGE, tool: 'pen', color: SK_COLORS[0], size: 1, penSeen: false, lastPenAt: 0, lastTouchStroke: null, finger: 'auto',
-         cur: null, pan: null, dirty: false, timer: null };
-  document.getElementById('sk-title').textContent = '📝 ' + (p.code ? p.code + ' — ' : '') + (p.name || '');
-  // ทรัพย์รอสำรวจ = บันทึกสำรวจ (survey.note) · ทรัพย์หน้าแรก = ช่องหมายเหตุ (notes)
-  document.getElementById('sk-text').value = (p.pool ? p.survey?.note : p.notes) || '';
-  document.getElementById('sk-saved').textContent = '';
-  document.getElementById('sk-colors').innerHTML = SK_COLORS.map((c, i) =>
-    `<button onclick="skSetColor(${i})" class="sk-color" data-i="${i}" style="width:24px;height:24px;border-radius:50%;background:${c};border:3px solid #fff;box-shadow:0 0 0 1px #CBD5E1;cursor:pointer"></button>`).join('');
-  document.getElementById('sk-sizes').innerHTML = SK_SIZES.map((s, i) =>
-    `<button onclick="skSetSize(${i})" class="btn btn-xs sk-size" data-i="${i}">${s.k}</button>`).join('');
   const ov = document.getElementById('sketch-overlay');
+  document.getElementById('sk-title').textContent = '📝 ' + (p.code ? p.code + ' — ' : '') + (p.name || '');
+  document.getElementById('sk-text').value = (p.pool ? p.survey?.note : p.notes) || '';
+  document.getElementById('sk-textbox').style.display = (p.pool ? p.survey?.note : p.notes) ? '' : 'none';
+  document.getElementById('sk-saved').textContent = '';
+  document.getElementById('sk-ins-prop').style.display = isImageSrc(p.imgProp) ? '' : 'none';
+  document.getElementById('sk-ins-land').style.display = isImageSrc(p.imgLand) ? '' : 'none';
+  const host = document.getElementById('ex-root');
+  host.innerHTML = '<div style="padding:40px;text-align:center;color:var(--gray)">⏳ กำลังเปิดหน้าวาด...</div>';
   ov.style.display = 'flex';
   document.body.style.overflow = 'hidden';
-  skSetTool('pen'); skSetColor(0); skSetSize(1); skUpdateFingerBtn();
-  setTimeout(skResize, 0);   // ไม่พึ่ง requestAnimationFrame (บางสถานะแท็บหยุดเฟรม) 
-  skLoadPF().then(() => { if (SK) skRedraw(); });
+  SK = { id, api: null, root: null, lastVer: null, dirty: false, cloudDirty: false, timer: null, cloudTimer: null,
+         fileUrls: {}, uploading: {} };
+  const mySK = SK;
+  try { await loadExcalidraw(); }
+  catch(e) { host.innerHTML = '<div style="padding:40px;text-align:center;color:var(--red)">โหลดหน้าวาดไม่สำเร็จ — ต้องต่ออินเทอร์เน็ตครั้งแรก แล้วลองใหม่</div>'; return; }
+  if (SK !== mySK) return;   // ปิดไปก่อนโหลดเสร็จ
+  const sx = p.sketchX || {};
+  const elements = sx.elements ? sx.elements : (p.sketch ? legacyToElements(p.sketch) : []);
+  const files = [];
+  for (const [fid, f] of Object.entries(sx.files || {})) {
+    try { files.push({ id: fid, mimeType: f.mimeType || 'image/png', dataURL: await urlToDataURL(f.url), created: f.created || Date.now() }); SK.fileUrls[fid] = f.url; }
+    catch(e) { console.warn('[sketch] โหลดรูปไม่ได้', f.url); }
+  }
+  if (SK !== mySK) return;
+  // ภาพวาดเก่าถูกแปลงแล้ว → ให้บันทึกในรูปแบบใหม่ตอนปิด
+  if (!sx.elements && p.sketch) SK.cloudDirty = true;
+  const { React, RD, EX } = EXL;
+  host.innerHTML = '';
+  SK.root = RD.createRoot(host);
+  SK.root.render(React.createElement(EX.Excalidraw, {
+    initialData: { elements, files, scrollToContent: true,
+      appState: { viewBackgroundColor: '#ffffff', currentItemRoughness: 0, currentItemStrokeWidth: 1,
+                  currentItemFontFamily: EX.FONT_FAMILY?.Helvetica || 2, currentItemStrokeColor: '#1e1e1e' } },
+    excalidrawAPI: api => { if (SK === mySK) { SK.api = api; setTimeout(() => { try { api.setActiveTool({ type: 'freedraw' }); } catch(e) {} }, 50); } },
+    onChange: (els, st, fl) => { if (SK === mySK) skOnChange(els, fl); },
+    UIOptions: { canvasActions: { loadScene: false, saveToActiveFile: false, toggleTheme: false, export: false, saveAsImage: true, clearCanvas: true, changeViewBackgroundColor: true } },
+    name: p.code || 'บันทึก',
+  }));
 }
-function closeSketch() {
-  if (!SK) return;
-  skSave(true);
-  document.getElementById('sketch-overlay').style.display = 'none';
-  document.body.style.overflow = '';
-  SK = null;
-  if (_renderAfterSketch) { _renderAfterSketch = false; renderAll(); }
-  else if (document.getElementById('tab-survey')?.classList.contains('active')) renderSurvey(); else renderProps();
-}
-function skSetTool(t) { SK.tool = t; document.querySelectorAll('.sk-tool').forEach(b => b.className = 'btn btn-xs sk-tool ' + (b.dataset.tool === t ? 'btn-primary' : 'btn-ghost')); }
-function skSetColor(i) { SK.color = SK_COLORS[i]; if (SK.tool === 'er') skSetTool('pen');
-  document.querySelectorAll('.sk-color').forEach(b => b.style.boxShadow = +b.dataset.i === i ? '0 0 0 3px var(--navy)' : '0 0 0 1px #CBD5E1'); }
-function skSetSize(i) { SK.size = i; document.querySelectorAll('.sk-size').forEach(b => b.className = 'btn btn-xs sk-size ' + (+b.dataset.i === i ? 'btn-primary' : 'btn-ghost')); }
-// นิ้ว: อัตโนมัติ (เจอปากกาแล้วนิ้วใช้เลื่อนจอ) → วาด → เลื่อนจอ
-function skToggleFinger() { SK.finger = { auto: 'draw', draw: 'pan', pan: 'auto' }[SK.finger]; skUpdateFingerBtn(); }
-function skUpdateFingerBtn() { document.getElementById('sk-finger').textContent = { auto: '✋ นิ้ว: อัตโนมัติ', draw: '✋ นิ้ว: วาด', pan: '✋ นิ้ว: เลื่อนจอ' }[SK.finger]; }
-// อัตโนมัติ: ใช้ปากกาใน 30 วิที่ผ่านมา → นิ้ว/ฝ่ามือเลื่อนจอ (กันฝ่ามือ) · วางปากกาเกิน 30 วิ → นิ้ววาดได้เหมือนเดิม
-const SK_PEN_HOLD = 30000;
-function skFingerPans() { return SK.finger === 'pan' || (SK.finger === 'auto' && Date.now() - SK.lastPenAt < SK_PEN_HOLD); }
 
-// ── ประสิทธิภาพ (iPad หน่วงถ้าวาดทั้งแผ่นใหม่ทุกจุดของปากกา) ──
-//  • 2 ชั้น: sk-canvas = เส้นที่เขียนเสร็จแล้ว, sk-live = เส้นที่กำลังเขียน (โปร่งใส วางทับ)
-//  • ปากกา: วาดต่อเฉพาะ "ช่วงใหม่" ลงชั้น live · ไฮไลต์: วาดเส้นเดียวนั้นใหม่ (กันรอยทับเข้ม)
-//  • วาดอย่างมากครั้งละ 1 เฟรมจอ (requestAnimationFrame) รวมจุดของปากกาที่มาถี่ ๆ
-//  • เส้นบรรทัดกระดาษเป็น CSS background ไม่ต้องวาดใน canvas
-//  • จำตำแหน่ง canvas ตอนเริ่มเส้น ไม่อ่าน layout ทุกจุด
-let _skDpr = 1, _skSc = 1, _skRect = null, _skRaf = 0;
-// หมึกปากกาใช้ perfect-freehand (ไลบรารีเดียวกับที่ tldraw / Excalidraw ใช้) — เส้นลื่น ปลายเรียว ตามแรงกด Apple Pencil
-// โหลดไม่ได้ (ออฟไลน์) → ใช้ตัววาดเดิมแทนอัตโนมัติ ข้อมูลเส้นรูปแบบเดียวกัน
-let _pf = null, _pfLoading = null;
-function skLoadPF() {
-  if (_pf) return Promise.resolve(_pf);
-  if (!_pfLoading) _pfLoading = import('https://cdn.jsdelivr.net/npm/perfect-freehand@1.2.3/+esm')
-    .then(m => (_pf = m.getStroke || m.default?.getStroke || null))
-    .catch(() => { _pfLoading = null; return null; });
-  return _pfLoading;
-}
-function pfPath(ctx, outline) {
-  if (outline.length < 2) return;
-  ctx.beginPath(); ctx.moveTo(outline[0][0], outline[0][1]);
-  for (let i = 1; i < outline.length; i++) {
-    const [x0, y0] = outline[i], [x1, y1] = outline[(i + 1) % outline.length];
-    ctx.quadraticCurveTo(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2);
+// Excalidraw เรียก onChange ถี่มาก (ทุกการขยับ) → เทียบเวอร์ชันฉาก เปลี่ยนจริงค่อยนับว่าแก้
+function skOnChange(els, files) {
+  const v = EXL.EX.getSceneVersion(els) + ':' + Object.keys(files || {}).length;
+  if (SK.lastVer === null) { SK.lastVer = v; return; }   // รอบแรกตอนโหลด ไม่นับ
+  if (v === SK.lastVer) return;
+  SK.lastVer = v;
+  // มีรูปใหม่ (แทรกเอง/วางจากคลิปบอร์ด) → อัปขึ้น Storage ทันที เก็บแค่ URL
+  for (const [fid, f] of Object.entries(files || {})) {
+    if (SK.fileUrls[fid] || SK.uploading[fid] || !String(f.dataURL).startsWith('data:')) continue;
+    const mySK = SK; mySK.uploading[fid] = true;
+    dataURLtoBlob(f.dataURL).then(b => uploadBlobToStorage(b, 'sketch.' + ((f.mimeType || 'image/png').split('/')[1] || 'png')))
+      .then(url => { if (url) { mySK.fileUrls[fid] = url; if (SK === mySK) skDirty(); } })
+      .finally(() => { delete mySK.uploading[fid]; });
   }
-  ctx.closePath(); ctx.fill();
-}
-function skScale() { return _skSc; }
-function skCtx(id) { return document.getElementById(id).getContext('2d', { desynchronized: true }); }
-function skResize() {
-  if (!SK) return;
-  _skSc = document.getElementById('sk-wrap').clientWidth / SK_W;
-  const cssW = SK_W * _skSc, cssH = SK.h * _skSc;
-  // iPad/Safari จำกัดขนาด canvas (~16 ล้านพิกเซล) และ canvas ใหญ่ ๆ วาด/ประกอบภาพช้า → คุมไม่เกิน ~10 ล้านพิกเซล
-  _skDpr = Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(10e6 / (cssW * cssH)));
-  const c = document.getElementById('sk-canvas');
-  c.width = Math.round(cssW * _skDpr); c.height = Math.round(cssH * _skDpr); c.style.height = Math.round(cssH) + 'px';
-  skResizeLive();
-  // เส้นบรรทัดทุก 40 หน่วย + เส้นแบ่งหน้าทุก SK_PAGE (วาดด้วย CSS)
-  const wrap = document.getElementById('sk-wrap'), l = 40 * _skSc, pg = SK_PAGE * _skSc;
-  wrap.style.backgroundColor = '#fff';
-  wrap.style.backgroundImage = `repeating-linear-gradient(to bottom, transparent 0, transparent ${pg - 1}px, #CBD5E1 ${pg - 1}px, #CBD5E1 ${pg}px), repeating-linear-gradient(to bottom, transparent 0, transparent ${l - 1}px, #E5EDF7 ${l - 1}px, #E5EDF7 ${l}px)`;
-  skRedraw();
-}
-// ชั้น live = ขนาดเท่าพื้นที่จอ (ไม่ขึ้นกับจำนวนหน้า) ความละเอียดเต็มจอ ให้เส้นคม
-let _skLiveDpr = 1, _skOff = [0, 0];
-function skResizeLive() {
-  const lv = document.getElementById('sk-live');
-  _skLiveDpr = Math.min(window.devicePixelRatio || 1, 2);
-  lv.width = Math.round(lv.clientWidth * _skLiveDpr); lv.height = Math.round(lv.clientHeight * _skLiveDpr);
-}
-// ตำแหน่งกระดาษเทียบกับชั้น live (เปลี่ยนเมื่อเลื่อนจอ) — วัดครั้งเดียวตอนเริ่มเส้น
-function skMeasure() {
-  const cr = document.getElementById('sk-canvas').getBoundingClientRect(), lr = document.getElementById('sk-live').getBoundingClientRect();
-  _skRect = cr; _skOff = [cr.left - lr.left, cr.top - lr.top];
-}
-function skLiveCtx() {
-  const lv = document.getElementById('sk-live'), ctx = lv.getContext('2d');
-  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, lv.width, lv.height);
-  ctx.setTransform(_skLiveDpr, 0, 0, _skLiveDpr, _skOff[0] * _skLiveDpr, _skOff[1] * _skLiveDpr);
-  return ctx;
-}
-function skDrawStroke(ctx, s, sc, from = 3) {
-  const p = s.p; if (p.length < 3) return;
-  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = s.c;
-  if (s.t === 'hl') {
-    ctx.globalAlpha = .35; ctx.lineWidth = s.w * 4 * sc;
-    ctx.beginPath(); ctx.moveTo(p[0] * sc, p[1] * sc);
-    for (let i = 3; i < p.length; i += 3) ctx.lineTo(p[i] * sc, p[i + 1] * sc);
-    if (p.length === 3) ctx.lineTo(p[0] * sc + .1, p[1] * sc);
-    ctx.stroke();
-  } else if (_pf) {
-    // perfect-freehand: แปลงจุด+แรงกดเป็นรูปทรงเส้นหมึก แล้วเติมสี (m = ไม่มีแรงกดจริง → จำลองจากความเร็ว)
-    const pts = []; for (let i = 0; i < p.length; i += 3) pts.push([p[i] * sc, p[i + 1] * sc, (p[i + 2] || 50) / 100]);
-    ctx.fillStyle = s.c;
-    pfPath(ctx, _pf(pts, { size: s.w * 2.4 * sc, thinning: .5, smoothing: .62, streamline: .32, simulatePressure: !!s.m,
-      start: { taper: 0, cap: true }, end: { taper: 0, cap: true }, last: !SK || SK.cur !== s }));
-  } else {
-    // ตัววาดสำรอง: ความหนาตามแรงกด ต่อทีละช่วงด้วยเส้นโค้งผ่านจุดกึ่งกลาง
-    if (p.length === 3 && from <= 3) { ctx.fillStyle = s.c; ctx.beginPath(); ctx.arc(p[0] * sc, p[1] * sc, s.w * .5 * sc, 0, 7); ctx.fill(); }
-    for (let i = Math.max(3, from); i < p.length; i += 3) {
-      const x0 = p[i - 3], y0 = p[i - 2], x1 = p[i], y1 = p[i + 1];
-      const pr = (p[i + 2] || 50) / 100;
-      ctx.lineWidth = Math.max(.6, s.w * (.35 + pr * 1.1)) * sc;
-      const mx0 = i >= 6 ? (p[i - 6] + x0) / 2 : x0, my0 = i >= 6 ? (p[i - 5] + y0) / 2 : y0;
-      ctx.beginPath(); ctx.moveTo(mx0 * sc, my0 * sc);
-      ctx.quadraticCurveTo(x0 * sc, y0 * sc, (x0 + x1) / 2 * sc, (y0 + y1) / 2 * sc);
-      ctx.stroke();
-    }
-  }
-  ctx.restore();
-}
-// วาดชั้นเส้นที่เสร็จแล้วใหม่ทั้งแผ่น — เรียกเฉพาะตอน ย่อ/ขยาย, ย้อน, ลบ, ล้าง
-function skRedraw() {
-  const ctx = skCtx('sk-canvas');
-  ctx.setTransform(_skDpr, 0, 0, _skDpr, 0, 0);
-  ctx.clearRect(0, 0, SK_W * _skSc, SK.h * _skSc);
-  SK.strokes.forEach(s => skDrawStroke(ctx, s, _skSc));
-  skLiveCtx();   // ล้างชั้น live
-  if (SK.cur) skFlushLive();
-}
-// วาดเส้นที่กำลังเขียน (ชั้น live) — ปากกาวาดต่อเฉพาะช่วงที่ยังไม่ได้วาด
-function skFlushLive() {
-  _skRaf = 0;
-  if (!SK || !SK.cur) return;
-  // ชั้น live เล็กเท่าจอ → ล้างแล้ววาดเส้นนี้ใหม่ทั้งเส้นได้เร็ว (perfect-freehand ต้องใช้ทั้งเส้นอยู่แล้ว)
-  skDrawStroke(skLiveCtx(), SK.cur, _skSc);
-}
-function skSchedule() { if (!_skRaf) _skRaf = requestAnimationFrame(skFlushLive); }
-function skPoint(e) {
-  const r = _skRect || document.getElementById('sk-canvas').getBoundingClientRect();
-  // เมาส์/นิ้วไม่มีแรงกด (pressure 0.5 หรือ 0) → ใช้กลาง ๆ
-  let pr = e.pointerType === 'pen' && e.pressure > 0 ? e.pressure : .5;
-  // แรงกด Apple Pencil กระตุกทีละจุด → เฉลี่ยกับจุดก่อน ให้ความหนาเส้นเปลี่ยนนุ่ม ๆ
-  const last = SK && SK.cur ? SK.cur.p[SK.cur.p.length - 1] / 100 : null;
-  if (last != null && e.pointerType === 'pen') pr = last * .6 + pr * .4;
-  // ทศนิยม 1 ตำแหน่ง (เดิมปัดเป็นจำนวนเต็ม → จอ iPad ความละเอียดสูงเห็นเส้นเป็นขั้นบันได)
-  return [Math.round((e.clientX - r.left) / _skSc * 10) / 10, Math.round((e.clientY - r.top) / _skSc * 10) / 10, Math.round(pr * 100)];
-}
-let _skEraseRaf = 0;
-function skEraseAt(x, y) {
-  const R = 14, hit = [];
-  SK.strokes.forEach((s, idx) => { for (let i = 0; i < s.p.length; i += 3) if (Math.hypot(s.p[i] - x, s.p[i + 1] - y) < R + s.w) { hit.push(idx); break; } });
-  if (!hit.length) return;
-  const removed = hit.map(i => [i, SK.strokes[i]]);
-  SK.strokes = SK.strokes.filter((s, i) => !hit.includes(i));
-  SK.undo.push({ del: removed }); SK.redo = [];
-  // ลากยางลบผ่านหลายเส้น → วาดใหม่ครั้งเดียวต่อเฟรม
-  if (!_skEraseRaf) _skEraseRaf = requestAnimationFrame(() => { _skEraseRaf = 0; if (SK) skRedraw(); });
   skDirty();
 }
-// ── กันฝ่ามือ (palm rejection) ──
-//  • จำไว้ในเครื่องว่าเครื่องนี้ใช้ Apple Pencil → เปิดหน้าใหม่ ฝ่ามือก็ไม่วาด (เดิมลืมทุกครั้งที่เปิดหน้า)
-//  • ปากกาชนะเสมอ: ฝ่ามือเริ่มเส้นไปก่อน แล้วปากกาแตะ → ทิ้งเส้นฝ่ามือ ให้ปากกาเขียนแทน
-//  • ระหว่างปากกาเขียน ไม่รับการแตะอื่นเลย (รวมถึงเลื่อนจอ)
-//  • จุดสัมผัสใหญ่ (ฝ่ามือ) → ไม่สนเลย
-const skIsPalm = e => e.pointerType === 'touch' && ((e.width || 0) > 32 || (e.height || 0) > 32);
-function skMarkPen() {
-  SK.penSeen = true; SK.lastPenAt = Date.now();
-  // ฝ่ามือเพิ่งลากเส้นจบไป (≤1.5 วิ) แล้วปากกาแตะตามมา → เส้นนั้นคือฝ่ามือ ลบทิ้ง
-  const lt = SK.lastTouchStroke;
-  if (lt && Date.now() - lt.at < 1500) {
-    const i = SK.strokes.indexOf(lt.s);
-    if (i >= 0) { SK.strokes.splice(i, 1); SK.undo = SK.undo.filter(a => a.add !== lt.s); skRedraw(); skDirty(); }
-  }
-  SK.lastTouchStroke = null;
-}
-function skDown(e) {
-  if (!SK) return;
-  if (e.pointerType === 'pen') {
-    skMarkPen();
-    SK.pan = null;
-    // ฝ่ามือ/นิ้วแย่งเขียนไปก่อน → ทิ้งเส้นนั้น (ยังไม่ได้บันทึก) แล้วให้ปากกาเขียน
-    if (SK.cur && SK.cur.touch) { SK.cur = null; skLiveCtx(); }
-    if (SK.erasing != null && SK.erasingTouch) SK.erasing = null;
-  } else if (e.pointerType === 'touch') {
-    if (skIsPalm(e)) return;                                  // ฝ่ามือ
-    if (SK.cur && !SK.cur.touch) return;                      // ปากกากำลังเขียนอยู่ → ไม่รับแตะอื่น
-    if (SK.erasing != null && !SK.erasingTouch) return;
-    if (skFingerPans()) {                                     // นิ้ว = เลื่อนจอ
-      if (!SK.pan) SK.pan = { y: e.clientY, top: document.getElementById('sk-scroll').scrollTop, id: e.pointerId };
-      return;
-    }
-  }
-  if (SK.cur) return;   // กำลังเขียนอยู่ (อีกนิ้ว) ไม่รับเพิ่ม
-  e.preventDefault();
-  // มีตัวหนังสือถูกเลือกค้างอยู่ (แถบคัดลอกโผล่) → ล้างทิ้ง แล้วปิดคีย์บอร์ดถ้าพิมพ์ค้างอยู่
-  try { const sel = window.getSelection(); if (sel && sel.rangeCount) sel.removeAllRanges(); } catch(err) {}
-  if (document.activeElement && document.activeElement.id === 'sk-text') document.activeElement.blur();
-  try { document.getElementById('sk-canvas').setPointerCapture(e.pointerId); } catch(err) {}   // บางเบราว์เซอร์โยน error ได้ — ไม่ให้ขวางการเขียน
-  skMeasure();
-  const pt = skPoint(e);
-  if (SK.tool === 'er') { SK.erasing = e.pointerId; SK.erasingTouch = e.pointerType === 'touch'; skEraseAt(pt[0], pt[1]); return; }
-  SK.cur = { t: SK.tool, c: SK.color, w: SK_SIZES[SK.size].w, p: pt, id: e.pointerId };
-  if (e.pointerType !== 'pen') SK.cur.m = 1;   // นิ้ว/เมาส์ไม่มีแรงกด → ให้ perfect-freehand จำลองจากความเร็ว
-  if (e.pointerType === 'touch') SK.cur.touch = 1;   // เส้นจากนิ้ว — ปากกาแตะเมื่อไหร่ทิ้งได้
-  skFlushLive();
-}
-function skMove(e) {
-  if (!SK) return;
-  if (SK.pan && e.pointerId === SK.pan.id) {
-    if (skIsPalm(e)) { SK.pan = null; return; }   // นิ้วกลายเป็นฝ่ามือ (วางมือลง) → หยุดเลื่อน กันจอกระโดด
-    document.getElementById('sk-scroll').scrollTop = SK.pan.top - (e.clientY - SK.pan.y); return;
-  }
-  if (SK.erasing === e.pointerId) { const pt = skPoint(e); skEraseAt(pt[0], pt[1]); return; }
-  if (!SK.cur || e.pointerId !== SK.cur.id) return;
-  if (SK.cur.touch && skIsPalm(e)) { SK.cur = null; skLiveCtx(); return; }   // ที่วาดอยู่จริง ๆ คือฝ่ามือ → ทิ้ง
-  if (e.pointerType === 'pen') SK.lastPenAt = Date.now();
-  e.preventDefault();
-  const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
-  for (const ev of (evs.length ? evs : [e])) {
-    const pt = skPoint(ev), p = SK.cur.p, n = p.length;
-    if (Math.hypot(pt[0] - p[n - 3], pt[1] - p[n - 2]) < .4) continue;   // ตัดเฉพาะจุดที่ซ้อนกันจริง ๆ (เดิม 1.5 เขียนช้าแล้วเส้นหักมุม)
-    p.push(...pt);
-  }
-  // เขียนเลยท้ายกระดาษ → ต่อหน้าให้อัตโนมัติ
-  if (SK.cur.p[SK.cur.p.length - 2] > SK.h - 60) { SK.h += SK_PAGE; skResize(); skMeasure(); }
-  skFlushLive();
-}
-function skUp(e) {
-  if (!SK) return;
-  if (SK.pan && e.pointerId === SK.pan.id) { SK.pan = null; return; }
-  if (SK.erasing === e.pointerId) { SK.erasing = null; _skRect = null; return; }
-  if (!SK.cur || e.pointerId !== SK.cur.id) return;
-  if (_skRaf) { cancelAnimationFrame(_skRaf); _skRaf = 0; }
-  const s = SK.cur; const wasTouch = !!s.touch; delete s.id; delete s.touch; SK.cur = null; _skRect = null;
-  SK.lastTouchStroke = wasTouch ? { s, at: Date.now() } : null;
-  if (!wasTouch && e.pointerType === 'pen') SK.lastPenAt = Date.now();
-  SK.strokes.push(s); SK.undo.push({ add: s }); SK.redo = [];
-  // ย้ายเส้นที่เขียนเสร็จจากชั้น live ลงชั้นหลัก — วาดเส้นเดียว ไม่ต้องวาดทั้งแผ่น
-  const main = skCtx('sk-canvas'); main.setTransform(_skDpr, 0, 0, _skDpr, 0, 0); skDrawStroke(main, s, _skSc);
-  skLiveCtx();   // ล้างชั้น live
-  skDirty();
-}
-function skUndo() {
-  const a = SK.undo.pop(); if (!a) return;
-  if (a.add) SK.strokes = SK.strokes.filter(s => s !== a.add);
-  if (a.del) a.del.slice().sort((x, y) => x[0] - y[0]).forEach(([i, s]) => SK.strokes.splice(i, 0, s));
-  if (a.clear) SK.strokes = a.clear;
-  SK.redo.push(a); skRedraw(); skDirty();
-}
-function skRedo() {
-  const a = SK.redo.pop(); if (!a) return;
-  if (a.add) SK.strokes.push(a.add);
-  if (a.del) { const set = new Set(a.del.map(d => d[1])); SK.strokes = SK.strokes.filter(s => !set.has(s)); }
-  if (a.clear) SK.strokes = [];
-  SK.undo.push(a); skRedraw(); skDirty();
-}
-function skClear() {
-  if (!SK.strokes.length || !confirm('ล้างภาพวาดทั้งหมดในหน้านี้? (กด ↩ ย้อนกลับได้)')) return;
-  SK.undo.push({ clear: SK.strokes }); SK.redo = []; SK.strokes = [];
-  skRedraw(); skDirty();
-}
-function skAddPage() { SK.h += SK_PAGE; skResize(); skDirty();
-  const sc = document.getElementById('sk-scroll'); setTimeout(() => sc.scrollTo({ top: sc.scrollHeight, behavior: 'smooth' }), 50); }
 function skTextChanged() { skDirty(); }
-// ── การบันทึก (เดิม sync ขึ้น Cloud ทุก 1.5 วิ → ส่งทุกทรัพย์ขึ้นไป + Cloud เด้งกลับมาวาดหน้าเว็บใหม่ทั้งหน้า = รวน) ──
-//  • ระหว่างเขียน: หยุด 1.5 วิ → เก็บลงเครื่องอย่างเดียว (เร็ว ไม่ใช้เน็ต)
-//  • ขึ้น Cloud: ตอนกด "✓ เสร็จ", ตอนสลับแอป/ปิดแท็บ, หรือหยุดเขียนนาน 20 วิ
+function skToggleText() {
+  const b = document.getElementById('sk-textbox');
+  b.style.display = b.style.display === 'none' ? '' : 'none';
+  if (b.style.display === '') document.getElementById('sk-text').focus();
+}
+
+// ── การบันทึก ──
+//  • ระหว่างวาด: หยุด 1.5 วิ → เก็บลงเครื่อง (เร็ว ไม่ใช้เน็ต)
+//  • ขึ้น Cloud + ทำรูปย่อ: ตอนกด "✓ เสร็จ", สลับแอป/ปิดแท็บ, หรือหยุดนาน 20 วิ
 function skDirty() {
-  SK.dirty = SK.cloudDirty = true; document.getElementById('sk-saved').textContent = '● กำลังเขียน';
+  if (!SK) return;
+  SK.dirty = SK.cloudDirty = true;
+  const el = document.getElementById('sk-saved'); if (el) el.textContent = '● กำลังแก้ไข';
   clearTimeout(SK.timer); SK.timer = setTimeout(() => skSave('local'), 1500);
   clearTimeout(SK.cloudTimer); SK.cloudTimer = setTimeout(() => skSave('cloud'), 20000);
 }
-// หาจุดล่างสุดของภาพ (วนลูปธรรมดา — Math.max(...array) พังเมื่อจุดเยอะเกินแสนจุด)
-function skMaxY(strokes) { let m = 0; for (const s of strokes) for (let i = 1; i < s.p.length; i += 3) if (s.p[i] > m) m = s.p[i]; return m; }
 function skWriteProp() {
   const p = findAnyProp(SK.id); if (!p) return null;
   const text = document.getElementById('sk-text').value.trim();
   if (p.pool) { if (text || p.survey) { if (!p.survey) p.survey = {}; p.survey.note = text; } }
   else p.notes = text;
-  // ความสูงเก็บเท่าที่ใช้จริง (ปัดขึ้นเป็นหน้า) · ไม่มีเส้นเลย = ลบ sketch ทิ้ง
-  if (SK.strokes.length) {
-    const maxY = skMaxY(SK.strokes);
-    p.sketch = { h: Math.max(SK_PAGE, Math.ceil((maxY + 40) / SK_PAGE) * SK_PAGE, SK.h), strokes: SK.strokes.map(s => ({ t: s.t, c: s.c, w: s.w, p: s.p, ...(s.m ? { m: 1 } : {}) })) };
-  } else delete p.sketch;
+  if (!SK.api) return p;   // ยังโหลดหน้าวาดไม่เสร็จ — เก็บแค่ข้อความ
+  const els = SK.api.getSceneElements().filter(e => !e.isDeleted);
+  if (els.length) {
+    const used = new Set(els.filter(e => e.type === 'image' && e.fileId).map(e => e.fileId));
+    const allFiles = SK.api.getFiles(), files = {};
+    used.forEach(fid => { if (SK.fileUrls[fid]) files[fid] = { url: SK.fileUrls[fid], mimeType: allFiles[fid]?.mimeType || 'image/png' }; });
+    // รูปที่ยังอัปโหลดไม่เสร็จ/ไม่สำเร็จ ยังไม่เก็บ (ไม่ยัด dataURL ลงฐานข้อมูล) — รอบบันทึกถัดไปจะตามเก็บให้
+    p.sketchX = { elements: JSON.parse(JSON.stringify(els)), files };
+  } else { delete p.sketchX; delete p.sketchThumb; }
+  delete p.sketch;   // รูปแบบเก่า — แปลงเป็นแบบใหม่แล้ว
   return p;
 }
-function skSave(mode) {
+async function skMakeThumb(p) {
+  if (!SK?.api || !p.sketchX) return;
+  try {
+    const blob = await EXL.EX.exportToBlob({ elements: SK.api.getSceneElements().filter(e => !e.isDeleted), files: SK.api.getFiles(),
+      appState: { exportBackground: true, viewBackgroundColor: '#ffffff' }, mimeType: 'image/png', maxWidthOrHeight: 640 });
+    const url = await uploadBlobToStorage(blob, 'sketch-thumb.png');
+    if (url) p.sketchThumb = url;
+    else p.sketchThumb = await urlToDataURL(URL.createObjectURL(blob));   // ออฟไลน์ — เก็บชั่วคราวไว้ก่อน
+  } catch(e) { console.warn('[sketch] ทำรูปย่อไม่ได้', e.message); }
+}
+async function skSave(mode) {
   if (!SK) return;
   const el = document.getElementById('sk-saved');
   if (mode === 'local') {
@@ -3064,60 +2889,95 @@ function skSave(mode) {
     if (el) el.textContent = '✓ บันทึกในเครื่องแล้ว';
     return;
   }
-  // cloud / true (ตอนปิด)
   if (!SK.dirty && !SK.cloudDirty) return;
-  if (!skWriteProp()) return;
+  const mySK = SK;
+  const p = skWriteProp(); if (!p) return;
   SK.dirty = SK.cloudDirty = false;
   clearTimeout(SK.timer); clearTimeout(SK.cloudTimer);
+  if (el) el.textContent = '⏳ กำลังบันทึก...';
+  await skMakeThumb(p);
   saveS();
-  if (el) el.textContent = mode === true ? '' : '☁️ บันทึกขึ้น Cloud แล้ว';
+  if (el && SK === mySK) el.textContent = '☁️ บันทึกขึ้น Cloud แล้ว';
 }
-// สลับแอป / ปิดแท็บ / ล็อกจอ ระหว่างเขียน → ขึ้น Cloud ทันที กันงานหาย
+async function closeSketch() {
+  if (!SK) return;
+  const mySK = SK;
+  const btn = document.getElementById('sk-done'); if (btn) { btn.disabled = true; btn.textContent = '⏳ กำลังบันทึก'; }
+  try { await skSave(true); } catch(e) {}
+  if (SK !== mySK) return;
+  try { SK.root?.unmount(); } catch(e) {}
+  document.getElementById('ex-root').innerHTML = '';
+  document.getElementById('sketch-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+  if (btn) { btn.disabled = false; btn.textContent = '✓ เสร็จ'; }
+  SK = null;
+  if (_renderAfterSketch) { _renderAfterSketch = false; renderAll(); }
+  else if (document.getElementById('tab-survey')?.classList.contains('active')) renderSurvey(); else renderProps();
+}
+// สลับแอป / ปิดแท็บ / ล็อกจอ ระหว่างวาด → ขึ้น Cloud ทันที กันงานหาย
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && SK) skSave('cloud'); });
 window.addEventListener('pagehide', () => { if (SK) skSave('cloud'); });
-// รูปย่อภาพวาดสำหรับการ์ด (วาดจากเส้นจริง แคชไว้ไม่ต้องวาดใหม่ทุกครั้ง)
+
+// แทรกรูปทรัพย์ / แผนที่กรมที่ดินลงกระดาษ (วางกลางจอที่ดูอยู่ แล้ววาดทับได้)
+async function skInsertImage(kind) {
+  if (!SK?.api) { toast('รอหน้าวาดโหลดเสร็จก่อน', 'error'); return; }
+  const p = findAnyProp(SK.id); const src = kind === 'land' ? p?.imgLand : p?.imgProp;
+  if (!isImageSrc(src)) { toast('ทรัพย์นี้ยังไม่มีรูป', 'error'); return; }
+  try {
+    const dataURL = await urlToDataURL(src);
+    const im = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = dataURL; });
+    const fid = 'img_' + uid(), mime = (dataURL.match(/^data:([^;]+)/) || [])[1] || 'image/jpeg';
+    SK.api.addFiles([{ id: fid, dataURL, mimeType: mime, created: Date.now() }]);
+    if (!src.startsWith('data:')) SK.fileUrls[fid] = src;   // รูปอยู่ใน Storage อยู่แล้ว ไม่ต้องอัปซ้ำ
+    const st = SK.api.getAppState(), z = st.zoom?.value || 1;
+    const w = Math.min(600, im.naturalWidth), h = w * im.naturalHeight / im.naturalWidth;
+    const cx = -st.scrollX + st.width / z / 2, cy = -st.scrollY + st.height / z / 2;
+    const [el] = EXL.EX.convertToExcalidrawElements([{ type: 'image', fileId: fid, x: cx - w / 2, y: cy - h / 2, width: w, height: h }]);
+    // วางรูปไว้ชั้นล่างสุด — เส้นที่เขียนไว้แล้วและที่จะเขียนต่อจะอยู่บนรูป (ไม่โดนรูปทับ)
+    SK.api.updateScene({ elements: [el, ...SK.api.getSceneElements()] });
+    SK.api.setActiveTool({ type: 'freedraw' });
+    toast(kind === 'land' ? '🗺 แทรกแผนที่แล้ว — วาดทับได้เลย' : '🖼 แทรกรูปทรัพย์แล้ว — วาดทับได้เลย', 'success');
+  } catch(e) { toast('แทรกรูปไม่สำเร็จ: ' + e.message, 'error'); }
+}
+
+// ── รูปย่อบนการ์ด ──
+// แบบใหม่: รูป PNG ที่ทำตอนบันทึก (p.sketchThumb) · แบบเก่า: วาดจากเส้น vector เดิม
+function skDrawStrokeLegacy(ctx, s, sc) {
+  const p = s.p; if (!p || p.length < 3) return;
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = s.c;
+  if (s.t === 'hl') { ctx.globalAlpha = .35; ctx.lineWidth = s.w * 4 * sc; }
+  else ctx.lineWidth = Math.max(.6, s.w) * sc;
+  ctx.beginPath(); ctx.moveTo(p[0] * sc, p[1] * sc);
+  for (let i = 3; i < p.length; i += 3) ctx.lineTo(p[i] * sc, p[i + 1] * sc);
+  ctx.stroke(); ctx.restore();
+}
 const _skThumbCache = new Map();
 function sketchThumb(p, px = 260) {
-  if (!hasSketch(p)) return '';
-  const key = p.id + ':' + p.sketch.strokes.map(s => s.p.length + s.c).join(',') + ':' + p.sketch.h;
+  if (p.sketchX?.elements?.length) return p.sketchThumb || '';
+  if (!p.sketch?.strokes?.length) return '';
+  const key = p.id + ':' + p.sketch.strokes.map(s => s.p.length + s.c).join(',');
   if (_skThumbCache.has(key)) return _skThumbCache.get(key);
-  const maxY = skMaxY(p.sketch.strokes);
-  const h = Math.min(p.sketch.h, Math.max(400, maxY + 40)), sc = px / SK_W;
+  let maxY = 0; for (const s of p.sketch.strokes) for (let i = 1; i < s.p.length; i += 3) if (s.p[i] > maxY) maxY = s.p[i];
+  const h = Math.max(400, maxY + 40), sc = px / 1000;
   const cv = document.createElement('canvas'); cv.width = px; cv.height = Math.round(h * sc);
   const ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);
-  p.sketch.strokes.forEach(s => skDrawStroke(ctx, s, sc));
-  const url = cv.toDataURL('image/png');
-  _skThumbCache.set(key, url);
-  return url;
+  p.sketch.strokes.forEach(s => skDrawStrokeLegacy(ctx, s, sc));
+  const url = cv.toDataURL('image/png'); _skThumbCache.set(key, url); return url;
 }
 function sketchCardBlock(p) {
   const note = (p.pool ? p.survey?.note : p.notes) || '';
   const thumb = sketchThumb(p);
+  const drawn = hasSketch(p);
   return `<div style="border:1.5px dashed #CBD5E1;border-radius:10px;padding:10px;margin-bottom:12px;background:#FAFCFF;cursor:pointer" onclick="openSketch('${p.id}')">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:${note || thumb ? '8' : '0'}px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:${note || drawn ? '8' : '0'}px">
       <b style="font-size:13px;color:var(--navy);flex:1">📝 บันทึกรายละเอียด</b>
-      <span class="btn btn-primary btn-xs">${note || thumb ? '✏️ เปิดแก้ไข' : '+ เขียนบันทึก'}</span>
+      <span class="btn btn-primary btn-xs">${note || drawn ? '✏️ เปิดแก้ไข' : '+ เขียนบันทึก'}</span>
     </div>
-    ${note ? `<div style="font-size:13px;white-space:pre-wrap;color:#374151;margin-bottom:${thumb ? 8 : 0}px">${escapeHtml(note)}</div>` : ''}
-    ${thumb ? `<img src="${thumb}" style="max-width:100%;max-height:220px;border-radius:6px;border:1px solid var(--border);background:#fff">` : ''}
+    ${note ? `<div style="font-size:13px;white-space:pre-wrap;color:#374151;margin-bottom:${drawn ? 8 : 0}px">${escapeHtml(note)}</div>` : ''}
+    ${thumb ? `<img src="${thumb}" style="max-width:100%;max-height:220px;border-radius:6px;border:1px solid var(--border);background:#fff">`
+      : drawn ? `<div style="font-size:12px;color:var(--gray)">🖊 มีภาพวาด — แตะเพื่อเปิดดู</div>` : ''}
   </div>`;
 }
-(() => {
-  const cv = document.getElementById('sk-canvas');
-  if (!cv) return;
-  cv.addEventListener('pointerdown', skDown);
-  // iPad: กดค้าง/ลากบนจอ = เลือกข้อความ + แว่นขยาย + เมนูคัดลอก → ปิดทั้งหมดในหน้าวาด (ยกเว้นช่องพิมพ์)
-  const ov = document.getElementById('sketch-overlay');
-  const notText = e => !(e.target && e.target.closest && e.target.closest('textarea'));
-  ov.addEventListener('selectstart', e => { if (notText(e)) e.preventDefault(); });
-  ov.addEventListener('contextmenu', e => { if (notText(e)) e.preventDefault(); });
-  cv.addEventListener('touchstart', e => e.preventDefault(), { passive: false });   // กันแว่นขยาย/เมนูของ iOS บนกระดาษ
-  cv.addEventListener('touchmove', e => { if (!SK?.pan) e.preventDefault(); }, { passive: false });
-  cv.addEventListener('pointermove', skMove);
-  cv.addEventListener('pointerup', skUp);
-  cv.addEventListener('pointercancel', skUp);
-  window.addEventListener('resize', () => { if (SK) skResize(); });
-})();
 
 // วางพิกัดจริงที่หาได้จาก LandsMaps / Google Maps
 function surveySetLL(id, val) {
