@@ -2851,7 +2851,9 @@ async function renderSurvey() {
   canvas.style.display = '';
   // สร้าง "โมเดล" ของแผนที่ครั้งเดียว (หมุด/เส้น/ขอบเขต) แล้วค่อยวาดด้วย Google Maps (ถ้ามี key) หรือ Leaflet
   const marks = [], bounds = [];
-  const addMark = (pos, html, w, h, popup) => { marks.push({ pos, html, w, h, popup }); bounds.push(pos); };
+  // dy = เลื่อนป้ายขึ้นเป็นพิกเซล (ใช้กับหมุดกลุ่มที่อยู่ใกล้กันจนป้ายทับกัน — ตำแหน่งจุดจริงไม่เปลี่ยน)
+  const addMark = (pos, html, w, h, popup, dy = 0) => { marks.push({ pos, html, w, h, popup, dy }); bounds.push(pos); };
+  const groupSpots = [];
   // พิกัดประมาณ (กลางตำบล) ที่ซ้ำกัน = ไม่รู้ตำแหน่งจริงของแต่ละหลัง → รวมเป็นหมุดกลุ่มเดียว
   // ห้ามกางกระจายเป็นวง: จะดูเหมือนตำแหน่งจริง (เคยตกลงไปกลางหนองประจักษ์)
   const label = (x, i) => ordered.length ? (x.p.survey?.done ? '✓' : i + 1) : '•';
@@ -2864,11 +2866,22 @@ async function renderSurvey() {
     const [x0] = g[0];
     const nums = g.map(([x, i]) => label(x, i)).join(', ');
     const place = x0.p.led?.tambon ? 'ต.' + x0.p.led.tambon : (x0.p.loc || '');
+    // โชว์เลขลำดับบนหมุดเลย (เลขติดกันย่อเป็นช่วง 1–5) — เห็นทันทีว่ากองนี้คือจุดไหนบ้าง
+    const nArr = g.map(([x, i]) => label(x, i));
+    const ranges = [];
+    nArr.forEach(n => { const last = ranges[ranges.length - 1];
+      if (typeof n === 'number' && last && typeof last[1] === 'number' && n === last[1] + 1) last[1] = n; else ranges.push([n, n]); });
+    const txt = '≈ ' + ranges.map(([a, b]) => a === b ? a : `${a}–${b}`).join(', ');
+    const w = Math.max(44, 18 + txt.length * 8);
+    // กลุ่มที่ห่างกัน < 1.5 กม. ป้ายจะทับกันตอนซูมระดับเมือง → ซ้อนป้ายขึ้นทีละชั้น
+    const near = groupSpots.filter(s => haversineKm(s, x0.ll) < 1.5).length;
+    groupSpots.push(x0.ll);
+    const dy = -34 * near;
     addMark([x0.ll.lat, x0.ll.lng],
-      `<div style="height:30px;padding:0 10px;border-radius:15px;background:#D97706;color:#fff;border:2px dashed #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;gap:4px;font:800 12px sans-serif;white-space:nowrap">≈ ×${g.length}</div>`, 64, 30,
+      `<div style="height:30px;padding:0 10px;border-radius:15px;background:#D97706;color:#fff;border:2px dashed #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;gap:4px;font:800 12px sans-serif;white-space:nowrap">${txt}</div>`, w, 30,
       `<b>≈ ${escapeHtml(place)} — ${g.length} ทรัพย์ (ลำดับ ${nums})</b><br>
         <span style="font-size:11px;color:#B45309">ยังไม่รู้ตำแหน่งจริงของแต่ละหลัง — หมุดนี้คือกลางตำบล</span>
-        <div style="font-size:12px;margin-top:4px">${g.map(([x, i]) => `${label(x, i)}. ${escapeHtml(x.p.code || '')} ${escapeHtml(x.p.name || '')}`).join('<br>')}</div>`);
+        <div style="font-size:12px;margin-top:4px">${g.map(([x, i]) => `${label(x, i)}. ${escapeHtml(x.p.code || '')} ${escapeHtml(x.p.name || '')}`).join('<br>')}</div>`, dy);
   });
   pins.forEach((x, i) => {
     if (grouped.has(x)) return;
@@ -2910,7 +2923,7 @@ async function drawSurveyLeaflet(canvas, { marks, bounds, line }) {
   }
   _smapLayers.forEach(l => _smap.removeLayer(l)); _smapLayers = [];
   marks.forEach(m => {
-    const icon = L.divIcon({ className: '', iconSize: [m.w, m.h], iconAnchor: [m.w / 2, m.h / 2], html: m.html });
+    const icon = L.divIcon({ className: '', iconSize: [m.w, m.h], iconAnchor: [m.w / 2, m.h / 2 - (m.dy || 0)], html: m.html });
     _smapLayers.push(L.marker(m.pos, { icon }).addTo(_smap).bindPopup(m.popup));
   });
   if (line) {
@@ -2967,7 +2980,7 @@ function htmlMarkerClass() {
     draw() {
       const proj = this.getProjection(); if (!proj || !this.div) return;
       const p = proj.fromLatLngToDivPixel(new google.maps.LatLng(this.m.pos[0], this.m.pos[1]));
-      if (p && this.div) { this.div.style.left = (p.x - this.m.w / 2) + 'px'; this.div.style.top = (p.y - this.m.h / 2) + 'px'; }
+      if (p && this.div) { this.div.style.left = (p.x - this.m.w / 2) + 'px'; this.div.style.top = (p.y - this.m.h / 2 + (this.m.dy || 0)) + 'px'; }
     }
     onRemove() { this.div?.remove(); this.div = null; }
   };
