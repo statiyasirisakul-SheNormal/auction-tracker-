@@ -2652,6 +2652,7 @@ function renderDolLL() {
       <div style="display:flex;gap:6px;align-items:center">
         <input class="form-input" style="font-size:12px;padding:6px 9px;flex:1" placeholder="วางพิกัดแปลง เช่น 17.41023, 102.82311"
           value="${done ? escapeHtml(p.mapUrl) : ''}" onchange="dolSetLL('${p.id}', this)">
+        <button class="btn btn-ghost btn-xs" onclick="dolPaste('${p.id}', this)" title="วางพิกัดที่คัดลอกมาจาก LandsMaps">📋 วาง</button>
         <span id="dolok-${p.id}" style="font-size:18px;width:22px;text-align:center">${done ? '✅' : ''}</span>
       </div>
     </div>`;
@@ -2672,6 +2673,20 @@ function dolSetLL(id, input) {
   document.getElementById('dolrow-' + id).style.background = '#F0FDF4';
   const left = S.pool.filter(x => x.llApprox || !parseLatLng(x.mapUrl)).length;
   toast(left ? `✓ บันทึกแล้ว — เหลืออีก ${left} หลัง` : '✓ ครบทุกหลังแล้ว — ปิดหน้านี้แล้วกด 🧭 จัดเรียงเส้นทาง', 'success');
+}
+// ปุ่ม 📋 วาง: อ่านคลิปบอร์ดแล้วบันทึกเลย (มือถือไม่ต้องกดค้างเพื่อ Paste)
+// เบราว์เซอร์จะถามสิทธิ์อ่านคลิปบอร์ดครั้งแรก · ไม่ให้สิทธิ์ก็ยังวางในช่องเองได้ตามเดิม
+async function dolPaste(id, btn) {
+  const input = btn.parentElement.querySelector('input');
+  try {
+    const t = (await navigator.clipboard.readText() || '').trim();
+    if (!t) { toast('คลิปบอร์ดว่าง — คัดลอกพิกัดจาก LandsMaps ก่อน', 'error'); return; }
+    input.value = t;
+    dolSetLL(id, input);
+  } catch(e) {
+    input.focus();
+    toast('อ่านคลิปบอร์ดไม่ได้ — กดค้างที่ช่องแล้วเลือก "วาง" แทน', 'error');
+  }
 }
 function copyText(t, what) {
   if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => toast(`📋 คัดลอก${what || ''} ${t} แล้ว`)).catch(() => {});
