@@ -2810,7 +2810,10 @@ async function renderSurvey() {
         <span style="flex:1"></span>
         ${links.map((u, i) => `<a class="btn btn-success btn-sm" href="${u}" target="_blank">🚗 นำทางจุดที่เหลือ${links.length > 1 ? ` ช่วง ${i + 1}` : ''} ↗</a>`).join('')}
       </div>
-      ${unplanned.length ? planBanner(`มีทรัพย์ใหม่ ${unplanned.length} รายการที่ยังไม่อยู่ในเส้นทาง`) : ''}`;
+      ${unplanned.length ? planBanner(`มีทรัพย์ใหม่ ${unplanned.length} รายการที่ยังไม่อยู่ในเส้นทาง`) : ''}
+      ${(() => { const n = ordered.filter(x => x.p.llApprox).length; return n ? `<div style="background:#FFF7ED;border:1.5px solid #FDBA74;border-radius:10px;padding:9px 12px;margin-top:8px;font-size:12px;color:#9A3412;line-height:1.6">
+        🟠 <b>${n} จาก ${ordered.length} จุดยังเป็นพิกัดประมาณ (กลางตำบล)</b> — ทรัพย์ตำบลเดียวกันจะได้จุดเดียวกัน ลำดับในตำบลเลยยังไม่แม่น<br>
+        กางการ์ด → 🔎 ค้นใน LandsMaps → วางพิกัดจริง แล้วกด 🧭 จัดเรียงเส้นทาง อีกครั้ง</div>` : ''; })()}`;
   } else {
     sumEl.innerHTML = unplanned.length ? planBanner(`มีทรัพย์ที่มีพิกัด ${unplanned.length} รายการ พร้อมจัดเส้นทาง`) : '';
   }
@@ -2836,13 +2839,27 @@ async function renderSurvey() {
   }
   _smapLayers.forEach(l => _smap.removeLayer(l)); _smapLayers = [];
   const bounds = [];
+  // หมุดที่พิกัดซ้ำกัน (พิกัดประมาณระดับตำบลเดียวกัน) → กางเป็นวงรอบจุดเดิม ไม่งั้นทับกันจนเห็นเลขเดียว
+  const sameSpot = {};
+  pins.forEach(x => { const k = x.ll.lat.toFixed(5) + ',' + x.ll.lng.toFixed(5); (sameSpot[k] ||= []).push(x); });
+  const spread = new Map();
+  Object.values(sameSpot).forEach(g => {
+    if (g.length < 2) return;
+    const r = 0.0022 * Math.max(1, g.length / 5);   // ~250 ม. ขยายตามจำนวน — ซูมระดับเมืองยังแยกเลขออก
+    g.forEach((x, k) => { const a = 2 * Math.PI * k / g.length;
+      spread.set(x, [x.ll.lat + r * Math.sin(a), x.ll.lng + r * Math.cos(a) / Math.cos(x.ll.lat * Math.PI / 180)]); });
+  });
   pins.forEach((x, i) => {
     const done = x.p.survey?.done, label = ordered.length ? (done ? '✓' : i + 1) : '•';
+    const approx = !!x.p.llApprox;
+    // พิกัดประมาณ = หมุดส้มขอบประ (ยังไม่ใช่ตำแหน่งแปลงจริง)
+    const bg = done ? '#16A34A' : approx ? '#D97706' : '#1F3A5F';
     const icon = L.divIcon({ className: '', iconSize: [28, 28], iconAnchor: [14, 14],
-      html: `<div style="width:28px;height:28px;border-radius:50%;background:${done ? '#16A34A' : '#1F3A5F'};color:#fff;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font:800 13px sans-serif">${label}</div>` });
-    const mk = L.marker([x.ll.lat, x.ll.lng], { icon }).addTo(_smap)
-      .bindPopup(`<b>${escapeHtml((x.p.code ? x.p.code + ' — ' : '') + x.p.name)}</b><br><span style="font-size:12px">${escapeHtml(x.p.loc || '')}</span>`);
-    _smapLayers.push(mk); bounds.push([x.ll.lat, x.ll.lng]);
+      html: `<div style="width:28px;height:28px;border-radius:50%;background:${bg};color:#fff;border:2px ${approx ? 'dashed' : 'solid'} #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font:800 13px sans-serif">${label}</div>` });
+    const pos = spread.get(x) || [x.ll.lat, x.ll.lng];
+    const mk = L.marker(pos, { icon }).addTo(_smap)
+      .bindPopup(`<b>${escapeHtml((x.p.code ? x.p.code + ' — ' : '') + x.p.name)}</b><br><span style="font-size:12px">${escapeHtml(x.p.loc || '')}</span>${approx ? '<br><span style="font-size:11px;color:#B45309">≈ พิกัดประมาณ (กลางตำบล) — ยังไม่ใช่ตำแหน่งแปลงจริง</span>' : ''}`);
+    _smapLayers.push(mk); bounds.push(pos);
   });
   if (_surveyGps && meta.gps) {
     const g = L.circleMarker([_surveyGps.lat, _surveyGps.lng], { radius: 8, fillColor: '#EF4444', color: '#fff', weight: 2, fillOpacity: 1 }).addTo(_smap).bindPopup('📍 จุดเริ่ม (ตำแหน่งตอนจัดเส้นทาง)');
