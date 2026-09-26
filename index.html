@@ -2759,7 +2759,7 @@ function openSketch(id) {
   const p = findAnyProp(id); if (!p) return;
   const sk = p.sketch || {};
   SK = { id, strokes: (sk.strokes || []).map(s => ({ ...s, p: [...s.p] })), redo: [], undo: [],
-         h: sk.h || SK_PAGE, tool: 'pen', color: SK_COLORS[0], size: 1, penSeen: false, finger: 'auto',
+         h: sk.h || SK_PAGE, tool: 'pen', color: SK_COLORS[0], size: 1, penSeen: (() => { try { return localStorage.getItem('acktion_pen_seen') === '1'; } catch(e) { return false; } })(), finger: 'auto',
          cur: null, pan: null, dirty: false, timer: null };
   document.getElementById('sk-title').textContent = '📝 ' + (p.code ? p.code + ' — ' : '') + (p.name || '');
   // ทรัพย์รอสำรวจ = บันทึกสำรวจ (survey.note) · ทรัพย์หน้าแรก = ช่องหมายเหตุ (notes)
@@ -2920,13 +2920,33 @@ function skEraseAt(x, y) {
   if (!_skEraseRaf) _skEraseRaf = requestAnimationFrame(() => { _skEraseRaf = 0; if (SK) skRedraw(); });
   skDirty();
 }
+// ── กันฝ่ามือ (palm rejection) ──
+//  • จำไว้ในเครื่องว่าเครื่องนี้ใช้ Apple Pencil → เปิดหน้าใหม่ ฝ่ามือก็ไม่วาด (เดิมลืมทุกครั้งที่เปิดหน้า)
+//  • ปากกาชนะเสมอ: ฝ่ามือเริ่มเส้นไปก่อน แล้วปากกาแตะ → ทิ้งเส้นฝ่ามือ ให้ปากกาเขียนแทน
+//  • ระหว่างปากกาเขียน ไม่รับการแตะอื่นเลย (รวมถึงเลื่อนจอ)
+//  • จุดสัมผัสใหญ่ (ฝ่ามือ) → ไม่สนเลย
+const skIsPalm = e => e.pointerType === 'touch' && ((e.width || 0) > 32 || (e.height || 0) > 32);
+function skMarkPen() {
+  if (!SK.penSeen) { SK.penSeen = true; try { localStorage.setItem('acktion_pen_seen', '1'); } catch(err) {} }
+}
 function skDown(e) {
   if (!SK) return;
-  if (e.pointerType === 'pen') SK.penSeen = true;
-  if (e.pointerType === 'touch' && skFingerPans()) {   // นิ้ว = เลื่อนจอ (กันฝ่ามือ)
-    SK.pan = { y: e.clientY, top: document.getElementById('sk-scroll').scrollTop, id: e.pointerId }; return;
+  if (e.pointerType === 'pen') {
+    skMarkPen();
+    SK.pan = null;
+    // ฝ่ามือ/นิ้วแย่งเขียนไปก่อน → ทิ้งเส้นนั้น (ยังไม่ได้บันทึก) แล้วให้ปากกาเขียน
+    if (SK.cur && SK.cur.touch) { SK.cur = null; skLiveCtx(); }
+    if (SK.erasing != null && SK.erasingTouch) SK.erasing = null;
+  } else if (e.pointerType === 'touch') {
+    if (skIsPalm(e)) return;                                  // ฝ่ามือ
+    if (SK.cur && !SK.cur.touch) return;                      // ปากกากำลังเขียนอยู่ → ไม่รับแตะอื่น
+    if (SK.erasing != null && !SK.erasingTouch) return;
+    if (skFingerPans()) {                                     // นิ้ว = เลื่อนจอ
+      if (!SK.pan) SK.pan = { y: e.clientY, top: document.getElementById('sk-scroll').scrollTop, id: e.pointerId };
+      return;
+    }
   }
-  if (SK.cur) return;   // กำลังเขียนอยู่ (อีกนิ้ว/ฝ่ามือ) ไม่รับเพิ่ม
+  if (SK.cur) return;   // กำลังเขียนอยู่ (อีกนิ้ว) ไม่รับเพิ่ม
   e.preventDefault();
   // มีตัวหนังสือถูกเลือกค้างอยู่ (แถบคัดลอกโผล่) → ล้างทิ้ง แล้วปิดคีย์บอร์ดถ้าพิมพ์ค้างอยู่
   try { const sel = window.getSelection(); if (sel && sel.rangeCount) sel.removeAllRanges(); } catch(err) {}
@@ -2934,16 +2954,21 @@ function skDown(e) {
   try { document.getElementById('sk-canvas').setPointerCapture(e.pointerId); } catch(err) {}   // บางเบราว์เซอร์โยน error ได้ — ไม่ให้ขวางการเขียน
   skMeasure();
   const pt = skPoint(e);
-  if (SK.tool === 'er') { SK.erasing = e.pointerId; skEraseAt(pt[0], pt[1]); return; }
+  if (SK.tool === 'er') { SK.erasing = e.pointerId; SK.erasingTouch = e.pointerType === 'touch'; skEraseAt(pt[0], pt[1]); return; }
   SK.cur = { t: SK.tool, c: SK.color, w: SK_SIZES[SK.size].w, p: pt, id: e.pointerId };
   if (e.pointerType !== 'pen') SK.cur.m = 1;   // นิ้ว/เมาส์ไม่มีแรงกด → ให้ perfect-freehand จำลองจากความเร็ว
+  if (e.pointerType === 'touch') SK.cur.touch = 1;   // เส้นจากนิ้ว — ปากกาแตะเมื่อไหร่ทิ้งได้
   skFlushLive();
 }
 function skMove(e) {
   if (!SK) return;
-  if (SK.pan && e.pointerId === SK.pan.id) { document.getElementById('sk-scroll').scrollTop = SK.pan.top - (e.clientY - SK.pan.y); return; }
+  if (SK.pan && e.pointerId === SK.pan.id) {
+    if (skIsPalm(e)) { SK.pan = null; return; }   // นิ้วกลายเป็นฝ่ามือ (วางมือลง) → หยุดเลื่อน กันจอกระโดด
+    document.getElementById('sk-scroll').scrollTop = SK.pan.top - (e.clientY - SK.pan.y); return;
+  }
   if (SK.erasing === e.pointerId) { const pt = skPoint(e); skEraseAt(pt[0], pt[1]); return; }
   if (!SK.cur || e.pointerId !== SK.cur.id) return;
+  if (SK.cur.touch && skIsPalm(e)) { SK.cur = null; skLiveCtx(); return; }   // ที่วาดอยู่จริง ๆ คือฝ่ามือ → ทิ้ง
   e.preventDefault();
   const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
   for (const ev of (evs.length ? evs : [e])) {
@@ -2961,7 +2986,7 @@ function skUp(e) {
   if (SK.erasing === e.pointerId) { SK.erasing = null; _skRect = null; return; }
   if (!SK.cur || e.pointerId !== SK.cur.id) return;
   if (_skRaf) { cancelAnimationFrame(_skRaf); _skRaf = 0; }
-  const s = SK.cur; delete s.id; SK.cur = null; _skRect = null;
+  const s = SK.cur; delete s.id; delete s.touch; SK.cur = null; _skRect = null;
   SK.strokes.push(s); SK.undo.push({ add: s }); SK.redo = [];
   // ย้ายเส้นที่เขียนเสร็จจากชั้น live ลงชั้นหลัก — วาดเส้นเดียว ไม่ต้องวาดทั้งแผ่น
   const main = skCtx('sk-canvas'); main.setTransform(_skDpr, 0, 0, _skDpr, 0, 0); skDrawStroke(main, s, _skSc);
