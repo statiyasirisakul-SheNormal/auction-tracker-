@@ -1049,15 +1049,18 @@ input, select, textarea { font-size: 16px !important; }
     <button class="btn btn-ghost btn-xs" onclick="skAddPage()">+ เพิ่มหน้า</button>
     <button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="skClear()">🗑 ล้างภาพวาด</button>
   </div>
-  <div id="sk-scroll" style="flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:12px">
+  <div style="flex:1;position:relative;min-height:0">
+  <div id="sk-scroll" style="position:absolute;inset:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:12px">
     <div style="max-width:900px;margin:0 auto">
       <textarea id="sk-text" class="form-textarea" placeholder="📝 พิมพ์บันทึกตรงนี้ — สภาพทรัพย์ มีคนอยู่ไหม ทางเข้า เพื่อนบ้าน สิ่งที่ต้องซ่อม..." style="min-height:110px;font-size:15px;margin-bottom:10px;background:#fff" oninput="skTextChanged()"></textarea>
       <div id="sk-wrap" style="position:relative;background:#fff;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.08);overflow:hidden">
         <canvas id="sk-canvas" style="display:block;width:100%;touch-action:none;cursor:crosshair"></canvas>
-        <canvas id="sk-live" style="position:absolute;left:0;top:0;width:100%;pointer-events:none"></canvas>
       </div>
       <div style="text-align:center;font-size:11px;color:var(--gray);margin:8px 0 24px">เขียนด้วย Apple Pencil ได้เลย · นิ้วใช้เลื่อนจอเมื่อระบบเจอปากกา · บันทึกอัตโนมัติ</div>
     </div>
+  </div>
+  <!-- ชั้นเส้นที่กำลังเขียน: ขนาดเท่าจอ (ไม่ใช่ทั้งแผ่น) → iPad วาดทับได้เร็ว -->
+  <canvas id="sk-live" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
   </div>
 </div>
 
@@ -2766,7 +2769,7 @@ function openSketch(id) {
   ov.style.display = 'flex';
   document.body.style.overflow = 'hidden';
   skSetTool('pen'); skSetColor(0); skSetSize(1); skUpdateFingerBtn();
-  requestAnimationFrame(skResize);
+  setTimeout(skResize, 0);   // ไม่พึ่ง requestAnimationFrame (บางสถานะแท็บหยุดเฟรม) 
   skLoadPF().then(() => { if (SK) skRedraw(); });
 }
 function closeSketch() {
@@ -2817,15 +2820,36 @@ function skScale() { return _skSc; }
 function skCtx(id) { return document.getElementById(id).getContext('2d', { desynchronized: true }); }
 function skResize() {
   if (!SK) return;
-  _skDpr = Math.min(window.devicePixelRatio || 1, 2);
   _skSc = document.getElementById('sk-wrap').clientWidth / SK_W;
-  const W = Math.round(SK_W * _skSc * _skDpr), H = Math.round(SK.h * _skSc * _skDpr), cssH = Math.round(SK.h * _skSc) + 'px';
-  ['sk-canvas', 'sk-live'].forEach(id => { const c = document.getElementById(id); c.width = W; c.height = H; c.style.height = cssH; });
+  const cssW = SK_W * _skSc, cssH = SK.h * _skSc;
+  // iPad/Safari จำกัดขนาด canvas (~16 ล้านพิกเซล) และ canvas ใหญ่ ๆ วาด/ประกอบภาพช้า → คุมไม่เกิน ~10 ล้านพิกเซล
+  _skDpr = Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(10e6 / (cssW * cssH)));
+  const c = document.getElementById('sk-canvas');
+  c.width = Math.round(cssW * _skDpr); c.height = Math.round(cssH * _skDpr); c.style.height = Math.round(cssH) + 'px';
+  skResizeLive();
   // เส้นบรรทัดทุก 40 หน่วย + เส้นแบ่งหน้าทุก SK_PAGE (วาดด้วย CSS)
   const wrap = document.getElementById('sk-wrap'), l = 40 * _skSc, pg = SK_PAGE * _skSc;
   wrap.style.backgroundColor = '#fff';
   wrap.style.backgroundImage = `repeating-linear-gradient(to bottom, transparent 0, transparent ${pg - 1}px, #CBD5E1 ${pg - 1}px, #CBD5E1 ${pg}px), repeating-linear-gradient(to bottom, transparent 0, transparent ${l - 1}px, #E5EDF7 ${l - 1}px, #E5EDF7 ${l}px)`;
   skRedraw();
+}
+// ชั้น live = ขนาดเท่าพื้นที่จอ (ไม่ขึ้นกับจำนวนหน้า) ความละเอียดเต็มจอ ให้เส้นคม
+let _skLiveDpr = 1, _skOff = [0, 0];
+function skResizeLive() {
+  const lv = document.getElementById('sk-live');
+  _skLiveDpr = Math.min(window.devicePixelRatio || 1, 2);
+  lv.width = Math.round(lv.clientWidth * _skLiveDpr); lv.height = Math.round(lv.clientHeight * _skLiveDpr);
+}
+// ตำแหน่งกระดาษเทียบกับชั้น live (เปลี่ยนเมื่อเลื่อนจอ) — วัดครั้งเดียวตอนเริ่มเส้น
+function skMeasure() {
+  const cr = document.getElementById('sk-canvas').getBoundingClientRect(), lr = document.getElementById('sk-live').getBoundingClientRect();
+  _skRect = cr; _skOff = [cr.left - lr.left, cr.top - lr.top];
+}
+function skLiveCtx() {
+  const lv = document.getElementById('sk-live'), ctx = lv.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, lv.width, lv.height);
+  ctx.setTransform(_skLiveDpr, 0, 0, _skLiveDpr, _skOff[0] * _skLiveDpr, _skOff[1] * _skLiveDpr);
+  return ctx;
 }
 function skDrawStroke(ctx, s, sc, from = 3) {
   const p = s.p; if (p.length < 3) return;
@@ -2840,7 +2864,7 @@ function skDrawStroke(ctx, s, sc, from = 3) {
     // perfect-freehand: แปลงจุด+แรงกดเป็นรูปทรงเส้นหมึก แล้วเติมสี (m = ไม่มีแรงกดจริง → จำลองจากความเร็ว)
     const pts = []; for (let i = 0; i < p.length; i += 3) pts.push([p[i] * sc, p[i + 1] * sc, (p[i + 2] || 50) / 100]);
     ctx.fillStyle = s.c;
-    pfPath(ctx, _pf(pts, { size: s.w * 2.4 * sc, thinning: .6, smoothing: .55, streamline: .45, simulatePressure: !!s.m,
+    pfPath(ctx, _pf(pts, { size: s.w * 2.4 * sc, thinning: .6, smoothing: .5, streamline: .22, simulatePressure: !!s.m,
       start: { taper: 0, cap: true }, end: { taper: 0, cap: true }, last: !SK || SK.cur !== s }));
   } else {
     // ตัววาดสำรอง: ความหนาตามแรงกด ต่อทีละช่วงด้วยเส้นโค้งผ่านจุดกึ่งกลาง
@@ -2863,19 +2887,15 @@ function skRedraw() {
   ctx.setTransform(_skDpr, 0, 0, _skDpr, 0, 0);
   ctx.clearRect(0, 0, SK_W * _skSc, SK.h * _skSc);
   SK.strokes.forEach(s => skDrawStroke(ctx, s, _skSc));
-  const live = skCtx('sk-live'); live.setTransform(_skDpr, 0, 0, _skDpr, 0, 0); live.clearRect(0, 0, SK_W * _skSc, SK.h * _skSc);
-  if (SK.cur) { SK.cur.drawn = 0; skFlushLive(); }
+  skLiveCtx();   // ล้างชั้น live
+  if (SK.cur) skFlushLive();
 }
 // วาดเส้นที่กำลังเขียน (ชั้น live) — ปากกาวาดต่อเฉพาะช่วงที่ยังไม่ได้วาด
 function skFlushLive() {
   _skRaf = 0;
   if (!SK || !SK.cur) return;
-  const ctx = skCtx('sk-live'), s = SK.cur;
-  ctx.setTransform(_skDpr, 0, 0, _skDpr, 0, 0);
-  // ไฮไลต์ / perfect-freehand: รูปทรงปลายเส้นเปลี่ยนตามจุดใหม่ → วาดเส้นนี้ใหม่ทั้งเส้น (เฉพาะเส้นเดียว ไม่ใช่ทั้งแผ่น)
-  if (s.t === 'hl' || _pf) { ctx.clearRect(0, 0, SK_W * _skSc, SK.h * _skSc); skDrawStroke(ctx, s, _skSc); }
-  else skDrawStroke(ctx, s, _skSc, s.drawn || 3);
-  s.drawn = s.p.length;
+  // ชั้น live เล็กเท่าจอ → ล้างแล้ววาดเส้นนี้ใหม่ทั้งเส้นได้เร็ว (perfect-freehand ต้องใช้ทั้งเส้นอยู่แล้ว)
+  skDrawStroke(skLiveCtx(), SK.cur, _skSc);
 }
 function skSchedule() { if (!_skRaf) _skRaf = requestAnimationFrame(skFlushLive); }
 function skPoint(e) {
@@ -2905,12 +2925,12 @@ function skDown(e) {
   if (SK.cur) return;   // กำลังเขียนอยู่ (อีกนิ้ว/ฝ่ามือ) ไม่รับเพิ่ม
   e.preventDefault();
   try { document.getElementById('sk-canvas').setPointerCapture(e.pointerId); } catch(err) {}   // บางเบราว์เซอร์โยน error ได้ — ไม่ให้ขวางการเขียน
-  _skRect = document.getElementById('sk-canvas').getBoundingClientRect();
+  skMeasure();
   const pt = skPoint(e);
   if (SK.tool === 'er') { SK.erasing = e.pointerId; skEraseAt(pt[0], pt[1]); return; }
-  SK.cur = { t: SK.tool, c: SK.color, w: SK_SIZES[SK.size].w, p: pt, id: e.pointerId, drawn: 0 };
+  SK.cur = { t: SK.tool, c: SK.color, w: SK_SIZES[SK.size].w, p: pt, id: e.pointerId };
   if (e.pointerType !== 'pen') SK.cur.m = 1;   // นิ้ว/เมาส์ไม่มีแรงกด → ให้ perfect-freehand จำลองจากความเร็ว
-  skSchedule();
+  skFlushLive();
 }
 function skMove(e) {
   if (!SK) return;
@@ -2925,8 +2945,8 @@ function skMove(e) {
     p.push(...pt);
   }
   // เขียนเลยท้ายกระดาษ → ต่อหน้าให้อัตโนมัติ
-  if (SK.cur.p[SK.cur.p.length - 2] > SK.h - 60) { SK.h += SK_PAGE; skResize(); _skRect = document.getElementById('sk-canvas').getBoundingClientRect(); }
-  else skSchedule();
+  if (SK.cur.p[SK.cur.p.length - 2] > SK.h - 60) { SK.h += SK_PAGE; skResize(); skMeasure(); }
+  skFlushLive();
 }
 function skUp(e) {
   if (!SK) return;
@@ -2934,11 +2954,11 @@ function skUp(e) {
   if (SK.erasing === e.pointerId) { SK.erasing = null; _skRect = null; return; }
   if (!SK.cur || e.pointerId !== SK.cur.id) return;
   if (_skRaf) { cancelAnimationFrame(_skRaf); _skRaf = 0; }
-  const s = SK.cur; delete s.id; delete s.drawn; SK.cur = null; _skRect = null;
+  const s = SK.cur; delete s.id; SK.cur = null; _skRect = null;
   SK.strokes.push(s); SK.undo.push({ add: s }); SK.redo = [];
   // ย้ายเส้นที่เขียนเสร็จจากชั้น live ลงชั้นหลัก — วาดเส้นเดียว ไม่ต้องวาดทั้งแผ่น
   const main = skCtx('sk-canvas'); main.setTransform(_skDpr, 0, 0, _skDpr, 0, 0); skDrawStroke(main, s, _skSc);
-  const live = skCtx('sk-live'); live.setTransform(_skDpr, 0, 0, _skDpr, 0, 0); live.clearRect(0, 0, SK_W * _skSc, SK.h * _skSc);
+  skLiveCtx();   // ล้างชั้น live
   skDirty();
 }
 function skUndo() {
