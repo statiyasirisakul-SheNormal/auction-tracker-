@@ -536,7 +536,7 @@ input, select, textarea { font-size: 16px !important; }
 <div class="header">
   <div style="font-size:30px">🏛️</div>
   <div style="flex:1;min-width:0">
-    <h1>ระบบจัดการทรัพย์ กรมบังคับคดี <span style="font-size:10px;font-weight:600;opacity:.6;white-space:nowrap">v.2026.08.01</span></h1>
+    <h1>ระบบจัดการทรัพย์ กรมบังคับคดี <span style="font-size:10px;font-weight:600;opacity:.6;white-space:nowrap">v.2026.09.26</span></h1>
     <p>บริหารเอกสาร · ติดตามประมูล · บันทึกค่าใช้จ่าย · ปฏิทิน Google</p>
   </div>
   <button onclick="openSettings()" style="background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.35);color:white;border-radius:9px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0">
@@ -567,6 +567,9 @@ input, select, textarea { font-size: 16px !important; }
   </button>
   <button class="tab-btn" onclick="switchTab('map')">
     🗺️ <span class="t-full">แผนที่</span><span class="t-short">แผนที่</span>
+  </button>
+  <button class="tab-btn" onclick="switchTab('survey')">
+    🧭 <span class="t-full">สำรวจทรัพย์</span><span class="t-short">สำรวจ</span> <span class="tab-badge" id="badge-survey">0</span>
   </button>
 </div>
 
@@ -786,6 +789,28 @@ input, select, textarea { font-size: 16px !important; }
     </div>
   </div>
 
+  <!-- ══ SURVEY (จัดเส้นทางไปสำรวจทรัพย์) ════════════════ -->
+  <div class="tab-panel" id="tab-survey">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">🧭 สำรวจทรัพย์ — จัดเส้นทาง</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="openPoolPdfModal()">+ เพิ่มทรัพย์สำรวจ</button>
+          <button class="btn btn-ghost btn-sm" onclick="surveyResetDone()">↺ ล้างสถานะ "ไปแล้ว"</button>
+          <button class="btn btn-primary btn-sm" onclick="surveyPlan()">🧭 จัดเรียงเส้นทาง</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+        <label style="font-size:13px;font-weight:700;color:var(--navy)">🚩 จุดเริ่มต้น:</label>
+        <select class="form-select" id="survey-start" style="max-width:340px;flex:1" onchange="surveySetStart(this.value)"></select>
+      </div>
+      <div id="survey-pick" style="margin-bottom:12px"></div>
+      <div id="survey-summary" style="margin-bottom:10px"></div>
+      <div id="survey-canvas" style="height:420px;border-radius:12px;overflow:hidden;border:1.5px solid var(--border);background:#EAF0F5;display:none"></div>
+      <div id="survey-list" style="margin-top:14px"></div>
+    </div>
+  </div>
+
 </div>
 
 <!-- ═══ MODALS ════════════════════════════════════════ -->
@@ -811,6 +836,7 @@ input, select, textarea { font-size: 16px !important; }
   <div class="modal" style="max-width:740px;padding:24px 24px 20px">
     <h3 id="modal-prop-title" style="margin-bottom:16px">🏠 เพิ่มทรัพย์</h3>
     <input type="hidden" id="prop-edit-id" />
+    <input type="hidden" id="prop-to-pool" />
 
     <!-- ── General Info ── -->
     <div class="section-title" style="margin-bottom:10px">📋 ข้อมูลทั่วไป</div>
@@ -929,10 +955,28 @@ input, select, textarea { font-size: 16px !important; }
     <!-- ── Map ── -->
     <div class="section-title" style="margin-top:8px;margin-bottom:8px">📍 แผนที่</div>
     <div class="form-group">
-      <label class="form-label">Google Maps URL หรือพิกัด (lat, lng)</label>
+      <label class="form-label">① Google Maps URL หรือพิกัด (lat, lng) <span style="font-size:11px;color:var(--gray);font-weight:400">— ใช้จัดเส้นทางสำรวจ</span></label>
       <div style="display:flex;gap:8px">
         <input class="form-input" id="prop-map" placeholder="https://maps.google.com/... หรือ 17.399840, 102.816920" style="flex:1" />
         <button class="btn btn-ghost btn-sm" onclick="openPropMap()" style="white-space:nowrap">เปิดแผนที่</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">② รูปแผนที่กรมที่ดิน</label>
+        <div id="img-land-preview" style="display:none;margin-bottom:6px;position:relative">
+          <img id="img-land-thumb" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)">
+          <button onclick="clearPropImg('land')" style="position:absolute;top:4px;right:4px;background:rgba(185,28,28,.85);color:white;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:11px">✕</button>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;border:2px dashed var(--border);border-radius:9px;padding:10px 14px;font-size:13px;color:var(--gray);transition:all .2s" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
+          <span>📁 เลือกรูป</span>
+          <input type="file" accept="image/*" id="prop-img-land" style="display:none" onchange="handlePropImg(this,'land')">
+        </label>
+        <button class="btn btn-ghost btn-xs" style="margin-top:6px;width:100%" onclick="openImgPick('land')">🗂️ เลือกจากรูปที่เคยอัปโหลด</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">ลิงก์ LandsMaps / กรมที่ดิน <span style="font-size:11px;color:var(--gray);font-weight:400">(ถ้ามี)</span></label>
+        <input class="form-input" id="prop-land-url" placeholder="https://landsmaps.dol.go.th/..." />
       </div>
     </div>
 
@@ -945,6 +989,40 @@ input, select, textarea { font-size: 16px !important; }
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-prop')">ยกเลิก</button>
       <button class="btn btn-primary" onclick="saveProp()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- PDF viewer (เรนเดอร์ในหน้าเว็บเอง — มือถือ/LINE เปิดแท็บใหม่ไม่ค่อยได้) -->
+<div class="modal-overlay" id="modal-pdf">
+  <div class="modal modal-wide" style="max-width:860px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <h3 style="margin:0;flex:1" id="pdf-view-title">📄 PDF ประกาศ</h3>
+      <a class="btn btn-ghost btn-sm" id="pdf-view-open" target="_blank" download>⬇ ดาวน์โหลด</a>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-pdf')">✕ ปิด</button>
+    </div>
+    <div id="pdf-view-pages" style="max-height:75vh;overflow:auto;background:#F1F5F9;border-radius:9px;padding:8px"></div>
+  </div>
+</div>
+
+<!-- Add survey property from PDF -->
+<div class="modal-overlay" id="modal-pool-pdf">
+  <div class="modal">
+    <h3>🧭 เพิ่มทรัพย์สำรวจ</h3>
+    <div style="font-size:13px;color:var(--gray);margin-bottom:12px;line-height:1.6">
+      แนบไฟล์ PDF ประกาศกรมบังคับคดี (1 ไฟล์ = 1 ทรัพย์ เลือกหลายไฟล์พร้อมกันได้)<br>
+      ระบบอ่านให้อัตโนมัติ: ลำดับ, คดี, โฉนด, เนื้อที่, ที่อยู่, ราคาประเมิน, วันนัด 6 รอบ, รูปทรัพย์ และหาพิกัดโดยประมาณจากตำบล
+    </div>
+    <label class="upload-zone" style="display:block;cursor:pointer;margin-bottom:10px">
+      <div style="font-size:26px">📄</div>
+      <div id="pool-pdf-label" style="font-size:13px;margin-top:4px">แตะเพื่อเลือกไฟล์ PDF</div>
+      <input type="file" accept="application/pdf,.pdf" multiple id="pool-pdf-input" style="display:none" onchange="poolPdfPicked(this)">
+    </label>
+    <div class="modal-actions" style="flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-pool-pdf');openAddPoolModal()">✏️ ไม่มี PDF — กรอกเอง</button>
+      <span style="flex:1"></span>
+      <button class="btn btn-ghost" onclick="closeModal('modal-pool-pdf')">ยกเลิก</button>
+      <button class="btn btn-primary" id="pool-pdf-save" onclick="savePoolPdfs()">📤 อัปโหลด</button>
     </div>
   </div>
 </div>
@@ -1206,9 +1284,19 @@ let S = {
     { id: uid(), name: 'ใบอนุมัติคำร้องขอขายเวลา' },
   ],
   props: [],
+  pool: [],       // ทรัพย์รอสำรวจ (มาจาก PDF) — ยังไม่ขึ้นหน้าทรัพย์ จนกว่าจะกด "เอา"
   expenses: [],
   notifSent: {},
 };
+
+// ทรัพย์รอสำรวจเก็บในตาราง auction_props เดียวกัน แยกด้วย data.pool = true
+// (ไม่ต้องสร้างตารางใหม่ · กด "เอา" = เอา flag ออก แถวเดิม id เดิม)
+function splitPool(arr) {
+  const props = [], pool = [];
+  (arr||[]).forEach(r => (r && r.pool ? pool : props).push(r));
+  return { props, pool };
+}
+const findAnyProp = id => S.props.find(x => x.id === id) || (S.pool||[]).find(x => x.id === id);
 
 function loadS() {
   try { const r = localStorage.getItem(KEY); if (r) S = JSON.parse(r); } catch(e) {}
@@ -1237,6 +1325,7 @@ function loadS() {
 
   if (!Array.isArray(S.expenses)) S.expenses = [];
   if (!Array.isArray(S.props))    S.props    = [];
+  if (!Array.isArray(S.pool))     S.pool     = [];
   if (!Array.isArray(S.docTypes)) S.docTypes = [];
   // Migrate old `reimbursed` flag → new `payer` + `settled` model (50/50 partnership)
   // Old: reimbursed=true means partner paid (so it didn't count as "my pending expense")
@@ -1300,8 +1389,9 @@ function saveS() {
 // เก็บ snapshot ของแต่ละ record เพื่อรู้ว่าอันไหน "เปลี่ยนจริง" แล้วประทับ _ts เฉพาะอันนั้น
 let _recSnap = null;
 function buildSnap() {
-  _recSnap = { p:{}, e:{} };
+  _recSnap = { p:{}, e:{}, q:{} };
   (S.props||[]).forEach(r=>{ if(r&&r.id) _recSnap.p[r.id]=JSON.stringify({...r,_ts:0}); });
+  (S.pool ||[]).forEach(r=>{ if(r&&r.id) _recSnap.q[r.id]=JSON.stringify({...r,_ts:0}); });
   (S.expenses||[]).forEach(r=>{ if(r&&r.id) _recSnap.e[r.id]=JSON.stringify({...r,_ts:0}); });
 }
 function stampChanged() {
@@ -1317,7 +1407,7 @@ function stampChanged() {
     });
     _recSnap[key] = live;
   };
-  doArr(S.props, 'p'); doArr(S.expenses, 'e');
+  doArr(S.props, 'p'); doArr(S.expenses, 'e'); doArr(S.pool, 'q');
 }
 // รวมข้อมูล cloud + local แบบไม่ทับของใหม่ทิ้ง:
 //  - record ที่มีทั้งสองฝั่ง → เก็บอันที่ _ts ใหม่กว่า
@@ -1446,9 +1536,10 @@ async function syncToCloud() {
   const stamp = new Date().toISOString();
 
   // Upsert all local entities (one row per entity, like clock_records / leaves / withdrawals)
-  if (S.props?.length) {
+  const allProps = [...(S.props||[]), ...(S.pool||[])];
+  if (allProps.length) {
     const { error } = await client.from('auction_props').upsert(
-      S.props.map(p => ({ id: p.id, user_key: uk, data: p, updated_at: new Date(p._ts||Date.now()).toISOString() }))
+      allProps.map(p => ({ id: p.id, user_key: uk, data: p, updated_at: new Date(p._ts||Date.now()).toISOString() }))
     );
     if (error) throw error;
   }
@@ -1491,19 +1582,21 @@ async function loadFromCloud() {
       setSyncStatus('error', `❌ โหลด Cloud ไม่ได้: ${firstErr.message} — ${firstErr.code === '42P01' ? 'ตารางยังไม่ถูกสร้าง — รัน migration.sql ใน Supabase SQL Editor ก่อน' : 'ลองใหม่อีกครั้ง'} <button onclick="loadFromCloud().then(ok=>{if(ok){renderAll()}})" style="margin-left:8px;padding:3px 10px;border-radius:6px;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;font:inherit;font-weight:700">🔄 ลองใหม่</button>`);
       return false;
     }
-    const cloudProps = (propsRes.data||[]).map(r => r.data);
+    const { props: cloudProps, pool: cloudPool } = splitPool((propsRes.data||[]).map(r => r.data));
     const cloudExps  = (expRes.data ||[]).map(r => r.data);
     const cloudDts   = (dtRes.data  ||[]).map(r => ({ id: r.id, name: r.name }));
-    const cloudHasData = cloudProps.length > 0 || cloudExps.length > 0;
-    const localHasData = (S.props?.length||0) + (S.expenses?.length||0) > 0;
+    const cloudHasData = cloudProps.length > 0 || cloudPool.length > 0 || cloudExps.length > 0;
+    const localHasData = (S.props?.length||0) + (S.pool?.length||0) + (S.expenses?.length||0) > 0;
 
     if (cloudHasData) {
       // Cloud has data → MERGE (ไม่ทับของ local ที่ใหม่กว่า/ยังไม่ sync) — item 14
       const pulledAt = S._pulledAt || 0;
       const mergedProps = mergeCloud(S.props, cloudProps, pulledAt);
+      const mergedPool  = mergeCloud(S.pool, cloudPool, pulledAt);
       const mergedExps  = mergeCloud(S.expenses, cloudExps, pulledAt);
-      const localWon = mergedProps.length > cloudProps.length || mergedExps.length > cloudExps.length;
+      const localWon = mergedProps.length > cloudProps.length || mergedPool.length > cloudPool.length || mergedExps.length > cloudExps.length;
       S.props    = mergedProps;
+      S.pool     = mergedPool;
       S.expenses = mergedExps;
       if (cloudDts.length) S.docTypes = cloudDts;
       S._pulledAt = Date.now();
@@ -1540,6 +1633,7 @@ function renderAll() {
   if (typeof renderPnL            === 'function') renderPnL();
   if (typeof renderSold           === 'function') renderSold();
   if (typeof updateBadges         === 'function') updateBadges();
+  if (document.getElementById('tab-survey')?.classList.contains('active')) renderSurvey();
   if (typeof calcPopulatePropSel  === 'function') calcPopulatePropSel();
 }
 
@@ -1564,7 +1658,11 @@ async function refetchTable(which) {
   const pulledAt = S._pulledAt || 0;
   if (which === 'props') {
     const { data } = await client.from('auction_props').select('*').eq('user_key', uk);
-    if (data) S.props = mergeCloud(S.props, data.map(r => r.data), pulledAt);   // item 14: merge ไม่ทับ
+    if (data) {   // item 14: merge ไม่ทับ
+      const { props, pool } = splitPool(data.map(r => r.data));
+      S.props = mergeCloud(S.props, props, pulledAt);
+      S.pool  = mergeCloud(S.pool,  pool,  pulledAt);
+    }
   } else if (which === 'expenses') {
     const { data } = await client.from('auction_expenses').select('*').eq('user_key', uk);
     if (data) S.expenses = mergeCloud(S.expenses, data.map(r => r.data), pulledAt);
@@ -1885,7 +1983,7 @@ function switchTab(t) {
   try { localStorage.setItem('acktion_lasttab', t); } catch(e) {}
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  const tabOrder = ['props','reno','summary','calc','pnl','sold','map'];
+  const tabOrder = ['props','reno','summary','calc','pnl','sold','map','survey'];
   const idx = tabOrder.indexOf(t);
   if (idx >= 0) document.querySelectorAll('.tab-btn')[idx].classList.add('active');
   document.getElementById('tab-'+t).classList.add('active');
@@ -1895,6 +1993,7 @@ function switchTab(t) {
   if (t === 'pnl')     renderPnL();
   if (t === 'sold')    renderSold();
   if (t === 'map')     renderMap();
+  if (t === 'survey')  renderSurvey();
 }
 
 // ── แผนที่รวมทรัพย์ (item 11): Leaflet + OpenStreetMap (ฟรี ไม่ต้องใช้ API key) ──
@@ -2024,7 +2123,745 @@ function stageColor(key) {
            sold:'#059669', lost:'#EF4444' }[key] || '#6B7280';
 }
 
+// ═══════════════════════════════════════════════
+//  สำรวจทรัพย์ — จัดลำดับไปดูทรัพย์ให้ขับต่อกันใกล้ที่สุดจนครบ
+//  ทรัพย์ในรอบสำรวจ = ยังไม่ได้เป็นเจ้าของ + ไม่ใช่ lost + ไม่ได้ติ๊กออก (p.survey.skip)
+//  ลำดับ/ระยะแต่ละช่วงเก็บใน p.survey (sync ขึ้น cloud ไปกับทรัพย์) — เปิดมือถือก็เห็นลำดับเดียวกัน
+// ═══════════════════════════════════════════════
+const OSRM = 'https://router.project-osrm.org';   // เส้นทางถนนจริง ฟรี ไม่ต้องใช้ key (ล่มเมื่อไหร่ถอยไปใช้ระยะเส้นตรง)
+let _smap = null, _smapLayers = [], _surveyGeom = null, _surveyGps = null;
+
+function landMapButton(p) {
+  if (isImageSrc(p.imgLand)) return `<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();showLightbox('${p.imgLand}')">🗺 แผนที่กรมที่ดิน</button>`;
+  if (p.landMapUrl) return `<a href="${escapeHtml(p.landMapUrl)}" target="_blank" class="btn btn-ghost btn-xs">🗺 แผนที่กรมที่ดิน</a>`;
+  return '';
+}
+// ยังไม่มีรูป/ลิงก์แผนที่กรมที่ดิน → เปิด LandsMaps ให้ค้นเอง + คัดลอกเลขโฉนดไว้วาง
+// (LandsMaps ไม่มีลิงก์ตรงไปแปลงตามเลขโฉนด ต้องเลือกจังหวัด/อำเภอ/เลขโฉนดในหน้าเว็บ)
+function landMapFallback(p) {
+  return `<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openLandsMaps('${escapeHtml(p.deed || '')}')" title="ยังไม่มีรูปแผนที่กรมที่ดิน — เปิด LandsMaps ค้นด้วยเลขโฉนด">🔎 ค้นใน LandsMaps${p.deed ? ' (โฉนด ' + escapeHtml(p.deed) + ')' : ''}</button>`;
+}
+function openLandsMaps(deed) {
+  if (deed && navigator.clipboard) navigator.clipboard.writeText(deed).then(() => toast('📋 คัดลอกเลขโฉนด ' + deed + ' แล้ว — วางในช่องค้นหาของ LandsMaps')).catch(() => {});
+  window.open('https://landsmaps.dol.go.th/', '_blank');
+}
+// รอบสำรวจใช้ "ทรัพย์รอสำรวจ" (S.pool) ที่มาจาก PDF — ยังไม่อยู่หน้าทรัพย์
+function surveyCandidates() { return S.pool || []; }
+function surveyActive()     { return surveyCandidates().filter(p => !p.survey?.skip); }
+function surveyOf(p)        { if (!p.survey) p.survey = {}; return p.survey; }
+function surveyStart()      { try { return localStorage.getItem('acktion_survey_start') || 'city'; } catch(e) { return 'city'; } }
+function planBanner(msg) {
+  return `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--amber-lt);border:1.5px solid #FCD34D;border-radius:10px;padding:10px 12px;margin-top:8px">
+    <span style="font-size:13px;font-weight:700;color:var(--amber);flex:1">🧭 ${msg}</span>
+    <button class="btn btn-primary" onclick="surveyPlan()">🧭 จัดเรียงเส้นทาง</button>
+  </div>`;
+}
+// "ตัวเมือง" = ทรัพย์ที่อยู่กลางกลุ่มที่หนาแน่นที่สุด (ผลรวมระยะไปทุกจุดน้อยสุด) — ในเมืองทรัพย์มักกระจุกกัน
+function cityCenterIdx(lls) {
+  let best = 0, bestSum = Infinity;
+  lls.forEach((a, i) => { const s = lls.reduce((t, b) => t + Math.min(haversineKm(a, b), 30), 0); if (s < bestSum) { bestSum = s; best = i; } });
+  return best;
+}
+function surveySetStart(v)  { try { localStorage.setItem('acktion_survey_start', v); } catch(e) {} }
+
+function haversineKm(a, b) {
+  const R = 6371, rad = x => x * Math.PI / 180;
+  const dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
+  const h = Math.sin(dLat/2)**2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function fetchTimeout(url, ms) {
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
+  return fetch(url, { signal: ctl.signal }).then(r => { clearTimeout(t); if (!r.ok) throw new Error('HTTP '+r.status); return r.json(); });
+}
+function getGps() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) return reject(new Error('เบราว์เซอร์นี้หาตำแหน่งไม่ได้'));
+    navigator.geolocation.getCurrentPosition(
+      pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      err => reject(new Error(err.code === 1 ? 'ไม่ได้อนุญาตให้เข้าถึงตำแหน่ง' : 'หาตำแหน่งไม่สำเร็จ')),
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
+  });
+}
+
+// ตารางต้นทุนระหว่างทุกจุด: ใช้เวลาขับจริงจาก OSRM ถ้าได้ ไม่งั้นใช้ระยะเส้นตรง
+async function surveyMatrix(pts) {
+  const n = pts.length;
+  const straight = pts.map(a => pts.map(b => haversineKm(a, b)));
+  try {
+    const coords = pts.map(p => `${p.lng},${p.lat}`).join(';');
+    const j = await fetchTimeout(`${OSRM}/table/v1/driving/${coords}?annotations=duration`, 9000);
+    if (j.code !== 'Ok') throw new Error(j.code);
+    // ช่องที่ OSRM หาเส้นทางไม่ได้ (null) → ประมาณจากเส้นตรงที่ 50 กม./ชม.
+    const m = j.durations.map((row, i) => row.map((v, k) => v == null ? straight[i][k] / 50 * 3600 : v));
+    return { cost: m, source: 'road' };
+  } catch(e) {
+    return { cost: straight, source: 'straight' };
+  }
+}
+
+// หาลำดับไปครบทุกจุด เริ่มที่จุด 0 เสมอ ไม่ต้องวนกลับ (open path)
+// ≤9 จุด → ลองทุกแบบ (ได้คำตอบดีที่สุดจริง) · มากกว่านั้น → ใกล้สุดก่อน แล้วเกลาด้วย 2-opt
+function solveRoute(D) {
+  const n = D.length;
+  if (n <= 2) return [...Array(n).keys()];
+  const C = D.map((row, i) => row.map((v, k) => (v + D[k][i]) / 2));   // ทำให้สมมาตร (ไป-กลับใช้เวลาไม่เท่ากันนิดหน่อย)
+  if (n <= 9) {
+    let best = Infinity, bestPath = null;
+    const path = [0], used = new Array(n).fill(false); used[0] = true;
+    const dfs = (cost) => {
+      if (cost >= best) return;
+      if (path.length === n) { best = cost; bestPath = [...path]; return; }
+      const last = path[path.length - 1];
+      for (let k = 1; k < n; k++) if (!used[k]) {
+        used[k] = true; path.push(k);
+        dfs(cost + C[last][k]);
+        path.pop(); used[k] = false;
+      }
+    };
+    dfs(0);
+    return bestPath;
+  }
+  const route = [0], left = new Set([...Array(n).keys()].slice(1));
+  while (left.size) {
+    const last = route[route.length - 1];
+    let pick = null;
+    left.forEach(k => { if (pick === null || C[last][k] < C[last][pick]) pick = k; });
+    route.push(pick); left.delete(pick);
+  }
+  let improved = true;
+  while (improved) {
+    improved = false;
+    for (let i = 1; i < n - 1; i++) for (let k = i + 1; k < n; k++) {
+      const a = route[i-1], b = route[i], c = route[k], d = route[k+1];
+      const before = C[a][b] + (d !== undefined ? C[c][d] : 0);
+      const after  = C[a][c] + (d !== undefined ? C[b][d] : 0);
+      if (after < before - 1e-9) { route.splice(i, k - i + 1, ...route.slice(i, k + 1).reverse()); improved = true; }
+    }
+  }
+  return route;
+}
+
+// ระยะ/เวลาแต่ละช่วงตามลำดับจริง + เส้นทางสำหรับวาดบนแผนที่
+async function surveyLegs(pts) {
+  try {
+    const coords = pts.map(p => `${p.lng},${p.lat}`).join(';');
+    const j = await fetchTimeout(`${OSRM}/route/v1/driving/${coords}?overview=full&geometries=geojson`, 12000);
+    if (j.code !== 'Ok') throw new Error(j.code);
+    return { legs: j.routes[0].legs.map(l => ({ km: l.distance / 1000, min: l.duration / 60 })),
+             geom: j.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]) };
+  } catch(e) {
+    // ไม่มีเส้นทางถนน → ระยะเส้นตรง ×1.3 (ถนนจริงมักอ้อมกว่าราว 30%) ที่ 50 กม./ชม.
+    return { legs: pts.slice(1).map((p, i) => { const km = haversineKm(pts[i], p) * 1.3; return { km, min: km / 50 * 60, est: true }; }),
+             geom: null };
+  }
+}
+
+async function surveyPlan() {
+  const located = surveyActive().map(p => ({ p, ll: parseLatLng(p.mapUrl) })).filter(x => x.ll);
+  if (!located.length) { toast('⚠️ ยังไม่มีทรัพย์ที่มีพิกัดในรอบสำรวจ', 'error'); return; }
+  const startSel = surveyStart();
+  let origin = null, stops = located;
+  toast('⏳ กำลังจัดเส้นทาง...');
+  if (startSel === 'gps') {
+    try { origin = await getGps(); _surveyGps = origin; }
+    catch(e) { toast('❌ ' + e.message + ' — เลือกทรัพย์ที่จะไปจุดแรกแทน', 'error'); return; }
+  } else if (startSel === 'city') {
+    const first = located[cityCenterIdx(located.map(x => x.ll))];
+    stops = [first, ...located.filter(x => x !== first)];
+  } else {
+    const first = located.find(x => x.p.id === startSel);
+    if (!first) { toast('⚠️ ทรัพย์ที่ตั้งเป็นจุดเริ่มไม่อยู่ในรอบสำรวจแล้ว — เลือกจุดเริ่มใหม่', 'error'); return; }
+    stops = [first, ...located.filter(x => x !== first)];
+  }
+  const pts = origin ? [origin, ...stops.map(x => x.ll)] : stops.map(x => x.ll);
+  const { cost, source } = await surveyMatrix(pts);
+  let order;
+  if (startSel === 'city') {
+    // ในเมืองก่อน: จุดที่อยู่ในรัศมี CITY_KM จากตัวเมืองไปให้ครบก่อน แล้วค่อยไล่ออกนอกเมือง
+    const CITY_KM = 8;
+    const inner = pts.map((p, i) => i).filter(i => i === 0 || haversineKm(pts[0], pts[i]) <= CITY_KM);
+    const outer = pts.map((p, i) => i).filter(i => !inner.includes(i));
+    const solveSub = idxs => solveRoute(idxs.map(a => idxs.map(b => cost[a][b]))).map(k => idxs[k]);
+    const o1 = solveSub(inner);
+    order = outer.length ? [...o1, ...solveSub([o1[o1.length - 1], ...outer]).slice(1)] : o1;
+  } else {
+    order = solveRoute(cost);
+  }
+  const seq = order.map(i => pts[i]);
+  const ordered = (origin ? order.slice(1).map(i => stops[i - 1]) : order.map(i => stops[i]));
+  const { legs, geom } = await surveyLegs(seq);
+  _surveyGeom = geom;
+  // origin = GPS → ขาแรกคือ "จากตำแหน่งปัจจุบันไปจุด 1" · origin = ทรัพย์ → จุด 1 ไม่มีขาก่อนหน้า
+  ordered.forEach((x, i) => {
+    const sv = surveyOf(x.p);
+    sv.order = i + 1;
+    sv.leg = origin ? legs[i] : (i === 0 ? null : legs[i - 1]);
+  });
+  // ทรัพย์ที่ไม่มีพิกัด/ถูกติ๊กออก → ล้างลำดับเก่าทิ้ง จะได้ไม่โผล่ปนลำดับใหม่
+  S.pool.forEach(p => { if (p.survey && !ordered.some(x => x.p === p)) { delete p.survey.order; delete p.survey.leg; } });
+  try { localStorage.setItem('acktion_survey_meta', JSON.stringify({ at: Date.now(), source, gps: !!origin })); } catch(e) {}
+  saveS();
+  renderSurvey();
+  toast(source === 'road' ? '✓ จัดเส้นทางตามถนนจริงแล้ว' : '✓ จัดเส้นทางแล้ว (ประมาณจากระยะเส้นตรง — ต่อเซิร์ฟเวอร์เส้นทางไม่ได้)', 'success');
+}
+
+function surveyToggleSkip(id) {
+  _surveyGeom = null;   // เส้นทางถนนเดิมไม่ตรงกับรายการแล้ว → วาดเส้นประแทนจนกว่าจะจัดใหม่
+  const p = S.pool.find(x => x.id === id); if (!p) return;
+  const sv = surveyOf(p); sv.skip = !sv.skip;
+  if (sv.skip) { delete sv.order; delete sv.leg; }
+  saveS(); renderSurvey();
+}
+function surveyToggleDone(id) {
+  const p = S.pool.find(x => x.id === id); if (!p) return;
+  const sv = surveyOf(p); sv.done = !sv.done;
+  if (sv.done) sv.doneAt = new Date().toISOString(); else delete sv.doneAt;
+  saveS(); renderSurvey();
+}
+function surveySaveNote(id, val) {
+  const p = S.pool.find(x => x.id === id); if (!p) return;
+  surveyOf(p).note = val.trim(); saveS();
+}
+// ✅ เอา → ย้ายขึ้นหน้าทรัพย์ (แถวเดิมใน cloud แค่เอา flag pool ออก) · โน้ตสำรวจต่อท้ายหมายเหตุ
+function surveyAdopt(id) {
+  _surveyGeom = null;   // เส้นทางถนนเดิมไม่ตรงกับรายการแล้ว → วาดเส้นประแทนจนกว่าจะจัดใหม่
+  const p = S.pool.find(x => x.id === id); if (!p) return;
+  if (!confirm(`📥 เก็บทรัพย์ ${p.code || p.name}?\nทรัพย์นี้จะย้ายไปหน้าแรก (ทรัพย์ที่ต้องการ)`)) return;
+  S.pool = S.pool.filter(x => x.id !== id);
+  delete p.pool;
+  const sv = p.survey || {};
+  if (sv.note) {
+    const d = sv.doneAt ? isoToBE(sv.doneAt.slice(0, 10)) : isoToBE(new Date().toISOString().slice(0, 10));
+    p.notes = [p.notes, `[สำรวจ ${d}] ${sv.note}`].filter(Boolean).join('\n');
+  }
+  p.status = sv.done ? 'inspecting' : (p.status || 'watching');
+  delete p.survey;
+  S.props.push(p);
+  saveS(); renderAll(); renderSurvey();
+  toast('📥 เก็บทรัพย์แล้ว — อยู่หน้าแรก (ทรัพย์ที่ต้องการ)', 'success');
+}
+// ✗ ไม่เอา → ลบทิ้งจากรอบสำรวจ (ลบแถวใน cloud ด้วย)
+async function surveyReject(id) {
+  _surveyGeom = null;   // เส้นทางถนนเดิมไม่ตรงกับรายการแล้ว → วาดเส้นประแทนจนกว่าจะจัดใหม่
+  const p = S.pool.find(x => x.id === id); if (!p) return;
+  if (!confirm(`ไม่เอาทรัพย์ ${p.code || p.name}? (ลบออกจากรายการสำรวจ)`)) return;
+  S.pool = S.pool.filter(x => x.id !== id);
+  saveS(); renderSurvey(); updateBadges();
+  await deleteCloudProp(id);
+}
+// ── เพิ่มทรัพย์สำรวจจาก PDF: อัป PDF ขึ้น Storage → สร้างการ์ดรอ (pdfPending) → Claude อ่านแล้วเติมข้อมูลให้ ──
+function openPoolPdfModal() {
+  document.getElementById('pool-pdf-input').value = '';
+  document.getElementById('pool-pdf-label').textContent = 'แตะเพื่อเลือกไฟล์ PDF';
+  openModal('modal-pool-pdf');
+}
+function poolPdfPicked(input) {
+  const files = [...input.files];
+  document.getElementById('pool-pdf-label').innerHTML = files.length
+    ? files.map(f => '📄 ' + escapeHtml(f.name)).join('<br>') : 'แตะเพื่อเลือกไฟล์ PDF';
+}
+async function savePoolPdfs() {
+  const files = [...document.getElementById('pool-pdf-input').files];
+  if (!files.length) { toast('เลือกไฟล์ PDF ก่อน', 'error'); return; }
+  const btn = document.getElementById('pool-pdf-save');
+  btn.disabled = true;
+  let ok = 0;
+  for (const [i, f] of files.entries()) {
+    btn.textContent = `⏳ อ่าน PDF ${i + 1}/${files.length}...`;
+    const item = { id: uid(), pool: true, pdfName: f.name, code: '', name: f.name.replace(/\.pdf$/i, ''),
+                   status: 'watching', rounds: [], docs: [], notif: null };
+    // 1) อ่านข้อมูลจาก PDF ในเครื่องก่อน (ไม่ต้องรอเน็ต/ไม่ต้องรอ Claude)
+    try {
+      const d = await readLedPdf(f);
+      const photo = d.photo; delete d.photo;
+      Object.assign(item, d);
+      if (photo) item.imgProp = (await uploadToStorage(photo, 'photo.jpg')) || photo;
+      // ทรัพย์ลำดับเดียวกันที่เพิ่มไปแล้ว → ข้าม กันซ้ำ
+      if (item.code && S.pool.concat(S.props).some(p => p.code === item.code && p.deed === item.deed)) {
+        toast(`⚠️ ${item.code} มีอยู่แล้ว — ข้าม`, 'error'); continue;
+      }
+      btn.textContent = `⏳ หาพิกัด ${i + 1}/${files.length}...`;
+      const ll = await geocodeTambon(d.led);
+      if (ll) { item.mapUrl = ll; item.llApprox = true; }
+    } catch(e) {
+      item.pdfError = e.message;
+    }
+    // 2) เก็บไฟล์ PDF ไว้เปิดดูทีหลัง
+    btn.textContent = `⏳ อัปโหลด ${i + 1}/${files.length}...`;
+    item.pdfUrl = await uploadBlobToStorage(f, 'ประกาศ.pdf') || '';
+    S.pool.push(item);
+    ok++;
+    // Nominatim ขอไม่เกิน 1 request/วินาที
+    if (i < files.length - 1) await new Promise(r => setTimeout(r, 1100));
+  }
+  btn.disabled = false; btn.textContent = '📤 อัปโหลด';
+  if (!ok) return;
+  saveS(); closeModal('modal-pool-pdf'); renderSurvey(); updateBadges();
+  const bad = S.pool.slice(-ok).filter(p => p.pdfError).length;
+  toast(bad ? `⚠️ เพิ่ม ${ok} ทรัพย์ อ่านไม่ได้ ${bad} ไฟล์ — กด ✏️ กรอกเอง` : `✓ เพิ่ม ${ok} ทรัพย์แล้ว — กด "🧭 จัดเรียงเส้นทาง"`, bad ? 'error' : 'success');
+}
+
+function openAddPoolModal() {
+  openAddPropModal();
+  document.getElementById('prop-to-pool').value = '1';
+  document.getElementById('modal-prop-title').textContent = '🧭 เพิ่มทรัพย์รอสำรวจ';
+}
+function surveyResetDone() {
+  if (!confirm('ล้างสถานะ "ไปแล้ว" ของทุกทรัพย์ในรอบสำรวจ? (โน้ตที่จดไว้ยังอยู่)')) return;
+  surveyCandidates().forEach(p => { if (p.survey) { delete p.survey.done; delete p.survey.doneAt; } });
+  saveS(); renderSurvey();
+}
+// เลื่อนลำดับเอง (▲▼) — ระยะช่วงที่เปลี่ยนคิดใหม่แบบเส้นตรง
+function surveyMove(id, dir) {
+  const list = surveyOrdered().ordered;
+  const i = list.findIndex(x => x.p.id === id), j = i + dir;
+  if (i < 0 || j < 0 || j >= list.length) return;
+  [list[i], list[j]] = [list[j], list[i]];
+  let meta = {}; try { meta = JSON.parse(localStorage.getItem('acktion_survey_meta') || '{}'); } catch(e) {}
+  const gpsStart = meta.gps && _surveyGps ? _surveyGps : null;
+  list.forEach((x, k) => {
+    const sv = surveyOf(x.p); sv.order = k + 1;
+    const prev = k === 0 ? gpsStart : list[k - 1].ll;
+    if (!prev) { sv.leg = null; return; }
+    const km = haversineKm(prev, x.ll) * 1.3;
+    sv.leg = { km, min: km / 50 * 60, est: true };
+  });
+  _surveyGeom = null;
+  saveS(); renderSurvey();
+}
+
+function surveyOrdered() {
+  const act = surveyActive().map(p => ({ p, ll: parseLatLng(p.mapUrl) }));
+  const located = act.filter(x => x.ll);
+  const ordered = located.filter(x => x.p.survey?.order).sort((a, b) => a.p.survey.order - b.p.survey.order);
+  const unplanned = located.filter(x => !x.p.survey?.order);
+  const noLL = act.filter(x => !x.ll);
+  return { ordered, unplanned, noLL };
+}
+
+function nextRoundInfo(p) {
+  const today = new Date().toISOString().slice(0, 10);
+  const rounds = p.rounds || [];
+  for (let i = 0; i < rounds.length; i++) {
+    const r = rounds[i];
+    if (r && r.date && r.date >= today && !isHaltedNote(r.note)) return { i, date: r.date };
+  }
+  return null;
+}
+
+// ลิงก์นำทาง Google Maps หลายจุด: 1 ลิงก์รับได้ต้นทาง + 9 จุดแวะ + ปลายทาง → เกินนั้นแบ่งเป็นช่วง
+function surveyNavLinks(stops, fromGps) {
+  const out = []; let origin = fromGps ? null : stops[0], rest = fromGps ? stops : stops.slice(1);
+  while (rest.length) {
+    const chunk = rest.slice(0, 10); rest = rest.slice(10);
+    const dest = chunk[chunk.length - 1], way = chunk.slice(0, -1);
+    const q = new URLSearchParams({ api: '1', travelmode: 'driving', destination: `${dest.lat},${dest.lng}` });
+    if (origin) q.set('origin', `${origin.lat},${origin.lng}`);
+    if (way.length) q.set('waypoints', way.map(w => `${w.lat},${w.lng}`).join('|'));
+    out.push('https://www.google.com/maps/dir/?' + q.toString());
+    origin = dest;
+  }
+  return out;
+}
+const fmtKm  = km  => km < 10 ? km.toFixed(1) : Math.round(km).toString();
+const fmtMin = min => min < 60 ? `${Math.round(min)} นาที` : `${Math.floor(min / 60)} ชม. ${Math.round(min % 60)} นาที`;
+
+// การ์ดทรัพย์สำรวจ — โครงเดียวกับการ์ดหน้าแรก (หัวการ์ดกดกาง/หุบ)
+function surveyCardHtml(x, total, open) {
+  const p = x.p, sv = p.survey || {}, idx = x.idx;
+  const inRoute = idx !== undefined;
+  const base = Number(p.appraisal) || 0;
+  const nr = nextRoundInfo(p);
+  const thumbSrc = [p.imgProp, p.imgDetail].find(isImageSrc) || '';
+  const thumb = thumbSrc
+    ? `<img class="prop-thumb" src="${thumbSrc}" alt="" loading="lazy" onclick="event.stopPropagation();showLightbox('${thumbSrc}')">`
+    : `<div class="prop-thumb-empty">${p.pdfPending ? '📄' : '🏠'}</div>`;
+  const numBg = sv.done ? 'var(--green)' : inRoute ? 'var(--navy)' : '#9CA3AF';
+  const num = sv.done ? '✓' : inRoute ? idx + 1 : p.pdfPending ? '⏳' : '•';
+  const chips = [
+    p.pdfPending ? `<span class="badge badge-amber">⏳ กำลังอ่าน PDF</span>` : '',
+    p.pdfError ? `<span class="badge badge-red" title="${escapeHtml(p.pdfError)}">⚠️ อ่าน PDF ไม่ได้ — กรอกเอง</span>` : '',
+    sv.skip ? `<span class="badge badge-gray">ไม่ไปรอบนี้</span>` : '',
+    !x.ll && !p.pdfPending ? `<span class="badge badge-red">📍 ยังไม่มีพิกัด</span>` : '',
+    x.ll && p.llApprox ? `<span class="badge badge-amber" title="พิกัดประมาณจากตำบล — เปิด LandsMaps หาแปลงแล้ววางพิกัดจริง">≈ พิกัดประมาณ</span>` : '',
+    nr ? `<span class="badge badge-blue">📅 นัด ${nr.i + 1} · ${fmtDate(nr.date)}</span>` : '',
+    sv.done ? `<span class="badge badge-green">✓ ไปแล้ว</span>` : '',
+  ].join('');
+  const legTxt = inRoute && sv.leg ? `${sv.leg.est ? '≈ ' : ''}${fmtKm(sv.leg.km)} กม. · ${fmtMin(sv.leg.min)} ${idx === 0 ? 'จากจุดเริ่ม' : 'จากจุดก่อนหน้า'}` : (inRoute && idx === 0 ? 'จุดแรก' : '');
+  const led = p.led || {};
+  const rounds = (ROUNDS || []).map((r, ri) => {
+    const rObj = (p.rounds || [])[ri] || {};
+    const halted = isHaltedNote(rObj.note);
+    return `<div class="round-tile ${halted ? 'halted' : ri === (p.targetRound || 0) ? 'target' : ''}" style="cursor:default">
+      <div class="round-num">นัดที่ ${ri + 1}</div>
+      <div class="round-price">${base ? fmtNum(Math.floor(Math.round(base * (1 - r.disc) * 100) / 100)) + ' ฿' : '—'}</div>
+      <div class="round-disc ${r.cls}">${r.discLabel}</div>
+      ${rObj.date ? `<div style="font-size:9px;color:var(--gray);margin-top:3px">${fmtDate(rObj.date)}</div>` : ''}
+      ${halted ? `<div class="round-halt-bar">⛔ ${escapeHtml(rObj.note)}</div>` : ''}
+    </div>`;
+  }).join('');
+  const nav = x.ll ? `https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=${x.ll.lat},${x.ll.lng}` : '';
+  return `
+    ${legTxt ? `<div style="font-size:11px;color:var(--gray);padding:0 0 6px 17px;margin:-6px 0 0 17px;border-left:2px dashed #CBD5E1">⬇ ${legTxt}</div>` : ''}
+    <div class="prop-card ${sv.done ? 'won' : ''} ${open ? 'expanded' : ''}" id="sv-${p.id}" style="${sv.skip ? 'opacity:.55' : ''}">
+      <div class="prop-header" onclick="document.getElementById('sv-${p.id}').classList.toggle('expanded')">
+        <div class="prop-num" style="background:${numBg}">${num}</div>
+        ${thumb}
+        <div class="prop-info">
+          <div class="prop-name">${p.code ? `<span style="font-size:12px;font-weight:700;background:var(--blue-lt);color:var(--blue);padding:1px 7px;border-radius:5px;margin-right:6px">${escapeHtml(p.code)}</span>` : ''}${escapeHtml(p.name)}</div>
+          <div class="prop-sub">${escapeHtml(p.loc || '')}${base ? (p.loc ? ' · ' : '') + 'ประเมิน ' + fmtNum(base) + ' ฿' : ''}</div>
+          ${chips ? `<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:5px">${chips}</div>` : ''}
+        </div>
+        <div class="prop-actions" onclick="event.stopPropagation()" style="display:flex;gap:5px;align-items:center">
+          ${inRoute ? `<button class="icon-btn" ${idx === 0 ? 'disabled style="opacity:.3"' : ''} onclick="surveyMove('${p.id}',-1)" title="เลื่อนขึ้น">▲</button>
+          <button class="icon-btn" ${idx === total - 1 ? 'disabled style="opacity:.3"' : ''} onclick="surveyMove('${p.id}',1)" title="เลื่อนลง">▼</button>` : ''}
+          ${p.pdfUrl ? `<button class="icon-btn" onclick="surveyTogglePdf('${p.id}')" title="ดู PDF ประกาศในการ์ดนี้">📄</button>` : ''}
+          <button class="icon-btn" onclick="editProp('${p.id}')" title="แก้ไข">✏️</button>
+          <span class="chevron" style="margin-left:2px">▼</span>
+        </div>
+      </div>
+      <div class="prop-body">
+        ${[p.imgProp, p.imgDetail, p.imgLand].some(isImageSrc) ? `<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          ${[[p.imgProp, 'รูปทรัพย์'], [p.imgDetail, 'รูปรายละเอียด'], [p.imgLand, 'แผนที่กรมที่ดิน']].filter(([s]) => isImageSrc(s)).map(([s, t]) =>
+            `<img src="${s}" style="height:90px;border-radius:8px;object-fit:cover;border:1.5px solid var(--border);cursor:zoom-in" onclick="showLightbox('${s}')" title="${t}">`).join('')}
+        </div>` : ''}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+          ${p.code ? `<span class="badge badge-blue">🔖 ${escapeHtml(p.code)}</span>` : ''}
+          ${p.deed ? `<span class="badge badge-gray">โฉนด ${escapeHtml(p.deed)}</span>` : ''}
+          ${p.case ? `<span class="badge badge-gray">คดี ${escapeHtml(p.case)}</span>` : ''}
+          ${led.area ? `<span class="badge badge-gray">📐 ${escapeHtml(led.area)}</span>` : ''}
+          ${led.free ? `<span class="badge badge-green">${escapeHtml(led.free)}</span>` : ''}
+          ${led.deposit ? `<span class="badge badge-amber">หลักประกัน ${fmtNum(led.deposit)} ฿</span>` : ''}
+          ${p.pdfUrl ? `<button class="btn btn-ghost btn-xs" data-pdfbtn="${p.id}" onclick="surveyTogglePdf('${p.id}')">${_svPdfOpen.has(p.id) ? '📄 ซ่อน PDF' : '📄 ดู PDF ประกาศ'}</button>` : ''}
+          ${x.ll ? `<a href="${nav}" target="_blank" class="btn btn-primary btn-xs">🚗 นำทาง</a>
+          <a href="https://www.google.com/maps/search/?api=1&query=${x.ll.lat},${x.ll.lng}" target="_blank" class="btn btn-ghost btn-xs">📍 Google Map</a>` : ''}
+          ${landMapButton(p)}
+          ${landMapFallback(p)}
+        </div>
+        ${p.pdfUrl ? `<div id="svpdf-${p.id}" style="${_svPdfOpen.has(p.id) ? '' : 'display:none;'}max-height:70vh;overflow:auto;background:#F1F5F9;border-radius:9px;padding:8px;margin-bottom:12px"></div>` : ''}
+        ${!x.ll || p.llApprox ? `<div style="background:var(--amber-lt);border:1px solid #FCD34D;border-radius:9px;padding:10px 12px;margin-bottom:12px;font-size:12px">
+          <div style="font-weight:700;color:var(--amber);margin-bottom:6px">${x.ll ? '≈ พิกัดตอนนี้เป็นแค่กลางตำบล' : '📍 ยังไม่มีพิกัด'} — เปิด LandsMaps หาแปลงโฉนด แล้ววางพิกัด/ลิงก์ Google Maps ที่นี่:</div>
+          <div style="display:flex;gap:6px"><input class="form-input" style="font-size:12px;padding:6px 9px;flex:1" placeholder="เช่น 17.4102, 102.8231 หรือลิงก์ Google Maps" onchange="surveySetLL('${p.id}', this.value)"></div>
+        </div>` : ''}
+        ${led.court || led.plaintiff || led.office ? `<div style="font-size:12px;color:#374151;line-height:1.7;margin-bottom:12px">
+          ${led.type ? `<div>🏷 ${escapeHtml(led.type)}</div>` : ''}
+          ${led.court ? `<div>⚖️ ศาล${escapeHtml(led.court)}</div>` : ''}
+          ${led.plaintiff ? `<div>โจทก์: ${escapeHtml(led.plaintiff)}</div>` : ''}
+          ${led.owner ? `<div>ผู้ถือกรรมสิทธิ์: ${escapeHtml(led.owner)}</div>` : ''}
+          ${led.office ? `<div>🏛 สำนักงานบังคับคดี${escapeHtml(led.office)}${led.phone ? ' · ☎ ' + escapeHtml(led.phone) : ''}</div>` : ''}
+        </div>` : ''}
+        <div class="section-title" style="margin-bottom:6px">📅 ตารางนัด</div>
+        <div class="rounds-grid">${rounds}</div>
+        <input class="form-input" style="font-size:12px;padding:6px 9px;margin-bottom:10px" placeholder="📝 จดตอนไปดู: สภาพ, มีคนอยู่ไหม, ทางเข้า..." value="${escapeHtml(sv.note || '')}" onchange="surveySaveNote('${p.id}', this.value)">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${x.ll ? `<button class="btn btn-sm ${sv.done ? 'btn-ghost' : 'btn-success'}" onclick="surveyToggleDone('${p.id}')">${sv.done ? '↩ ยังไม่ได้ไป' : '✓ ไปดูแล้ว'}</button>` : ''}
+          <button class="btn btn-primary btn-sm" onclick="surveyAdopt('${p.id}')" title="ย้ายไปหน้าแรก = ทรัพย์ที่ต้องการ">📥 เก็บทรัพย์ <span style="font-weight:400;opacity:.8">→ ไปหน้าแรก (ทรัพย์ที่ต้องการ)</span></button>
+          <button class="btn btn-ghost btn-sm" onclick="surveyToggleSkip('${p.id}')">${sv.skip ? '↩ ใส่กลับเข้ารอบนี้' : '⏸ ไม่ไปรอบนี้'}</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="surveyReject('${p.id}')">✗ ไม่เอา (ลบ)</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// วางพิกัดจริงที่หาได้จาก LandsMaps / Google Maps
+function surveySetLL(id, val) {
+  _surveyGeom = null;   // เส้นทางถนนเดิมไม่ตรงกับรายการแล้ว → วาดเส้นประแทนจนกว่าจะจัดใหม่
+  const p = S.pool.find(x => x.id === id); if (!p) return;
+  const v = String(val || '').trim(); if (!v) return;
+  if (!parseLatLng(v)) { toast('❌ อ่านพิกัดไม่ออก — ใส่แบบ 17.4102, 102.8231 หรือลิงก์ Google Maps ที่มี @lat,lng', 'error'); return; }
+  p.mapUrl = v; delete p.llApprox;
+  if (p.survey) { delete p.survey.order; delete p.survey.leg; }
+  saveS(); renderSurvey();
+  toast('✓ บันทึกพิกัดแล้ว — กด "จัดเรียงเส้นทาง" อีกครั้ง', 'success');
+}
+
+// ═══ อ่าน PDF ประกาศกรมบังคับคดี (มี text layer) ด้วย pdf.js — ไม่ต้องใช้ AI ═══
+let _pdfjsLoading = null;
+function loadPdfJs() {
+  if (window.pdfjsLib) return Promise.resolve();
+  if (_pdfjsLoading) return _pdfjsLoading;
+  _pdfjsLoading = new Promise((resolve, reject) => {
+    const js = document.createElement('script');
+    js.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    js.onload = () => { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; resolve(); };
+    js.onerror = () => { _pdfjsLoading = null; reject(new Error('โหลดตัวอ่าน PDF ไม่สำเร็จ (ต้องต่ออินเทอร์เน็ต)')); };
+    document.head.appendChild(js);
+  });
+  return _pdfjsLoading;
+}
+// เปิด PDF ในหน้าเว็บ: เรนเดอร์ทุกหน้าเป็นรูปด้วย pdf.js
+async function showPdf(url, title) {
+  document.getElementById('pdf-view-title').textContent = '📄 ' + (title || 'PDF ประกาศ');
+  const dl = document.getElementById('pdf-view-open'); dl.href = url;
+  const box = document.getElementById('pdf-view-pages');
+  box.innerHTML = '<div style="padding:30px;text-align:center;color:var(--gray)">⏳ กำลังเปิด PDF...</div>';
+  openModal('modal-pdf');
+  await renderPdfInto(box, url);
+}
+async function renderPdfInto(box, url) {
+  try {
+    await loadPdfJs();
+    const pdf = await pdfjsLib.getDocument(url).promise;
+    box.innerHTML = '';
+    const w = Math.min(box.clientWidth - 16, 820);
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const base = page.getViewport({ scale: 1 });
+      const vp = page.getViewport({ scale: (w / base.width) * (window.devicePixelRatio || 1) });
+      const c = document.createElement('canvas');
+      c.width = vp.width; c.height = vp.height;
+      c.style.cssText = 'width:100%;display:block;margin:0 auto 8px;background:#fff;border-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,.12)';
+      box.appendChild(c);
+      await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+    }
+  } catch(e) {
+    box.innerHTML = `<div style="padding:30px;text-align:center;color:var(--red)">เปิด PDF ไม่สำเร็จ: ${escapeHtml(e.message)}<br><a href="${escapeHtml(url)}" target="_blank">ลองเปิดในแท็บใหม่ ↗</a></div>`;
+  }
+}
+// การ์ดสำรวจ: กาง PDF ในการ์ดของทรัพย์นั้นเลย (จำไว้ว่าอันไหนกางอยู่ กัน re-render แล้วหุบ)
+const _svPdfOpen = new Set();
+function surveyTogglePdf(id) {
+  const p = S.pool.find(x => x.id === id); if (!p?.pdfUrl) return;
+  const card = document.getElementById('sv-' + id);
+  card.classList.add('expanded');
+  const box = document.getElementById('svpdf-' + id);
+  if (_svPdfOpen.has(id)) { _svPdfOpen.delete(id); box.style.display = 'none'; box.innerHTML = ''; }
+  else {
+    _svPdfOpen.add(id); box.style.display = '';
+    box.innerHTML = '<div style="padding:24px;text-align:center;color:var(--gray)">⏳ กำลังเปิด PDF...</div>';
+    renderPdfInto(box, p.pdfUrl);
+    box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  document.querySelectorAll(`[data-pdfbtn="${id}"]`).forEach(b => b.innerHTML = _svPdfOpen.has(id) ? '📄 ซ่อน PDF' : '📄 ดู PDF ประกาศ');
+}
+function pdfButton(p, cls) {
+  if (!p.pdfUrl) return '';
+  const call = `event.preventDefault();event.stopPropagation();showPdf('${escapeHtml(p.pdfUrl)}','${escapeHtml((p.code ? p.code + ' — ' : '') + (p.name || '')).replace(/'/g, '&#39;')}')`;
+  return cls === 'icon'
+    ? `<button class="icon-btn" onclick="${call}" title="เปิด PDF ประกาศของทรัพย์นี้">📄</button>`
+    : `<button class="btn btn-ghost btn-xs" onclick="${call}">📄 PDF ประกาศ</button>`;
+}
+
+// ฟอนต์ใน PDF ของกรมฯ มีกับดัก 3 อย่าง:
+//  1) คำไทยถูกหั่นเป็นท่อน ๆ คั่นด้วยเว้นวรรคเดียว ("ท รั พ ย์") ส่วนระหว่างช่องข้อมูลเว้น 2+ วรรค → ลบเฉพาะวรรคเดียว
+//  2) สระอำออกมาเป็น นิคหิต+สระอา ("ํา") → รวมเป็น "ำ"
+//  3) วรรณยุกต์ตัวยก (อยู่บนสระบน เช่น ที่/เนื้อ) ไม่มี unicode ออกมาเป็น \0 → เดาจากรหัส glyph ในฟอนต์
+const LED_GLYPH = { 722: '่', 725: '้', 733: '์', 736: '็' };   // ่ ้ ์ ็ (ไล่จากประกาศจริง)
+const thaiFix = s => s
+  .replace(/ํา/g, 'ำ')
+  .replace(/(?<=[฀-๿]) (?=[฀-๿])/g, '')
+  .replace(/\u0000/g, '')
+  .replace(/[ \t]+/g, ' ').trim();
+
+async function pageText(page) {
+  const tc = await page.getTextContent();
+  let text = tc.items.map(it => it.str + (it.hasEOL ? '\n' : ' ')).join('');
+  // \0 ใน textContent เรียงลำดับเดียวกับ glyph ใน operator list → แทนทีละตัวตามรหัส glyph
+  const holes = (text.match(/\u0000/g) || []).length;
+  if (holes) {
+    const O = pdfjsLib.OPS, ops = await page.getOperatorList(), codes = [];
+    ops.fnArray.forEach((fn, i) => { if (fn === O.showText) ops.argsArray[i][0].forEach(g => { if (g && g.unicode === '\u0000') codes.push(g.originalCharCode); }); });
+    if (codes.length === holes) { let k = 0; text = text.replace(/\u0000/g, () => LED_GLYPH[codes[k++]] || ''); }
+  }
+  return text;
+}
+
+async function readLedPdf(file) {
+  await loadPdfJs();
+  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  let text = '';
+  for (let i = 1; i <= pdf.numPages; i++) text += await pageText(await pdf.getPage(i)) + '\n';
+  text = text.split('\n').map(thaiFix).join('\n');
+  const flat = text.replace(/\s+/g, ' ');
+  const grab = (re) => { const m = flat.match(re); return m ? m[1].trim() : ''; };
+  const money = (s) => { const n = parseFloat(String(s).replace(/,/g, '')); return isFinite(n) ? n : 0; };
+
+  const lot     = grab(/ลำดับที่\s*([\d]+\s*-\s*[\d]+)/).replace(/\s+/g, '');
+  const kase    = grab(/คดีหมายเลขแดงที่\s*(.+?)\s*โจทก์/).replace(/\s+/g, '');
+  const type    = grab(/ประเภททรัพย์\s*(.+?)\s*(?:ที่ดิน\s*โฉนด|ห้องชุด|โฉนด|เลขที่|$)/);
+  const deed    = grab(/โฉนดเลขที่\s*([\d,]+)/).replace(/,/g, '');
+  const houseNo = grab(/เลขที่\s*([\d/\-]+)\s*แขวง/);
+  const tambon  = grab(/ตำบล\s*(.+?)\s*เขต\//) || grab(/แขวง\/\s*ตำบล\s*(.+?)\s*เขต/);
+  const amphoe  = grab(/อำเภอ\s*(.+?)\s*จังหวัด/);
+  const changwat= grab(/จังหวัด\s*(\S+)\s*ผู้ถือ/);
+  const rai = grab(/เนื้อที่\s*([\d.\-]+)\s*ไร่/), ngan = grab(/ไร่\s*([\d.\-]+)\s*งาน/), wah = grab(/งาน\s*([\d.\-]+)\s*ตร\.?วา/);
+  const sqm = grab(/เนื้อที่\s*([\d.,]+)\s*ตร\.?ม/);
+  const n = v => (v && v !== '-' ? parseFloat(v) || 0 : 0);
+  const totalWah = n(rai) * 400 + n(ngan) * 100 + n(wah);
+  const area = totalWah ? `${n(rai)}-${n(ngan)}-${n(wah)} ไร่ (${fmtNum(totalWah)} ตร.วา)` : sqm ? `${sqm} ตร.ม.` : '';
+
+  // ตารางนัด: "1 25/11/2569 -"
+  const rounds = [];
+  const re = /(?:^|\s)([1-6])\s+(\d{2}\/\d{2}\/\d{4})\s+(\S[^\n]*?)?(?=\s+[1-6]\s+\d{2}\/|\s+จะทำการขาย|$)/g;
+  let m; while ((m = re.exec(flat))) { const st = (m[3] || '').trim(); rounds[+m[1] - 1] = { status: 'pending', date: beToISO(m[2]), note: st && st !== '-' ? st : '', isTarget: false }; }
+  for (let i = 0; i < 6; i++) if (!rounds[i]) rounds[i] = { status: 'pending', date: '', note: '', isTarget: false };
+  rounds[0].isTarget = true;
+
+  // ราคาเริ่มต้นตามลำดับของกรมฯ: คณะกรรมการ > จพ.ประเมินกรมฯ > จพ.บังคับคดี > ผู้เชี่ยวชาญ
+  const committee = money(grab(/คณะกรรมการกำหนดราคาทรัพย์\s*จำนวน\s*([\d,.]+)/));
+  const dolOfficer= money(grab(/เจ้าพนักงานประเมินราคาทรัพย์กรมบังคับคดี\s*จำนวน\s*([\d,.]+)/));
+  const officer   = money(grab(/ราคาประเมินของเจ้าพนักงานบังคับคดี\s*จำนวน\s*([\d,.]+)/));
+  const expert    = money(grab(/ผู้เชี่ยวชาญการประเมินราคา\s*จำนวน\s*([\d,.]+)/));
+  const appraisal = committee || dolOfficer || officer || expert;
+
+  const loc = [houseNo && 'เลขที่ ' + houseNo, tambon && 'ต.' + tambon, amphoe && 'อ.' + amphoe, changwat && 'จ.' + changwat].filter(Boolean).join(' ');
+  const out = {
+    code: lot, deed, case: kase, loc, appraisal, price: appraisal, rounds, targetRound: 0,
+    size: totalWah || n(sqm) || '',
+    name: [type || 'ทรัพย์', tambon].filter(Boolean).join(' · '),
+    led: {
+      type, area, tambon, amphoe, changwat,
+      court:     grab(/ศาล\s*(.+?)\s*คดีหมายเลข/),
+      plaintiff: grab(/โจทก์\s*(.+?)\s*จำเลย/),
+      owner:     grab(/ผู้ถือกรรมสิทธิ์\s*(.+?)\s*ติดต่อ/),
+      office:    grab(/\/\s*กอง\s*(.+?)\s*โทรศัพท์/),
+      phone:     grab(/โทรศัพท์\s*([\d(),\-\s]+?)\s*เจ้าของ/),
+      free:      grab(/จะทำการขายโดย\s*(\S+การจำนอง|ติดจำนอง\S*)/),
+      deposit:   money(grab(/วางหลักประกันเป็นจำนวน\s*([\d,.]+)/)),
+      announced: grab(/วันที่ประกาศขึ้นเว็บ\s*([\d\-]+)/),
+    },
+  };
+  if (!lot && !deed && !appraisal) throw new Error('ไม่พบข้อมูลประกาศในไฟล์นี้ (อาจเป็น PDF สแกน)');
+  out.photo = await cropLargestImage(pdf).catch(() => '');
+  return out;
+}
+
+// ตัดรูปทรัพย์จากหน้าแรก: หาตำแหน่งรูปที่ใหญ่ที่สุดจากคำสั่งวาดของ PDF แล้วครอปจากหน้าที่เรนเดอร์แล้ว
+async function cropLargestImage(pdf) {
+  const page = await pdf.getPage(1);
+  const vp = page.getViewport({ scale: 2.5 });
+  const ops = await page.getOperatorList();
+  const O = pdfjsLib.OPS, mul = pdfjsLib.Util.transform;
+  let ctm = [1, 0, 0, 1, 0, 0]; const stack = []; let best = null;
+  ops.fnArray.forEach((fn, i) => {
+    const a = ops.argsArray[i];
+    if (fn === O.save) stack.push(ctm);
+    else if (fn === O.restore) ctm = stack.pop() || [1, 0, 0, 1, 0, 0];
+    else if (fn === O.transform) ctm = mul(ctm, a);
+    else if (fn === O.paintImageXObject || fn === O.paintJpegXObject) {
+      const m = mul(vp.transform, ctm);
+      const pts = [[0, 0], [1, 0], [0, 1], [1, 1]].map(([x, y]) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]]);
+      const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+      const box = { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
+      if (box.w > 60 && box.h > 60 && (!best || box.w * box.h > best.w * best.h)) best = box;
+    }
+  });
+  if (!best) return '';
+  const canvas = document.createElement('canvas');
+  canvas.width = vp.width; canvas.height = vp.height;
+  await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+  const out = document.createElement('canvas');
+  out.width = Math.round(best.w); out.height = Math.round(best.h);
+  out.getContext('2d').drawImage(canvas, best.x, best.y, best.w, best.h, 0, 0, out.width, out.height);
+  return out.toDataURL('image/jpeg', 0.85);
+}
+
+// พิกัดประมาณจากตำบล/อำเภอ/จังหวัด (OpenStreetMap Nominatim ฟรี) — ติดป้าย ≈ ให้ไปหาแปลงจริงเอง
+async function geocodeTambon(led) {
+  if (!led?.changwat) return null;
+  const q = [led.tambon, led.amphoe, led.changwat].filter(Boolean);
+  for (let k = 0; k < 2; k++) {   // ลองระดับตำบลก่อน ไม่เจอค่อยถอยไประดับอำเภอ
+    try {
+      const j = await fetchTimeout(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=th&q=${encodeURIComponent(q.slice(k).join(' '))}`, 8000);
+      if (j[0]) return `${(+j[0].lat).toFixed(6)}, ${(+j[0].lon).toFixed(6)}`;
+    } catch(e) {}
+  }
+  return null;
+}
+
+async function renderSurvey() {
+  const { ordered, unplanned, noLL } = surveyOrdered();
+  const startSel = surveyStart();
+
+  // ตัวเลือกจุดเริ่ม: ในเมืองก่อน (ค่าเริ่มต้น) / GPS / ทรัพย์ที่เลือกเอง
+  const startEl = document.getElementById('survey-start');
+  const startable = [...ordered, ...unplanned];
+  startEl.innerHTML = `<option value="city">🏙 เริ่มจากในเมืองก่อน แล้วไล่ออกไปทีละจุดที่ใกล้สุด</option>
+    <option value="gps">📍 เริ่มจากตำแหน่งปัจจุบัน (GPS มือถือ)</option>` +
+    startable.map(x => `<option value="${x.p.id}">🏠 เริ่มที่ ${escapeHtml((x.p.code ? x.p.code + ' — ' : '') + x.p.name)}</option>`).join('');
+  startEl.value = ['city', 'gps'].includes(startSel) || startable.some(x => x.p.id === startSel) ? startSel : 'city';
+
+  // เลือกว่าทรัพย์ไหนอยู่ในรอบสำรวจ
+  const cands = surveyCandidates();
+  document.getElementById('survey-pick').innerHTML = cands.length ? `
+    <div style="font-size:12px;color:var(--gray);margin-bottom:6px">ติ๊กเลือกทรัพย์ที่จะไปรอบนี้ (${surveyActive().length}/${cands.length}):</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${cands.map(p => {
+      const on = !p.survey?.skip, hasLL = !!parseLatLng(p.mapUrl);
+      return `<button class="btn btn-xs ${on ? 'btn-primary' : 'btn-ghost'}" onclick="surveyToggleSkip('${p.id}')" title="${hasLL ? '' : 'ยังไม่มีพิกัด'}">${on ? '☑' : '☐'} ${escapeHtml(p.code || p.name)}${hasLL ? '' : ' ⚠️'}</button>`;
+    }).join('')}</div>` : '<div class="empty"><div class="empty-icon">🧭</div><p>ยังไม่มีทรัพย์รอสำรวจ<br><span style="font-size:12px;color:var(--gray)">ส่ง PDF ประกาศให้ Claude บันทึกให้ หรือกด "+ เพิ่มทรัพย์รอสำรวจ"</span></p></div>';
+
+  // สรุปรวม + ลิงก์นำทาง (เฉพาะจุดที่ยังไม่ได้ไป)
+  const sumEl = document.getElementById('survey-summary');
+  let meta = {}; try { meta = JSON.parse(localStorage.getItem('acktion_survey_meta') || '{}'); } catch(e) {}
+  if (ordered.length) {
+    const totKm  = ordered.reduce((s, x) => s + (x.p.survey.leg?.km  || 0), 0);
+    const totMin = ordered.reduce((s, x) => s + (x.p.survey.leg?.min || 0), 0);
+    const anyEst = ordered.some(x => x.p.survey.leg?.est);
+    const remain = ordered.filter(x => !x.p.survey.done);
+    const doneN  = ordered.length - remain.length;
+    const links  = remain.length ? surveyNavLinks(remain.map(x => x.ll), true) : [];
+    sumEl.innerHTML = `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:var(--blue-lt);border-radius:10px;padding:10px 12px">
+        <span class="badge badge-blue">🏠 ${ordered.length} จุด</span>
+        <span class="badge badge-green">✓ ไปแล้ว ${doneN}</span>
+        <span class="badge badge-gray">🚗 ${anyEst ? '≈ ' : ''}${fmtKm(totKm)} กม. · ${fmtMin(totMin)}</span>
+        ${meta.source === 'straight' || anyEst ? '<span style="font-size:11px;color:var(--gray)">(บางช่วงประมาณจากเส้นตรง)</span>' : ''}
+        <span style="flex:1"></span>
+        ${links.map((u, i) => `<a class="btn btn-success btn-sm" href="${u}" target="_blank">🚗 นำทางจุดที่เหลือ${links.length > 1 ? ` ช่วง ${i + 1}` : ''} ↗</a>`).join('')}
+      </div>
+      ${unplanned.length ? planBanner(`มีทรัพย์ใหม่ ${unplanned.length} รายการที่ยังไม่อยู่ในเส้นทาง`) : ''}`;
+  } else {
+    sumEl.innerHTML = unplanned.length ? planBanner(`มีทรัพย์ที่มีพิกัด ${unplanned.length} รายการ พร้อมจัดเส้นทาง`) : '';
+  }
+
+  // การ์ดทรัพย์ (หน้าตาเดียวกับหน้าแรก) เรียงตามลำดับเส้นทาง → ที่ยังไม่ได้จัด → ที่ยังไม่มีพิกัด/รออ่าน PDF
+  const listEl = document.getElementById('survey-list');
+  const openIds = new Set([...listEl.querySelectorAll('.prop-card.expanded')].map(e => e.id.replace('sv-', '')));
+  const skipped = surveyCandidates().filter(p => p.survey?.skip).map(p => ({ p, ll: parseLatLng(p.mapUrl) }));
+  const cards = [...ordered.map((x, i) => ({ ...x, idx: i })), ...unplanned, ...noLL, ...skipped];
+  listEl.innerHTML = cards.length ? cards.map(x => surveyCardHtml(x, ordered.length, openIds.has(x.p.id) || _svPdfOpen.has(x.p.id))).join('') : '';
+  _svPdfOpen.forEach(id => { const box = document.getElementById('svpdf-' + id); const p = S.pool.find(x => x.id === id);
+    if (box && p?.pdfUrl) renderPdfInto(box, p.pdfUrl); else _svPdfOpen.delete(id); });
+
+  // แผนที่: หมุดตัวเลขตามลำดับ + เส้นทาง
+  const canvas = document.getElementById('survey-canvas');
+  const pins = ordered.length ? ordered : unplanned;
+  if (!pins.length) { canvas.style.display = 'none'; return; }
+  canvas.style.display = '';
+  try { await loadLeaflet(); } catch(e) { canvas.innerHTML = `<div style="padding:40px;text-align:center;color:var(--red)">${e.message}</div>`; return; }
+  if (!_smap) {
+    _smap = L.map('survey-canvas', { scrollWheelZoom: true });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(_smap);
+  }
+  _smapLayers.forEach(l => _smap.removeLayer(l)); _smapLayers = [];
+  const bounds = [];
+  pins.forEach((x, i) => {
+    const done = x.p.survey?.done, label = ordered.length ? (done ? '✓' : i + 1) : '•';
+    const icon = L.divIcon({ className: '', iconSize: [28, 28], iconAnchor: [14, 14],
+      html: `<div style="width:28px;height:28px;border-radius:50%;background:${done ? '#16A34A' : '#1F3A5F'};color:#fff;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font:800 13px sans-serif">${label}</div>` });
+    const mk = L.marker([x.ll.lat, x.ll.lng], { icon }).addTo(_smap)
+      .bindPopup(`<b>${escapeHtml((x.p.code ? x.p.code + ' — ' : '') + x.p.name)}</b><br><span style="font-size:12px">${escapeHtml(x.p.loc || '')}</span>`);
+    _smapLayers.push(mk); bounds.push([x.ll.lat, x.ll.lng]);
+  });
+  if (_surveyGps && meta.gps) {
+    const g = L.circleMarker([_surveyGps.lat, _surveyGps.lng], { radius: 8, fillColor: '#EF4444', color: '#fff', weight: 2, fillOpacity: 1 }).addTo(_smap).bindPopup('📍 จุดเริ่ม (ตำแหน่งตอนจัดเส้นทาง)');
+    _smapLayers.push(g); bounds.push([_surveyGps.lat, _surveyGps.lng]);
+  }
+  if (ordered.length > 1 || (_surveyGps && meta.gps && ordered.length)) {
+    const line = _surveyGeom
+      ? L.polyline(_surveyGeom, { color: '#2E6FAD', weight: 4, opacity: .8 })
+      : L.polyline([...(_surveyGps && meta.gps ? [[_surveyGps.lat, _surveyGps.lng]] : []), ...ordered.map(x => [x.ll.lat, x.ll.lng])], { color: '#2E6FAD', weight: 3, dashArray: '6 6' });
+    line.addTo(_smap); _smapLayers.push(line);
+  }
+  // กล่องแผนที่เพิ่งถูกโชว์ → ต้องให้ Leaflet วัดขนาดใหม่ก่อน ไม่งั้น fitBounds คิดจากกล่องขนาด 0 แล้วซูมลึกสุด
+  const fit = () => { _smap.invalidateSize(); if (bounds.length === 1) _smap.setView(bounds[0], 15); else _smap.fitBounds(bounds, { padding: [40, 40] }); };
+  fit(); setTimeout(fit, 150);
+}
+
 function updateBadges() {
+  const surveyBadge = document.getElementById('badge-survey');
+  if (surveyBadge) surveyBadge.textContent = (S.pool||[]).length;
   document.getElementById('badge-props').textContent = S.props.length;
   document.getElementById('badge-reno').textContent = S.expenses.length;
   const soldBadge = document.getElementById('badge-sold');
@@ -2639,9 +3476,10 @@ function renderProps() {
           </div>
         </div>
         <div class="prop-body">
-          ${(isImageSrc(p.imgProp)||isImageSrc(p.imgDetail))?`<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          ${(isImageSrc(p.imgProp)||isImageSrc(p.imgDetail)||isImageSrc(p.imgLand))?`<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
             ${isImageSrc(p.imgProp)?`<img src="${p.imgProp}" style="height:90px;border-radius:8px;object-fit:cover;border:1.5px solid var(--border);cursor:zoom-in" onclick="showLightbox('${p.imgProp}')" title="รูปทรัพย์">`:'' }
             ${isImageSrc(p.imgDetail)?`<img src="${p.imgDetail}" style="height:90px;border-radius:8px;object-fit:cover;border:1.5px solid var(--border);cursor:zoom-in" onclick="showLightbox('${p.imgDetail}')" title="รูปรายละเอียด">`:'' }
+            ${isImageSrc(p.imgLand)?`<img src="${p.imgLand}" style="height:90px;border-radius:8px;object-fit:cover;border:1.5px solid #A7C7E7;cursor:zoom-in" onclick="showLightbox('${p.imgLand}')" title="แผนที่กรมที่ดิน">`:'' }
           </div>`:''}
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
             ${p.code?`<span class="badge badge-blue">🔖 ${p.code}</span>`:''}
@@ -2649,6 +3487,8 @@ function renderProps() {
             ${p.case?`<span class="badge badge-gray">คดี ${p.case}</span>`:''}
             ${Number(p.actualSell)>0?`<span class="badge badge-green">💵 ขายได้ ${fmtNum(Number(p.actualSell))} ฿</span>`:''}
             ${p.mapUrl?`<a href="${p.mapUrl.startsWith('http')?p.mapUrl:'https://maps.google.com/?q='+encodeURIComponent(p.mapUrl)}" target="_blank" class="btn btn-ghost btn-xs">📍 แผนที่</a>`:''}
+            ${landMapButton(p) || (p.deed ? landMapFallback(p) : '')}
+            ${pdfButton(p)}
             <button class="btn btn-ghost btn-xs" onclick="switchTab('calc');setTimeout(()=>{const s=document.getElementById('calc-prop-sel');if(s){s.value='${p.id}';calcFillFromProp();}},100)">🧮 คำนวณ</button>
             <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();printPropReport('${p.id}')">🖨 พิมพ์ / PDF</button>
           </div>
@@ -2853,6 +3693,8 @@ function setPropStatus(id, status) {
 
 function openAddPropModal() {
   document.getElementById('prop-edit-id').value = '';
+  document.getElementById('prop-to-pool').value = '';
+  document.getElementById('prop-land-url').value = '';
   document.getElementById('modal-prop-title').textContent = '🏠 เพิ่มทรัพย์ที่เล็งไว้';
   ['prop-code','prop-name','prop-loc','prop-size','prop-deed','prop-case','prop-appraisal','prop-target-sell','prop-actual-sell','prop-reno-budget','prop-notes','prop-map'].forEach(id=>{
     document.getElementById(id).value='';
@@ -2864,9 +3706,10 @@ function openAddPropModal() {
 }
 
 function editProp(id) {
-  const p = S.props.find(x=>x.id===id); if (!p) return;
+  const p = findAnyProp(id); if (!p) return;
   document.getElementById('prop-edit-id').value = id;
-  document.getElementById('modal-prop-title').textContent = '✏️ แก้ไขทรัพย์';
+  document.getElementById('prop-to-pool').value = '';
+  document.getElementById('modal-prop-title').textContent = p.pool ? '✏️ แก้ไขทรัพย์รอสำรวจ' : '✏️ แก้ไขทรัพย์';
   document.getElementById('prop-code').value        = p.code||'';
   document.getElementById('prop-name').value        = p.name||'';
   document.getElementById('prop-loc').value         = p.loc||'';
@@ -2883,6 +3726,8 @@ function editProp(id) {
   clearPropImgAll();
   if (p.imgProp)   { document.getElementById('img-prop-thumb').src=p.imgProp; document.getElementById('img-prop-preview').style.display=''; }
   if (p.imgDetail) { document.getElementById('img-detail-thumb').src=p.imgDetail; document.getElementById('img-detail-preview').style.display=''; }
+  if (p.imgLand)   { document.getElementById('img-land-thumb').src=p.imgLand;     document.getElementById('img-land-preview').style.display=''; }
+  document.getElementById('prop-land-url').value    = p.landMapUrl||'';
   document.getElementById('prop-target-round-sel').value = String(p.targetRound ?? 0);
   renderPropRoundsTable(p.rounds||[], p.targetRound||0);
   openModal('modal-prop');
@@ -2911,15 +3756,21 @@ function saveProp() {
     mapUrl:     document.getElementById('prop-map').value.trim(),
     targetRound,
     rounds,
-    imgProp:   pickImgSrc('img-prop-thumb',   editId && (S.props.find(x=>x.id===editId)||{}).imgProp),
-    imgDetail: pickImgSrc('img-detail-thumb', editId && (S.props.find(x=>x.id===editId)||{}).imgDetail),
+    imgProp:   pickImgSrc('img-prop-thumb',   editId && (findAnyProp(editId)||{}).imgProp),
+    imgDetail: pickImgSrc('img-detail-thumb', editId && (findAnyProp(editId)||{}).imgDetail),
+    imgLand:   pickImgSrc('img-land-thumb',   editId && (findAnyProp(editId)||{}).imgLand),
+    landMapUrl: document.getElementById('prop-land-url').value.trim(),
   };
   if (editId) {
-    const p = S.props.find(x=>x.id===editId);
+    const p = findAnyProp(editId);
     if (p) Object.assign(p, data);
+  } else if (document.getElementById('prop-to-pool').value) {
+    S.pool.push({ id:uid(), ...data, pool:true, status:'watching', docs:[], notif:null });
   } else {
     S.props.push({ id:uid(), ...data, status:'watching', docs:[], notif:null });
   }
+  document.getElementById('prop-to-pool').value = '';
+  if (document.getElementById('tab-survey').classList.contains('active')) renderSurvey();
   if (renoActiveProp && (S.props.find(x=>x.id===renoActiveProp)||{}).actualSell > 0) renoActiveProp = '';
   saveS(); renderProps(); renderReno(); populateRenoProps(); calcPopulatePropSel(); updateBadges(); closeModal('modal-prop');
   if (typeof renderSold === 'function') renderSold();
@@ -3036,10 +3887,13 @@ function collectPropRounds() {
   }));
 }
 
+// ช่องรูปในฟอร์มทรัพย์: prop = รูปทรัพย์, detail = รูปรายละเอียด, land = แผนที่กรมที่ดิน
+const imgSlotIds = type => ({ thumb:`img-${type}-thumb`, preview:`img-${type}-preview`, input:`prop-img-${type}` });
+
 async function handlePropImg(input, type) {
   const file = input.files[0]; if (!file) return;
-  const thumbEl   = document.getElementById(type==='prop' ? 'img-prop-thumb'    : 'img-detail-thumb');
-  const previewEl = document.getElementById(type==='prop' ? 'img-prop-preview'  : 'img-detail-preview');
+  const thumbEl   = document.getElementById(imgSlotIds(type).thumb);
+  const previewEl = document.getElementById(imgSlotIds(type).preview);
   const b64 = await fileToBase64Compressed(file);
   thumbEl.src = b64;
   previewEl.style.display = '';
@@ -3085,28 +3939,23 @@ async function openImgPick(type) {
 }
 
 function applyPickedImg(url) {
-  const thumbId   = _imgPickTarget === 'prop' ? 'img-prop-thumb'   : 'img-detail-thumb';
-  const previewId = _imgPickTarget === 'prop' ? 'img-prop-preview' : 'img-detail-preview';
-  document.getElementById(thumbId).src = url;
-  document.getElementById(previewId).style.display = '';
+  const ids = imgSlotIds(_imgPickTarget);
+  document.getElementById(ids.thumb).src = url;
+  document.getElementById(ids.preview).style.display = '';
   closeModal('modal-imgpick');
   toast('✓ เลือกรูปแล้ว — กดบันทึกทรัพย์เพื่อยืนยัน', 'success');
 }
 
 function clearPropImg(type) {
-  if (type==='prop') {
-    document.getElementById('img-prop-thumb').src='';
-    document.getElementById('img-prop-preview').style.display='none';
-    document.getElementById('prop-img-prop').value='';
-  } else {
-    document.getElementById('img-detail-thumb').src='';
-    document.getElementById('img-detail-preview').style.display='none';
-    document.getElementById('prop-img-detail').value='';
-  }
+  const ids = imgSlotIds(type);
+  // removeAttribute ไม่ใช่ src='' — ดูกับดัก img.src ใน pickImgSrc()
+  document.getElementById(ids.thumb).removeAttribute('src');
+  document.getElementById(ids.preview).style.display='none';
+  document.getElementById(ids.input).value='';
 }
 
 function clearPropImgAll() {
-  clearPropImg('prop'); clearPropImg('detail');
+  clearPropImg('prop'); clearPropImg('detail'); clearPropImg('land');
 }
 
 function openPropMap() {
@@ -3152,6 +4001,10 @@ function fileToBase64Compressed(file) {
 }
 
 async function uploadToStorage(base64, filename) {
+  try { return await uploadBlobToStorage(await (await fetch(base64)).blob(), filename); }
+  catch(e) { return null; }
+}
+async function uploadBlobToStorage(blob, filename) {
   const client = initSb();
   if (!client) return null;
   try {
@@ -3159,8 +4012,6 @@ async function uploadToStorage(base64, filename) {
     const { data: sess } = await client.auth.getSession();
     const token = sess?.session?.access_token;
     if (!token) return null;
-    const res = await fetch(base64);
-    const blob = await res.blob();
     const ext = (filename.split('.').pop() || 'jpg').replace(/[^a-zA-Z0-9]/g,'');
     const path = `${USER_KEY}/${Date.now()}_${Math.random().toString(36).slice(2,6)}.${ext}`;
     const up = await fetch(`${SB_URL}/storage/v1/object/auction-images/${path}`, {
@@ -3328,6 +4179,7 @@ function calcStorageUsage() {
 async function confirmClearProps() {
   if (!confirm(`ลบทรัพย์ทั้งหมด ${S.props.length} รายการ?\nรวมถึงรายการค่าใช้จ่ายที่เกี่ยวข้องด้วย\n\nไม่สามารถกู้คืนได้!`)) return;
   S.props    = [];
+  S.pool     = [];   // cloud ลบทั้งตาราง auction_props ซึ่งมีทรัพย์รอสำรวจอยู่ด้วย
   S.expenses = [];
   saveS(); renderProps(); renderReno(); updateBadges(); populateRenoProps(); calcPopulatePropSel();
   calcStorageUsage();

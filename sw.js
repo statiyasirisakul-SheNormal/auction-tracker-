@@ -1,7 +1,7 @@
 // Service Worker — ระบบจัดการทรัพย์ กรมบังคับคดี (item 13 PWA)
 // เปิดแอปแบบ offline ได้: cache ตัวแอป (app shell) + รูปที่โหลดแล้ว
 // ข้อมูลจริงอยู่ใน localStorage + sync Supabase เมื่อออนไลน์
-const CACHE = 'auction-tracker-v4';
+const CACHE = 'auction-tracker-v5';
 const SHELL = [
   './',
   './index.html',
@@ -33,6 +33,8 @@ self.addEventListener('fetch', (e) => {
 
   // Supabase / API — เอาสด ๆ เสมอ (อย่า cache ข้อมูล) ; ออฟไลน์ก็ปล่อยพัง (แอปมี localStorage)
   if (/supabase\.co/.test(url.host)) return;
+  // จัดเส้นทาง (OSRM) / หาพิกัด (Nominatim) — ต้องสดทุกครั้ง ไม่เก็บ cache
+  if (/router\.project-osrm\.org|nominatim\.openstreetmap\.org/.test(url.host)) return;
 
   // การเปิดหน้า (navigation) → network-first + ข้าม HTTP cache เสมอ (ได้ตัวใหม่ทันที)
   if (req.mode === 'navigate') {
