@@ -66,3 +66,15 @@ CREATE POLICY "auction_images_read"   ON storage.objects FOR SELECT USING (bucke
 CREATE POLICY "auction_images_write"  ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'auction-images');
 CREATE POLICY "auction_images_update" ON storage.objects FOR UPDATE USING (bucket_id = 'auction-images');
 CREATE POLICY "auction_images_delete" ON storage.objects FOR DELETE USING (bucket_id = 'auction-images');
+
+-- ═══ auction_settings (26 ก.ย. 2026) — ค่าตั้งที่ใช้ร่วมทุกเครื่อง เช่น Google Maps API key (key='gmaps_key') ═══
+create table if not exists public.auction_settings (
+  user_key text not null,
+  key text not null,
+  value text,
+  updated_at timestamptz not null default now(),
+  primary key (user_key, key)
+);
+alter table public.auction_settings enable row level security;
+drop policy if exists auction_settings_auth on public.auction_settings;
+create policy auction_settings_auth on public.auction_settings for all to authenticated using (true) with check (true);
