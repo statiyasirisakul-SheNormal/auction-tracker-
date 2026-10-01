@@ -5273,16 +5273,16 @@ async function readReceiptWithAI(image) {
     if (error) throw error;
     if (!data?.ok) {
       if (data?.code === 'no_key' || data?.code === 'bad_key') {
-        renoAiStatus('⚙️ ยังเปิดใช้ AI อ่านบิลไม่ได้ — ต้องตั้ง <b>ANTHROPIC_API_KEY</b> ใน Supabase › Edge Functions › Secrets ก่อน (รูปบิลบันทึกไว้แล้ว กรอกช่องเองได้ตามปกติ)', 'warn');
+        renoAiStatus('⚙️ ยังเปิดใช้ AI อ่านบิลไม่ได้ — ' + escapeHtml(data.error) + ' (รูปบิลบันทึกไว้แล้ว กรอกช่องเองได้ตามปกติ)', 'warn');
       } else renoAiStatus('⚠️ AI อ่านบิลไม่สำเร็จ: ' + escapeHtml(data?.error || 'ไม่ทราบสาเหตุ') + ' — กรอกเองได้ตามปกติ', 'warn');
       return;
     }
-    applyReceiptToForm(data.data);
+    applyReceiptToForm(data.data, data.provider);
   } catch (e) {
     renoAiStatus('⚠️ AI อ่านบิลไม่สำเร็จ: ' + escapeHtml(e.message || String(e)) + ' — กรอกเองได้ตามปกติ', 'warn');
   }
 }
-function applyReceiptToForm(r) {
+function applyReceiptToForm(r, provider) {
   const isNew = !document.getElementById('reno-edit-id').value;
   const filled = [];
   const setText = (id, val, label) => {
@@ -5311,7 +5311,7 @@ function applyReceiptToForm(r) {
     ? `<div class="ai-items">${r.items.map(i => `<span>${escapeHtml(i.name)} <b>${fmtNum(i.amount)}</b></span>`).join('')}</div>` : '';
   const note = r.note ? `<div style="margin-top:4px">📝 ${escapeHtml(r.note)}</div>` : '';
   renoAiStatus(filled.length
-    ? `✅ AI กรอกให้แล้ว: <b>${filled.join(', ')}</b>${conf} — ตรวจสอบก่อนกดบันทึก${note}${items}`
+    ? `✅ ${provider === 'gemini' ? 'Gemini' : provider === 'claude' ? 'Claude' : 'AI'} กรอกให้แล้ว: <b>${filled.join(', ')}</b>${conf} — ตรวจสอบก่อนกดบันทึก${note}${items}`
     : `ℹ️ AI อ่านแล้ว แต่ช่องต่าง ๆ มีข้อมูลอยู่แล้ว จึงไม่ได้แก้ให้${r.amount ? ` (ยอดบนบิล ${fmtNum(r.amount)} ฿)` : ''}${note}${items}`,
     r.confidence === 'low' ? 'warn' : 'ok');
 }

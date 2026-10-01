@@ -1,11 +1,14 @@
 // ══════════════════════════════════════════════════════════════
-//  Edge Function: receipt-read — ให้ AI (Claude) อ่านรูปบิล/ใบเสร็จ แล้วคืนค่าตามช่องในฟอร์มค่าใช้จ่าย
+//  Edge Function: receipt-read — ให้ AI อ่านรูปบิล/ใบเสร็จ แล้วคืนค่าตามช่องในฟอร์มค่าใช้จ่าย
 //  เรียกจากแอป: sb.functions.invoke('receipt-read', { body: { image, categories, payMethods } })
 //    image       = data URL รูป (jpeg/png/webp) ที่ย่อแล้วฝั่งแอป
 //    categories  = รายการหมวดหมู่ใน select#reno-cat (AI ต้องเลือกจากนี้เท่านั้น)
 //    payMethods  = รายการวิธีชำระใน select#reno-pay
 //
-//  Secret ที่ต้องตั้งเอง: ANTHROPIC_API_KEY (Supabase Dashboard › Edge Functions › Secrets)
+//  เลือก AI จาก Secret ที่ตั้งไว้ (Supabase Dashboard › Edge Functions › Secrets):
+//    GEMINI_API_KEY    → Google Gemini (มีโควตาฟรี · รุ่นเปลี่ยนได้ด้วย GEMINI_MODEL)
+//    ANTHROPIC_API_KEY → Claude
+//    ตั้งไว้ทั้งคู่ → ใช้ Gemini ก่อน (บังคับเลือกได้ด้วย RECEIPT_AI = gemini | claude)
 //  verify_jwt ปิด — ตรวจเองว่าเป็นคนที่ล็อกอินด้วย PIN แล้ว (เหมือน auction-push-notify)
 // ══════════════════════════════════════════════════════════════
 import Anthropic from "npm:@anthropic-ai/sdk";
@@ -42,8 +45,9 @@ Deno.serve(async (req) => {
     const { data: u } = jwt ? await sb.auth.getUser(jwt) : { data: null };
     if (!u?.user) return json({ ok: false, error: "unauthorized" }, 401);
 
-    if (!Deno.env.get("ANTHROPIC_API_KEY")) {
-      return json({ ok: false, code: "no_key", error: "ยังไม่ได้ตั้ง ANTHROPIC_API_KEY ใน Supabase › Edge Functions › Secrets" });
+    const provider = pickProvider();
+    if (!provider) {
+      return json({ ok: false, code: "no_key", error: "ยังไม่ได้ตั้ง GEMINI_API_KEY หรือ ANTHROPIC_API_KEY ใน Supabase › Edge Functions › Secrets" });
     }
 
     const { image, categories, payMethods } = await req.json();
@@ -54,53 +58,14 @@ Deno.serve(async (req) => {
     const pays = (Array.isArray(payMethods) ? payMethods : []).map(String).filter(Boolean).slice(0, 20);
     if (!cats.length) return json({ ok: false, error: "ไม่มีรายการหมวดหมู่" }, 400);
 
-    const schema = {
-      type: "object",
-      properties: {
-        date: { type: "string" },
-        amount: { type: "number" },
-        vendor: { type: "string" },
-        description: { type: "string" },
-        category: { type: "string", enum: cats },
-        payment: { type: "string", enum: [...pays, ""] },
-        items: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: { name: { type: "string" }, amount: { type: "number" } },
-            required: ["name", "amount"],
-            additionalProperties: false,
-          },
-        },
-        confidence: { type: "string", enum: ["high", "medium", "low"] },
-        note: { type: "string" },
-      },
-      required: ["date", "amount", "vendor", "description", "category", "payment", "items", "confidence", "note"],
-      additionalProperties: false,
+    const input: ReadInput = {
+      mediaType: m[1] as MediaType,
+      base64: m[2],
+      schema: receiptSchema(cats, pays),
+      prompt: `หมวดหมู่ที่เลือกได้: ${cats.join(" | ")}\nวิธีชำระที่เลือกได้: ${pays.join(" | ")}\n\nอ่านบิลนี้แล้วกรอกข้อมูล`,
     };
-
-    const client = new Anthropic();
-    const res = await client.beta.messages.create({
-      model: "claude-opus-5-5",
-      max_tokens: 4000,
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-      output_config: { effort: "low", format: { type: "json_schema", schema } },
-      system: SYSTEM,
-      messages: [{
-        role: "user",
-        content: [
-          { type: "image", source: { type: "base64", media_type: m[1] as MediaType, data: m[2] } },
-          { type: "text", text: `หมวดหมู่ที่เลือกได้: ${cats.join(" | ")}\nวิธีชำระที่เลือกได้: ${pays.join(" | ")}\n\nอ่านบิลนี้แล้วกรอกข้อมูล` },
-        ],
-      }],
-    });
-
-    if (res.stop_reason === "refusal") return json({ ok: false, error: "AI ปฏิเสธการอ่านรูปนี้" });
-    if (res.stop_reason === "max_tokens") return json({ ok: false, error: "AI ตอบไม่จบ ลองใหม่อีกครั้ง" });
-    const text = res.content.filter((b) => b.type === "text").map((b) => (b as { text: string }).text).join("");
-    const data = JSON.parse(text);
-    return json({ ok: true, data });
+    const out = provider === "gemini" ? await readWithGemini(input) : await readWithClaude(input);
+    return json({ ...out, provider });
   } catch (e) {
     if (e instanceof Anthropic.AuthenticationError) return json({ ok: false, code: "bad_key", error: "ANTHROPIC_API_KEY ไม่ถูกต้อง" });
     if (e instanceof Anthropic.RateLimitError) return json({ ok: false, error: "AI ถูกเรียกถี่เกินไป รอสักครู่แล้วลองใหม่" });
@@ -108,3 +73,113 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: String(e) }, 500);
   }
 });
+
+// ── เลือก AI ตาม Secret ที่ตั้งไว้ ─────────────────────────────
+function pickProvider(): "gemini" | "claude" | null {
+  const forced = (Deno.env.get("RECEIPT_AI") || "").toLowerCase();
+  const hasGemini = !!Deno.env.get("GEMINI_API_KEY");
+  const hasClaude = !!Deno.env.get("ANTHROPIC_API_KEY");
+  if (forced === "claude" && hasClaude) return "claude";
+  if (forced === "gemini" && hasGemini) return "gemini";
+  return hasGemini ? "gemini" : hasClaude ? "claude" : null;
+}
+
+type ReadInput = { mediaType: MediaType; base64: string; schema: Record<string, unknown>; prompt: string };
+type ReadOutput = { ok: true; data: unknown } | { ok: false; code?: string; error: string };
+
+function receiptSchema(cats: string[], pays: string[]) {
+  return {
+    type: "object",
+    properties: {
+      date: { type: "string" },
+      amount: { type: "number" },
+      vendor: { type: "string" },
+      description: { type: "string" },
+      category: { type: "string", enum: cats },
+      payment: { type: "string", enum: [...pays, ""] },
+      items: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: { name: { type: "string" }, amount: { type: "number" } },
+          required: ["name", "amount"],
+          additionalProperties: false,
+        },
+      },
+      confidence: { type: "string", enum: ["high", "medium", "low"] },
+      note: { type: "string" },
+    },
+    required: ["date", "amount", "vendor", "description", "category", "payment", "items", "confidence", "note"],
+    additionalProperties: false,
+  };
+}
+
+// ── Claude (Anthropic SDK) ────────────────────────────────────
+async function readWithClaude(inp: ReadInput): Promise<ReadOutput> {
+  const client = new Anthropic();
+  const res = await client.beta.messages.create({
+    model: "claude-opus-5-5",
+    max_tokens: 4000,
+    betas: ["server-side-fallback-2026-07-01"],
+    fallbacks: "default",
+    output_config: { effort: "low", format: { type: "json_schema", schema: inp.schema } },
+    system: SYSTEM,
+    messages: [{
+      role: "user",
+      content: [
+        { type: "image", source: { type: "base64", media_type: inp.mediaType, data: inp.base64 } },
+        { type: "text", text: inp.prompt },
+      ],
+    }],
+  });
+  if (res.stop_reason === "refusal") return { ok: false, error: "AI ปฏิเสธการอ่านรูปนี้" };
+  if (res.stop_reason === "max_tokens") return { ok: false, error: "AI ตอบไม่จบ ลองใหม่อีกครั้ง" };
+  const text = res.content.filter((b) => b.type === "text").map((b) => (b as { text: string }).text).join("");
+  return { ok: true, data: JSON.parse(text) };
+}
+
+// ── Gemini (REST generateContent + responseJsonSchema) ────────
+// โควตาฟรีเจอ 503 "high demand" บ่อย → ลองซ้ำ 1 ครั้ง แล้วสลับไปรุ่นสำรอง
+const GEMINI_FALLBACK_MODELS = ["gemini-3.6-flash", "gemini-3.5-flash"];
+async function readWithGemini(inp: ReadInput): Promise<ReadOutput> {
+  const primary = Deno.env.get("GEMINI_MODEL") || "gemini-3.8-flash";
+  const attempts = [primary, primary, ...GEMINI_FALLBACK_MODELS.filter((m) => m !== primary)];
+  let res!: Response;
+  let body: any = {};
+  for (const [i, model] of attempts.entries()) {
+    if (i > 0) await new Promise((r) => setTimeout(r, 1200));
+    res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": Deno.env.get("GEMINI_API_KEY")! },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: SYSTEM }] },
+        contents: [{
+          role: "user",
+          parts: [
+            { inline_data: { mime_type: inp.mediaType, data: inp.base64 } },
+            { text: inp.prompt },
+          ],
+        }],
+        generationConfig: { responseMimeType: "application/json", responseJsonSchema: inp.schema, temperature: 0 },
+      }),
+    });
+    body = await res.json().catch(() => ({}));
+    if (res.status !== 503 && res.status !== 500) break;   // ไม่ใช่ปัญหาเซิร์ฟเวอร์ล้น → ไม่ต้องลองต่อ
+    console.log("gemini busy", model, res.status);
+  }
+  if (!res.ok) {
+    const msg = body?.error?.message || `HTTP ${res.status}`;
+    if (res.status === 400 && /API key/i.test(msg)) return { ok: false, code: "bad_key", error: "GEMINI_API_KEY ไม่ถูกต้อง" };
+    if (res.status === 403) return { ok: false, code: "bad_key", error: "GEMINI_API_KEY ใช้ไม่ได้ (ไม่มีสิทธิ์)" };
+    if (res.status === 429) return { ok: false, error: "ใช้โควตา Gemini ครบแล้ว รอสักครู่ (หรือพรุ่งนี้) แล้วลองใหม่" };
+    if (res.status === 503) return { ok: false, error: "Gemini มีคนใช้เยอะชั่วคราว ลองถ่าย/เลือกรูปใหม่อีกสักครู่" };
+    return { ok: false, error: `Gemini error ${res.status}: ${msg}` };
+  }
+  const cand = body?.candidates?.[0];
+  const text = (cand?.content?.parts || []).map((p: { text?: string }) => p.text || "").join("");
+  if (!text) {
+    const why = cand?.finishReason || body?.promptFeedback?.blockReason || "ไม่มีคำตอบ";
+    return { ok: false, error: `Gemini อ่านรูปนี้ไม่ได้ (${why})` };
+  }
+  return { ok: true, data: JSON.parse(text) };
+}
