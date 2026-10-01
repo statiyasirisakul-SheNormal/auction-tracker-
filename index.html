@@ -11,11 +11,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="ประมูลทรัพย์">
-<meta name="theme-color" content="#1F3A5F">
+<meta name="theme-color" content="#13305E">
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="apple-touch-icon" href="./icon.svg">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="icon" type="image/svg+xml" href="./icon.svg">
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -247,7 +247,7 @@ input[type="file"] { display:none; }
 .stage-arrow { align-self:flex-start; margin-top:5px; color:#D1D5DB; font-size:16px; font-weight:800; }
 @media (max-width:640px){ .stage-lbl{font-size:9px;} .stage-arrow{display:none;} .stage-step{min-width:44px;} }
 
-/* ── toggle switch (item 6 LINE notify) ── */
+/* ── toggle switch (เปิด/ปิดแจ้งเตือนรายทรัพย์) ── */
 .switch { position:relative; display:inline-block; width:44px; height:24px; flex-shrink:0; }
 .switch input { opacity:0; width:0; height:0; }
 .switch-slider { position:absolute; inset:0; background:#CBD5E1; border-radius:24px; cursor:pointer; transition:.2s; }
@@ -516,11 +516,318 @@ input, select, textarea { font-size: 16px !important; }
 .lp-pad button:active{transform:scale(.94)}
 .lp-pad button.lp-go{background:#2563EB;color:#fff;border-color:#2563EB}
 </style>
+<!-- ════════════════════════════════════════════════════════════════
+     UI 2026 — ชั้นดีไซน์ใหม่ (ทับสไตล์เดิมด้านบน)
+     มือถือ: หัวเว้น safe-area ของ iPhone · เมนูย้ายเป็นแถบล่าง · การ์ดไม่ล้นจอ
+     ════════════════════════════════════════════════════════════════ -->
+<style>
+:root {
+  --navy:#13305E; --blue:#2563EB; --blue-lt:#EEF4FF;
+  --green:#15803D; --green-lt:#ECFDF3;
+  --red:#B91C1C; --red-lt:#FEF2F2;
+  --amber:#B45309; --amber-lt:#FFF7E6;
+  --gray:#64748B; --border:#E6EAF0; --bg:#F4F6FA;
+  --ink:#0F172A; --ink-2:#334155;
+  --shadow:0 1px 2px rgba(16,24,40,.04),0 6px 18px rgba(16,24,40,.06);
+  --shadow-lg:0 12px 40px rgba(16,24,40,.16);
+  --nav-h:62px;
+}
+html { -webkit-text-size-adjust:100%; }
+body {
+  font-family:'IBM Plex Sans Thai','Sarabun',system-ui,-apple-system,sans-serif;
+  background:var(--bg); color:var(--ink); line-height:1.5;
+  overflow-x:clip; -webkit-tap-highlight-color:transparent;
+}
+img, svg, video, canvas { max-width:100%; }
+.muted { color:var(--gray); }
+
+/* ── หัวแอป ── */
+.header {
+  position:relative; top:auto; height:auto; min-height:64px;
+  background:linear-gradient(135deg,#13305E 0%,#1E4FA3 100%);
+  padding:calc(env(safe-area-inset-top) + 10px) max(20px,env(safe-area-inset-right)) 12px max(20px,env(safe-area-inset-left));
+  gap:12px; box-shadow:0 6px 20px rgba(15,35,71,.16);
+}
+.hdr-logo { width:40px; height:40px; border-radius:12px; flex-shrink:0; box-shadow:0 2px 8px rgba(0,0,0,.25),0 0 0 1px rgba(255,255,255,.18); }
+.header h1 { font-size:17px; font-weight:700; letter-spacing:-.1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hdr-sub-inline { font-weight:500; opacity:.75; }
+.header p { font-size:12px; opacity:.72; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hdr-ver { font-size:10px; opacity:.7; margin-left:4px; }
+.hdr-btn {
+  position:relative; width:40px; height:40px; border-radius:12px; flex-shrink:0; cursor:pointer;
+  background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2); color:#fff; font-size:17px;
+  display:inline-flex; align-items:center; justify-content:center; transition:background .15s, transform .1s;
+}
+.hdr-btn:hover { background:rgba(255,255,255,.2); }
+.hdr-btn:active { transform:scale(.94); }
+.hdr-dot { position:absolute; top:7px; right:7px; width:9px; height:9px; border-radius:50%; background:#F87171; box-shadow:0 0 0 2px #1B4590; display:none; }
+
+/* ── เมนูหลัก (จอใหญ่: แถบด้านบน แบบปุ่มเม็ดยา) ── */
+.tabs {
+  position:sticky; top:0; z-index:90; display:flex; gap:4px; overflow-x:auto; scrollbar-width:none;
+  background:rgba(255,255,255,.88); -webkit-backdrop-filter:saturate(1.6) blur(14px); backdrop-filter:saturate(1.6) blur(14px);
+  border-bottom:1px solid var(--border); box-shadow:none;
+  padding:8px max(16px,calc((100% - 1280px)/2 + 24px));
+}
+.tab-btn {
+  flex:0 0 auto; border:none; border-radius:11px; margin:0; padding:9px 14px;
+  font-size:14px; font-weight:600; color:#475569; gap:7px; overflow:visible;
+}
+.tab-btn.active { background:var(--navy); color:#fff; border-bottom-color:transparent; }
+.tab-btn:hover:not(.active) { background:#EEF2F7; color:var(--ink); }
+.tab-ic { font-size:16px; line-height:1; }
+.tab-badge { background:#E8EEF8; color:var(--navy); font-size:11px; height:19px; min-width:19px; }
+.tab-btn.active .tab-badge { background:rgba(255,255,255,.22); color:#fff; }
+
+.content { padding:20px 24px 40px; }
+
+/* ── ชวนเปิดแจ้งเตือน ── */
+.push-nudge {
+  display:flex; align-items:center; gap:12px;
+  max-width:1232px; margin:16px auto 0; width:calc(100% - 48px);
+  background:linear-gradient(135deg,#EEF4FF 0%,#F5F3FF 100%); border:1px solid #DBE6FF;
+  border-radius:16px; padding:12px 14px; box-shadow:var(--shadow);
+}
+.pn-ic { font-size:24px; flex-shrink:0; }
+.pn-text { flex:1; min-width:0; font-size:12.5px; color:var(--ink-2); line-height:1.6; }
+.pn-text b { color:var(--navy); }
+.pn-text > b:first-child { display:block; font-size:14px; }
+.pn-x { background:none; border:none; color:#94A3B8; font-size:15px; cursor:pointer; align-self:flex-start; padding:2px 4px; }
+.ios-share { display:inline-block; padding:0 6px; border:1px solid #93C5FD; border-radius:6px; color:var(--blue); font-size:11px; font-weight:700; }
+
+/* ── การ์ด / ปุ่ม / ฟอร์ม ── */
+.card { border-radius:18px; border:1px solid var(--border); box-shadow:var(--shadow); padding:20px; }
+.card-title { font-size:17px; font-weight:700; color:var(--navy); }
+.btn { border-radius:11px; font-weight:600; min-height:40px; padding:9px 16px; justify-content:center; transition:background .15s, transform .1s, box-shadow .15s; }
+.btn:active { transform:scale(.97); }
+.btn-primary { background:var(--navy); box-shadow:0 2px 8px rgba(19,48,94,.22); }
+.btn-primary:hover { background:#0F2650; }
+.btn-ghost { background:#fff; color:var(--ink-2); border:1px solid var(--border); }
+.btn-ghost:hover { background:#F1F5F9; }
+.btn-sm { min-height:36px; padding:7px 13px; border-radius:10px; }
+.btn-xs { min-height:30px; padding:5px 10px; border-radius:9px; }
+.icon-btn { width:38px; height:38px; border-radius:11px; background:#fff; border:1px solid var(--border); font-size:15px; }
+.icon-btn:hover { background:#F1F5F9; }
+.icon-btn.more { font-size:20px; font-weight:700; color:var(--ink-2); letter-spacing:1px; }
+.icon-btn.chev { border:none; background:transparent; width:28px; }
+.form-input, .form-select, .form-textarea { border-radius:12px; border:1.5px solid #E2E8F0; padding:11px 13px; }
+.form-input:focus, .form-select:focus, .form-textarea:focus { border-color:var(--blue); box-shadow:0 0 0 4px rgba(37,99,235,.12); }
+.form-label { color:#475569; font-weight:600; }
+.badge { padding:4px 10px; border-radius:999px; font-size:11.5px; font-weight:600; line-height:1.35; }
+.badge-blue  { background:#EEF4FF; color:#1D4ED8; }
+.badge-green { background:#ECFDF3; color:#15803D; }
+.badge-red   { background:#FEF2F2; color:#B91C1C; }
+.badge-amber { background:#FFF7E6; color:#B45309; }
+.badge-gray  { background:#F1F5F9; color:#475569; }
+.modal { border-radius:20px; }
+.modal h3 { font-weight:700; }
+.stat-card { border-radius:16px; border:1px solid var(--border); }
+.section-title { letter-spacing:.3px; }
+.switch input:checked + .switch-slider { background:var(--blue); }
+.toast { border-radius:14px; font-weight:600; box-shadow:var(--shadow-lg); }
+
+/* ── การ์ดทรัพย์ ── */
+.prop-card { background:#fff; border:1px solid var(--border); border-radius:18px; box-shadow:var(--shadow); margin-bottom:12px; }
+.prop-card.won, .prop-card.renovating, .prop-card.listed, .prop-card.sold { border-color:#BBF7D0; }
+.prop-card.lost { border-color:#FECACA; }
+.prop-card.bidding { border-color:#FDE68A; }
+.prop-header { background:#fff; padding:14px 16px; gap:14px; align-items:center; flex-wrap:nowrap; }
+.prop-card.won .prop-header, .prop-card.renovating .prop-header, .prop-card.listed .prop-header, .prop-card.sold .prop-header { background:#F6FEF9; }
+.prop-card.lost .prop-header { background:#FFF8F8; }
+.prop-header:hover { filter:none; background:#FAFBFD; }
+.prop-card.expanded .prop-header { border-bottom:1px solid var(--border); }
+.prop-media { position:relative; flex-shrink:0; }
+.prop-thumb, .prop-thumb-empty { width:64px; height:64px; border-radius:14px; border:none; box-shadow:inset 0 0 0 1px rgba(15,23,42,.06); background:#EEF2F7; }
+.prop-thumb-empty { opacity:1; font-size:22px; color:#94A3B8; }
+.prop-num {
+  position:absolute; top:-6px; left:-6px; width:24px; height:24px; font-size:11.5px; font-weight:700;
+  border:2px solid #fff; box-shadow:0 2px 6px rgba(15,23,42,.18); background:var(--navy);
+}
+.prop-info { flex:1; min-width:0; }
+.prop-code {
+  display:inline-block; font-size:12px; font-weight:700; color:#1D4ED8; background:#EEF4FF;
+  padding:1px 8px; border-radius:7px; margin-bottom:3px; white-space:nowrap; font-variant-numeric:tabular-nums;
+}
+.prop-name {
+  font-size:15.5px; font-weight:700; color:var(--ink); line-height:1.35; white-space:normal;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; word-break:break-word;
+}
+.prop-sub { font-size:12.5px; color:var(--gray); margin-top:2px; line-height:1.45; }
+.prop-sub b { color:var(--ink-2); font-weight:600; }
+.prop-badges { display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end; max-width:44%; }
+.prop-actions { display:flex; gap:6px; align-items:center; flex-shrink:0; }
+.prop-body { padding:16px; border-top:none; }
+.prop-card.flash { animation:propFlash 2.2s ease; }
+@keyframes propFlash { 0%,60% { box-shadow:0 0 0 3px rgba(37,99,235,.45),var(--shadow); } 100% { box-shadow:var(--shadow); } }
+.round-tile { border-width:1.5px; border-radius:12px; }
+
+/* แจ้งเตือนรายทรัพย์ */
+.notify-row { display:flex; align-items:center; gap:12px; background:#F8FAFF; border:1px solid #DBE6FF; border-radius:12px; padding:10px 12px; margin-bottom:14px; }
+.notify-title { font-size:12.5px; font-weight:700; color:var(--navy); }
+.notify-chips { display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; font-size:11.5px; }
+.nt-chip { background:#fff; border:1px solid #DBE6FF; color:#1D4ED8; padding:2px 9px; border-radius:999px; font-weight:600; white-space:nowrap; }
+.nt-chip.soon { background:#FEF2F2; border-color:#FECACA; color:#B91C1C; }
+
+/* ── เมนูตัวเลือก (⋯) ── */
+.sheet-overlay { position:fixed; inset:0; z-index:650; background:rgba(15,23,42,.45); display:none; align-items:center; justify-content:center; padding:20px; }
+.sheet-overlay.open { display:flex; animation:fadeIn .15s ease; }
+.sheet { width:100%; max-width:400px; background:#fff; border-radius:20px; padding:8px 10px 10px; box-shadow:var(--shadow-lg); }
+.sheet-title { font-size:13px; font-weight:700; color:var(--gray); text-align:center; padding:10px 12px; border-bottom:1px solid var(--border); margin-bottom:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sheet-item { display:flex; width:100%; align-items:center; gap:12px; padding:13px 12px; border:none; background:none; font:inherit; font-size:15px; font-weight:600; color:var(--ink); border-radius:12px; cursor:pointer; text-align:left; }
+.sheet-item:hover, .sheet-item:active { background:#F1F5F9; }
+.sheet-item.danger { color:#DC2626; }
+.sheet-ic { width:28px; text-align:center; font-size:18px; }
+.sheet-cancel { justify-content:center; margin-top:6px; background:#F1F5F9; }
+@keyframes sheetUp { from { transform:translateY(100%); } to { transform:none; } }
+
+/* ── ตั้งค่า ── */
+.set-sec { background:var(--sec-bg); border:1px solid var(--sec-bd); border-radius:14px; padding:14px; margin-bottom:14px; scroll-margin-top:10px; }
+.set-sec-title { font-weight:700; color:var(--sec); margin-bottom:6px; font-size:15px; }
+.set-sec-desc { font-size:12.5px; color:#475569; line-height:1.65; margin-bottom:10px; }
+.set-status { background:#fff; border:1px solid var(--border); border-radius:10px; padding:10px 12px; font-size:13px; margin-bottom:10px; line-height:1.7; }
+
+/* ── หน้าใส่ PIN ── */
+#loginGate {
+  background:radial-gradient(900px 500px at 15% -10%,#2E5FB8 0%,transparent 60%),linear-gradient(160deg,#13305E,#0B1B36);
+  padding:calc(env(safe-area-inset-top) + 20px) 20px calc(env(safe-area-inset-bottom) + 20px);
+}
+#loginGate .lp-card { border-radius:26px; padding:30px 24px 24px; max-width:360px; }
+.lp-logo { width:68px; height:68px; border-radius:20px; box-shadow:0 8px 24px rgba(19,48,94,.35); }
+#loginGate h2 { color:var(--navy); font-weight:700; font-size:20px; margin-top:12px; }
+#loginGate .lp-sub { line-height:1.55; color:#475569; }
+#loginDots .lp-dot.f { background:var(--blue); }
+.lp-pad { gap:10px; }
+.lp-pad button { border-radius:16px; padding:16px 0; font-size:22px; font-weight:600; background:#F8FAFC; border:1px solid #E2E8F0; }
+.lp-pad button.lp-go { background:var(--blue); border-color:var(--blue); }
+
+/* แท็บย่อชื่อ: จอใหญ่ใช้ชื่อเต็ม */
+.t-short { display:none; }
+
+/* ── Fluid menu (มือถือ) — วงกลมซ้อนกันเป็นแคปซูล ไอคอน ☰ หมุนเป็น ✕ ── */
+.fluid-nav, .hdr-page { display:none; }
+.hdr-page { font-size:17px; font-weight:700; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fluid-nav {
+  position:fixed; z-index:450; width:60px; height:60px;
+  right:max(16px,env(safe-area-inset-right)); bottom:calc(16px + env(safe-area-inset-bottom));
+}
+.fluid-backdrop {
+  position:fixed; inset:0; z-index:440; background:rgba(15,23,42,.38);
+  -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
+  opacity:0; pointer-events:none; transition:opacity .3s;
+}
+.fluid-backdrop.open { opacity:1; pointer-events:auto; }
+.fl-item {
+  position:absolute; left:0; top:0; width:60px; height:60px; border:none; padding:0; cursor:pointer;
+  background:#F1F5F9; color:#475569; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; font:inherit;
+  will-change:transform,opacity; backface-visibility:hidden;
+  transition:transform .3s cubic-bezier(.4,0,.2,1), opacity .35s, background .2s, color .2s;
+  opacity:0; transform:translateY(0); pointer-events:none;
+}
+.fl-item svg { width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; transition:stroke-width .2s; }
+.fl-item:hover svg, .fl-item.active svg { stroke-width:2.3; }
+.fl-item.active { color:var(--blue); background:#E0EAFF; }
+.fluid-nav[data-expanded="true"] .fl-item { opacity:1; pointer-events:auto; transform:translateY(calc(var(--i) * -50px)); }
+.fl-label {
+  position:absolute; right:70px; top:50%; transform:translate(8px,-50%); white-space:nowrap;
+  background:#fff; color:var(--ink); font-size:13.5px; font-weight:600; padding:6px 12px; border-radius:999px;
+  box-shadow:0 4px 14px rgba(15,23,42,.14); opacity:0; transition:opacity .25s, transform .25s; pointer-events:none;
+}
+.fl-item.active .fl-label { color:var(--blue); }
+.fluid-nav[data-expanded="true"] .fl-label { opacity:1; transform:translate(0,-50%); transition-delay:.12s; }
+.fl-badge {
+  position:absolute; top:6px; right:6px; min-width:17px; height:17px; padding:0 4px; border-radius:999px;
+  background:#EF4444; color:#fff; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center;
+  box-shadow:0 0 0 2px #fff;
+}
+.fl-main {
+  position:absolute; inset:0; z-index:60; width:60px; height:60px; border-radius:50%; border:none; cursor:pointer;
+  background:linear-gradient(135deg,#1E4FA3,#13305E); color:#fff;
+  box-shadow:0 8px 24px rgba(19,48,94,.38),0 0 0 1px rgba(255,255,255,.12) inset;
+  display:flex; align-items:center; justify-content:center; transition:transform .15s;
+}
+.fl-main:active { transform:scale(.94); }
+.fl-main .fl-ic { position:absolute; width:26px; height:26px; transition:all .3s ease-in-out; transform-origin:center; }
+.fl-main .fl-ic svg { width:26px; height:26px; stroke:#fff; fill:none; stroke-width:1.8; stroke-linecap:round; }
+.fl-main .fl-x { opacity:0; transform:scale(0) rotate(-180deg); }
+.fluid-nav[data-expanded="true"] .fl-burger { opacity:0; transform:scale(0) rotate(180deg); }
+.fluid-nav[data-expanded="true"] .fl-x { opacity:1; transform:scale(1) rotate(0); }
+.fl-main .fl-dot { display:none; position:absolute; top:4px; right:4px; width:12px; height:12px; border-radius:50%; background:#EF4444; box-shadow:0 0 0 2px #fff; }
+.fl-main .fl-dot.on { display:block; }
+.fluid-nav[data-expanded="true"] .fl-main .fl-dot { display:none; }
+
+/* ══ มือถือ / แท็บเล็ตแนวตั้ง ══ */
+@media (max-width:760px) {
+  .header {
+    position:sticky; top:0; z-index:100; min-height:0; gap:10px;
+    padding:calc(env(safe-area-inset-top) + 8px) max(14px,env(safe-area-inset-right)) 10px max(14px,env(safe-area-inset-left));
+  }
+  .hdr-logo { width:34px; height:34px; border-radius:10px; }
+  .header h1 { font-size:16px; }
+  .header p { display:none; }
+  .hdr-btn { width:38px; height:38px; font-size:16px; }
+
+  /* แถบแท็บด้านบนซ่อน → ใช้ fluid menu ลอยมุมขวาล่างแทน */
+  .tabs { display:none; }
+  .fluid-nav { display:block; }
+  .hdr-page { display:block; }
+  .header h1 { font-size:12px; font-weight:500; opacity:.75; }
+
+  body { padding-bottom:calc(96px + env(safe-area-inset-bottom)); }
+  .content { padding:12px 12px 24px; }
+  .toast { bottom:calc(env(safe-area-inset-bottom) + 92px); }
+  .push-nudge { width:auto; margin:12px 12px 0; }
+
+  /* หน้าทรัพย์: ไม่ซ้อนการ์ดในการ์ด → ได้ความกว้างเต็มจอ */
+  #tab-props > .card { background:transparent; border:none; box-shadow:none; padding:0; }
+  #tab-props > .card > .card-header { margin-bottom:12px; padding:2px 2px 0; }
+  #tab-props > .card > .card-header > div:last-child { width:100%; }
+  #tab-props > .card > .card-header .btn { flex:1; }
+
+  .card { padding:16px; border-radius:16px; }
+  .btn { min-height:44px; }
+  .btn-sm { min-height:38px; }
+  .btn-xs { min-height:32px; }
+  .icon-btn { width:40px; height:40px; }
+  .desk-only, .icon-btn.chev { display:none !important; }
+
+  /* หัวการ์ดทรัพย์: รูป | ชื่อ | ⋯   แล้วป้ายนัดเรียงแถวล่างเต็มกว้าง */
+  .prop-header {
+    display:grid; grid-template-columns:56px minmax(0,1fr) auto;
+    grid-template-areas:"media info actions" "badges badges badges";
+    column-gap:12px; row-gap:10px; padding:14px; align-items:start;
+  }
+  .prop-media { grid-area:media; }
+  .prop-thumb, .prop-thumb-empty { width:56px; height:56px; border-radius:13px; grid-area:auto; margin:0; }
+  .prop-num { grid-area:auto; width:22px; height:22px; font-size:11px; margin:0; top:-5px; left:-5px; }
+  .prop-info { grid-area:info; }
+  .prop-name { font-size:15px; }
+  .prop-sub { font-size:12px; }
+  .prop-badges { grid-area:badges; max-width:none; justify-content:flex-start; gap:6px; }
+  .prop-actions { grid-area:actions; align-self:start; margin-top:-2px; }
+  .prop-header.sv { grid-template-columns:56px minmax(0,1fr); grid-template-areas:"media info" "actions actions"; }
+  .prop-header.sv .prop-actions { justify-content:flex-end; margin-top:0; }
+  .prop-body { padding:14px; }
+
+  /* เมนู ⋯ เป็น bottom sheet */
+  .sheet-overlay { align-items:flex-end; padding:0; }
+  .sheet { max-width:none; border-radius:22px 22px 0 0; padding:8px 12px calc(12px + env(safe-area-inset-bottom)); animation:sheetUp .22s ease; }
+  .sheet::before { content:''; display:block; width:40px; height:4px; background:#D1D5DB; border-radius:2px; margin:4px auto 4px; }
+
+  .modal { border-radius:22px 22px 0 0; }
+}
+@media (max-width:360px) {
+  .tab-btn { font-size:9.5px; }
+  .tab-btn .tab-ic { font-size:19px; }
+  .header h1 .hdr-sub-inline { display:none; }
+}
+@media print { .tabs, .push-nudge, .sheet-overlay { display:none !important; } body { padding:0 !important; } }
+</style>
 <div id="loginGate">
   <div class="lp-card">
-    <div style="font-size:42px">🏛️</div>
+    <img src="./icon-192.png" alt="" class="lp-logo">
     <h2>ระบบจัดการทรัพย์</h2>
-    <div class="lp-sub">ใส่ PIN เพื่อเข้าใช้งาน</div>
+    <div class="lp-sub">ใส่ PIN ครั้งเดียว — เครื่องนี้จะจำไว้ ไม่ต้องใส่อีก</div>
     <div id="loginDots">
       <span class="lp-dot"></span><span class="lp-dot"></span><span class="lp-dot"></span>
       <span class="lp-dot"></span><span class="lp-dot"></span><span class="lp-dot"></span>
@@ -537,43 +844,57 @@ input, select, textarea { font-size: 16px !important; }
 </div>
 
 <div class="header">
-  <div style="font-size:30px">🏛️</div>
+  <img class="hdr-logo" src="./icon-192.png" alt="">
   <div style="flex:1;min-width:0">
-    <h1>ระบบจัดการทรัพย์ กรมบังคับคดี <span style="font-size:10px;font-weight:600;opacity:.6;white-space:nowrap">v.2026.09.26</span></h1>
-    <p>บริหารเอกสาร · ติดตามประมูล · บันทึกค่าใช้จ่าย · ปฏิทิน Google</p>
+    <h1>ระบบจัดการทรัพย์ <span class="hdr-sub-inline">กรมบังคับคดี</span></h1>
+    <div class="hdr-page" id="hdr-page">ทรัพย์</div>
+    <p>บริหารเอกสาร · ติดตามประมูล · บันทึกค่าใช้จ่าย <span class="hdr-ver">v.2026.10.01</span></p>
   </div>
-  <button onclick="openSettings()" style="background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.35);color:white;border-radius:9px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0">
-    ⚙️
-  </button>
+  <button class="hdr-btn" id="hdr-bell" onclick="openSettings('notify')" title="การแจ้งเตือน" aria-label="การแจ้งเตือน">🔔<span class="hdr-dot" id="hdr-bell-dot"></span></button>
+  <button class="hdr-btn" onclick="openSettings()" title="ตั้งค่า" aria-label="ตั้งค่า">⚙️</button>
 </div>
 
 <div id="sync-banner" style="display:none;padding:10px 16px;font-size:13px;line-height:1.5;text-align:center;font-weight:600;border-bottom:1px solid"></div>
 
-<div class="tabs">
+<!-- เมนูหลัก: จอใหญ่ = แถบแท็บด้านบน · มือถือ = แถบล่างแบบแอป (CSS สลับให้) -->
+<nav class="tabs" aria-label="เมนูหลัก">
   <button class="tab-btn active" onclick="switchTab('props')">
-    🏠 <span class="t-full">ทรัพย์</span><span class="t-short">ทรัพย์</span> <span class="tab-badge" id="badge-props">0</span>
+    <span class="tab-ic">🏠</span><span class="t-full">ทรัพย์</span><span class="t-short">ทรัพย์</span><span class="tab-badge" id="badge-props">0</span>
   </button>
   <button class="tab-btn" onclick="switchTab('reno')">
-    🔨 <span class="t-full">ค่าใช้จ่าย</span><span class="t-short">รายจ่าย</span> <span class="tab-badge" id="badge-reno">0</span>
+    <span class="tab-ic">🔨</span><span class="t-full">ค่าใช้จ่าย</span><span class="t-short">รายจ่าย</span><span class="tab-badge" id="badge-reno">0</span>
   </button>
   <button class="tab-btn" onclick="switchTab('summary')">
-    📊 <span class="t-full">สรุปภาพรวม</span><span class="t-short">สรุป</span>
+    <span class="tab-ic">📊</span><span class="t-full">สรุปภาพรวม</span><span class="t-short">สรุป</span>
   </button>
   <button class="tab-btn" onclick="switchTab('calc')">
-    🧮 <span class="t-full">คำนวณทรัพย์</span><span class="t-short">คำนวณ</span>
+    <span class="tab-ic">🧮</span><span class="t-full">คำนวณทรัพย์</span><span class="t-short">คำนวณ</span>
   </button>
   <button class="tab-btn" onclick="switchTab('pnl')">
-    💰 <span class="t-full">กำไร/ขาดทุน</span><span class="t-short">กำไร</span>
+    <span class="tab-ic">💰</span><span class="t-full">กำไร/ขาดทุน</span><span class="t-short">กำไร</span>
   </button>
   <button class="tab-btn" onclick="switchTab('sold')">
-    ✅ <span class="t-full">ขายแล้ว</span><span class="t-short">ขายแล้ว</span> <span class="tab-badge" id="badge-sold">0</span>
-  </button>
-  <button class="tab-btn" onclick="switchTab('map')">
-    🗺️ <span class="t-full">แผนที่</span><span class="t-short">แผนที่</span>
+    <span class="tab-ic">✅</span><span class="t-full">ขายแล้ว</span><span class="t-short">ขายแล้ว</span><span class="tab-badge" id="badge-sold">0</span>
   </button>
   <button class="tab-btn" onclick="switchTab('survey')">
-    🧭 <span class="t-full">สำรวจทรัพย์</span><span class="t-short">สำรวจ</span> <span class="tab-badge" id="badge-survey">0</span>
+    <span class="tab-ic">🧭</span><span class="t-full">สำรวจทรัพย์</span><span class="t-short">สำรวจ</span><span class="tab-badge" id="badge-survey">0</span>
   </button>
+</nav>
+
+<!-- เมนูมือถือแบบ fluid menu: ปุ่มกลมลอย กดแล้วกางเป็นแคปซูลขึ้นด้านบน (สร้างจาก JS: buildFluidNav) -->
+<div class="fluid-backdrop" id="fluid-backdrop" onclick="toggleFluidNav(false)"></div>
+<nav class="fluid-nav" id="fluid-nav" data-expanded="false" aria-label="เมนูหลัก (มือถือ)"></nav>
+
+<!-- ชวนเปิดแจ้งเตือน (โชว์เฉพาะเครื่องที่ยังไม่ได้เปิด) -->
+<div id="push-nudge" class="push-nudge" style="display:none"></div>
+
+<!-- เมนูตัวเลือกของการ์ด (⋯) — มือถือเป็น bottom sheet -->
+<div class="sheet-overlay" id="action-sheet" onclick="if(event.target===this)closeActionSheet()">
+  <div class="sheet" role="menu">
+    <div class="sheet-title" id="action-sheet-title"></div>
+    <div id="action-sheet-items"></div>
+    <button class="sheet-item sheet-cancel" onclick="closeActionSheet()">ยกเลิก</button>
+  </div>
 </div>
 
 <div class="content">
@@ -778,19 +1099,6 @@ input, select, textarea { font-size: 16px !important; }
     </div>
   </div>
 
-  <!-- ══ MAP (แผนที่รวมทุกทรัพย์) ════════════════════════ -->
-  <div class="tab-panel" id="tab-map">
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">🗺️ แผนที่รวมทรัพย์ทั้งหมด</div>
-        <div id="map-legend" style="display:flex;gap:10px;flex-wrap:wrap;font-size:11px;font-weight:700"></div>
-      </div>
-      <div id="map-filter" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
-      <div id="map-canvas" style="height:520px;border-radius:12px;overflow:hidden;border:1.5px solid var(--border);background:#EAF0F5"></div>
-      <div id="map-empty" style="display:none" class="empty"><div class="empty-icon">🗺️</div><p>ยังไม่มีทรัพย์ที่ระบุพิกัด/แผนที่<br><span style="font-size:12px;color:var(--gray)">ใส่ Google Maps URL หรือพิกัด (lat, lng) ในหน้าแก้ไขทรัพย์</span></p></div>
-      <div id="map-list" style="margin-top:14px"></div>
-    </div>
-  </div>
 
   <!-- ══ SURVEY (จัดเส้นทางไปสำรวจทรัพย์) ════════════════ -->
   <div class="tab-panel" id="tab-survey">
@@ -1211,20 +1519,28 @@ input, select, textarea { font-size: 16px !important; }
 <div class="modal-overlay" id="modal-settings">
   <div class="modal" style="max-width:540px">
     <h3>⚙️ ตั้งค่าระบบ</h3>
+    <!-- แจ้งเตือนผ่านเครื่อง (Web Push) -->
+    <div class="set-sec" id="set-notify" style="--sec:#2563EB;--sec-bg:#EFF6FF;--sec-bd:#BFDBFE">
+      <div class="set-sec-title">🔔 แจ้งเตือนวันนัดประมูล</div>
+      <div class="set-sec-desc">เตือนทุกนัดของทุกทรัพย์ที่เก็บไว้ — ล่วงหน้า 7, 3, 1 วัน และเช้าวันนัด (08:00) แม้ไม่ได้เปิดแอป</div>
+      <div id="push-status" class="set-status">—</div>
+      <div id="push-actions" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+    </div>
+
     <!-- Cloud / บัญชี -->
-    <div style="background:var(--blue-lt);border:1.5px solid #93C5FD;border-radius:10px;padding:14px;margin-bottom:16px">
-      <div style="font-weight:800;color:var(--blue);margin-bottom:8px">☁️ Cloud &amp; บัญชี</div>
-      <div style="font-size:12px;color:#374151;line-height:1.7;margin-bottom:10px">
-        ข้อมูลทั้งหมดเก็บบน Cloud — เปิดเครื่องไหนก็เข้าที่ลิงก์เดิมแล้วใส่ PIN ได้เลย ไม่ต้องตั้งค่าอะไรอีก
+    <div class="set-sec" style="--sec:#1E3A8A;--sec-bg:#F8FAFC;--sec-bd:#E2E8F0">
+      <div class="set-sec-title">☁️ Cloud &amp; เครื่องนี้</div>
+      <div class="set-sec-desc">
+        เครื่องนี้จำ PIN ไว้แล้ว เปิดแอปครั้งต่อไปเข้าได้ทันที · เครื่องใหม่ใส่ PIN ครั้งเดียวก็จำเช่นกัน
       </div>
-      <div id="cloud-status" style="background:white;border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-size:13px;margin-bottom:10px">—</div>
+      <div id="cloud-status" class="set-status">—</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" onclick="testSupabase()">🔌 ทดสอบการเชื่อมต่อ</button>
         <button class="btn btn-primary btn-sm" onclick="syncFromSupabase()">⬇️ Sync จาก Cloud</button>
         <button class="btn btn-ghost btn-sm" onclick="changePin()">🔑 เปลี่ยน PIN</button>
-        <button class="btn btn-danger btn-sm" onclick="doLogout()">🚪 ออกจากระบบ</button>
+        <button class="btn btn-danger btn-sm" onclick="doLogout()">🚪 ให้เครื่องนี้ลืม PIN</button>
       </div>
-      <div style="font-size:11px;color:var(--gray);margin-top:6px">เปลี่ยน PIN แล้วมีผลทุกเครื่องทันที · ออกจากระบบไม่ลบข้อมูลบน Cloud</div>
+      <div style="font-size:11px;color:var(--gray);margin-top:8px;line-height:1.6">เปลี่ยน PIN = เครื่องใหม่ต้องใช้ PIN ใหม่ (เครื่องที่จำไว้แล้วยังเข้าได้ตามเดิม) · ลืม PIN มีผลเฉพาะเครื่องนี้ ข้อมูลบน Cloud ไม่หาย</div>
     </div>
 
     <!-- Google Maps -->
@@ -1502,6 +1818,18 @@ async function hasSession() {
   catch(e) { return false; }
 }
 
+// "เครื่องนี้จำ PIN แล้ว" = ยังมี token เก็บไว้ในเครื่อง
+// supabase-js ลบ token ทิ้งเองเฉพาะตอนที่เซิร์ฟเวอร์ปฏิเสธจริง (PIN ถูกถอน/ออกจากระบบ)
+// ถ้าแค่เน็ตหลุด/เซิร์ฟเวอร์หลับ token ยังอยู่ → ห้ามเด้งหน้าใส่ PIN ใช้ข้อมูลในเครื่องไปก่อน
+const AUTH_STORAGE_KEY = 'auction_auth';
+function deviceRemembered() {
+  try { return !!localStorage.getItem(AUTH_STORAGE_KEY); } catch(e) { return false; }
+}
+// ขอให้เบราว์เซอร์ไม่ล้างข้อมูลแอปเอง (Safari ล้าง localStorage ของเว็บที่ไม่ได้เปิด 7 วัน)
+function requestPersistentStorage() {
+  try { navigator.storage?.persist?.().catch(() => {}); } catch(e) {}
+}
+
 function showLoginGate() {
   loginPinBuf = '';
   updateLoginDots();
@@ -1538,18 +1866,22 @@ async function submitLoginPin() {
   }
   AUTHED = true;
   hideLoginGate();
+  requestPersistentStorage();
   await afterLogin();
 }
 
 async function afterLogin() {
   const ok = await loadFromCloud();
   if (ok) { renderAll(); setupRealtime(); loadCloudSettings().catch(() => {}); }
+  pushSyncOnBoot().catch(() => {});
 }
 
 async function doLogout() {
-  if (!confirm('ออกจากระบบ?\nข้อมูลบน Cloud ยังอยู่ครบ — ล็อกอินใหม่ก็เห็นเหมือนเดิม')) return;
+  if (!confirm('ให้เครื่องนี้ลืม PIN?\nครั้งหน้าต้องใส่ PIN ใหม่ · เครื่องอื่นไม่โดนด้วย · ข้อมูลบน Cloud ยังอยู่ครบ')) return;
   const client = initSb();
-  try { await client.auth.signOut(); } catch(e) {}
+  // scope 'local' = ลืมเฉพาะเครื่องนี้ (ค่าเริ่มต้นของ supabase-js คือ global = เตะทุกเครื่องออกพร้อมกัน)
+  try { await client.auth.signOut({ scope: 'local' }); } catch(e) {}
+  try { localStorage.removeItem(AUTH_STORAGE_KEY); } catch(e) {}
   AUTHED = false;
   closeModal('modal-settings');
   showLoginGate();
@@ -1618,8 +1950,16 @@ async function loadFromCloud() {
     setSyncStatus('error', '⚠️ โหลดไลบรารี Supabase ไม่ได้ — เช็คอินเทอร์เน็ตแล้วรีเฟรช');
     return false;
   }
-  // ไม่มี session = RLS ไม่คืนข้อมูลอยู่แล้ว → เด้งหน้าใส่ PIN แทนที่จะโชว์หน้าเปล่า
-  if (!(await hasSession())) { AUTHED = false; showLoginGate(); return false; }
+  // ไม่มี session = RLS ไม่คืนข้อมูลอยู่แล้ว
+  //  - token หายจริง (ถูกถอน/ลืมเครื่อง) → เด้งหน้าใส่ PIN
+  //  - token ยังอยู่แต่ต่ออายุไม่ได้ (เน็ตหลุด/เซิร์ฟเวอร์หลับ) → ใช้ข้อมูลในเครื่องไปก่อน ไม่ถาม PIN ซ้ำ
+  if (!(await hasSession())) {
+    if (deviceRemembered()) {
+      setSyncStatus('warn', '📴 ต่อ Cloud ไม่ได้ชั่วคราว — แสดงข้อมูลในเครื่องไปก่อน จะซิงก์ให้เองเมื่อออนไลน์');
+      return false;
+    }
+    AUTHED = false; showLoginGate(); return false;
+  }
   setSyncStatus('syncing', '');
   try {
     const [propsRes, expRes, dtRes] = await Promise.all([
@@ -2039,25 +2379,25 @@ function toast(msg, type='') {
 // ═══════════════════════════════════════════════
 function switchTab(t) {
   // docs tab no longer exists as a real tab — redirect to props
-  if (t === 'docs') t = 'props';
+  if (t === 'docs' || t === 'map') t = 'props';   // แท็บที่เลิกใช้แล้ว (เผื่อจำ lastTab เก่าไว้)
   try { localStorage.setItem('acktion_lasttab', t); } catch(e) {}
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  const tabOrder = ['props','reno','summary','calc','pnl','sold','map','survey'];
+  const tabOrder = ['props','reno','summary','calc','pnl','sold','survey'];
   const idx = tabOrder.indexOf(t);
   if (idx >= 0) document.querySelectorAll('.tab-btn')[idx].classList.add('active');
   document.getElementById('tab-'+t).classList.add('active');
+  if (window._fluidReady) syncFluidNav();
   if (t === 'summary') renderSummary();
   if (t === 'reno')    renderReno();
   if (t === 'calc')    { calcPopulatePropSel(); calcUpdate(); }
   if (t === 'pnl')     renderPnL();
   if (t === 'sold')    renderSold();
-  if (t === 'map')     renderMap();
   if (t === 'survey')  renderSurvey();
 }
 
-// ── แผนที่รวมทรัพย์ (item 11): Leaflet + OpenStreetMap (ฟรี ไม่ต้องใช้ API key) ──
-let _leafletLoading = null, _map = null, _mapMarkers = [];
+// ── Leaflet + OpenStreetMap (ฟรี ไม่ต้องใช้ API key) — ใช้ในแท็บสำรวจทรัพย์ ──
+let _leafletLoading = null;
 function loadLeaflet() {
   if (window.L) return Promise.resolve();
   if (_leafletLoading) return _leafletLoading;
@@ -2096,94 +2436,6 @@ function parseLatLng(str) {
     if (b >= 5 && b <= 21 && a >= 97 && a <= 106) return { lat:b, lng:a };
   }
   return null;
-}
-let _mapFilter = 'all';
-function setMapFilter(f) { _mapFilter = f; renderMap(); }
-// จับกลุ่มสถานะสำหรับตัวกรองแผนที่
-function mapGroup(p) {
-  if (p.status === 'lost') return 'lost';
-  if (isSold(p)) return 'sold';
-  if (isAcquired(p)) return 'owned';   // ชนะ/รีโนเวท/ประกาศขาย
-  return 'watching';                    // เล็ง/ตรวจสอบ/ประมูล
-}
-async function renderMap() {
-  const MAP_FILTERS = [
-    { key:'all',      label:'ทั้งหมด' },
-    { key:'watching', label:'👁 กำลังเล็ง/ประมูล' },
-    { key:'owned',    label:'✓ เป็นเจ้าของ/รีโนเวท' },
-    { key:'sold',     label:'💰 ขายแล้ว' },
-    { key:'lost',     label:'✗ ไม่ได้ทรัพย์' },
-  ];
-  const filterEl = document.getElementById('map-filter');
-  if (filterEl) {
-    filterEl.innerHTML = MAP_FILTERS.map(f => {
-      const cnt = f.key==='all' ? S.props.filter(p=>parseLatLng(p.mapUrl)).length
-                                : S.props.filter(p=>parseLatLng(p.mapUrl) && mapGroup(p)===f.key).length;
-      const active = _mapFilter === f.key;
-      return `<button class="btn btn-xs ${active?'btn-primary':'btn-ghost'}" onclick="setMapFilter('${f.key}')">${f.label} (${cnt})</button>`;
-    }).join('');
-  }
-
-  const allProps = S.props.map(p => ({ p, ll: parseLatLng(p.mapUrl) }));
-  const props    = _mapFilter==='all' ? allProps : allProps.filter(x => mapGroup(x.p) === _mapFilter);
-  const located  = props.filter(x => x.ll);
-  const legend   = document.getElementById('map-legend');
-  const emptyEl  = document.getElementById('map-empty');
-  const canvas   = document.getElementById('map-canvas');
-  const listEl   = document.getElementById('map-list');
-
-  // legend ตามสถานะ
-  legend.innerHTML = STAGES.filter(s=>['watching','bidding','won','sold'].includes(s.key))
-    .map(s=>`<span style="display:inline-flex;align-items:center;gap:4px"><span style="width:11px;height:11px;border-radius:50%;background:${stageColor(s.key)};display:inline-block"></span>${s.label}</span>`).join('')
-    + `<span style="display:inline-flex;align-items:center;gap:4px"><span style="width:11px;height:11px;border-radius:50%;background:${stageColor('lost')};display:inline-block"></span>ไม่ได้ทรัพย์</span>`;
-
-  // รายชื่อทรัพย์ที่ยังไม่มีพิกัด
-  const missing = props.filter(x => !x.ll);
-  listEl.innerHTML = missing.length ? `
-    <div style="font-size:12px;color:var(--gray);margin-bottom:6px">⚠️ ทรัพย์ที่ยังไม่ได้ระบุพิกัด (${missing.length}) — แก้ไขทรัพย์แล้วใส่ Google Maps URL หรือ lat,lng:</div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap">${missing.map(x=>`<span class="badge badge-gray">${x.p.code?x.p.code+' ':''}${x.p.name}</span>`).join('')}` : '';
-
-  if (!located.length) {
-    if (_map) { _mapMarkers.forEach(mk => _map.removeLayer(mk)); _mapMarkers = []; }
-    canvas.style.display = 'none';
-    emptyEl.style.display = '';
-    emptyEl.querySelector('p').innerHTML = _mapFilter==='all'
-      ? 'ยังไม่มีทรัพย์ที่ระบุพิกัด/แผนที่<br><span style="font-size:12px;color:var(--gray)">ใส่ Google Maps URL หรือพิกัด (lat, lng) ในหน้าแก้ไขทรัพย์</span>'
-      : 'ไม่มีทรัพย์ในกลุ่มนี้ที่ระบุพิกัด';
-    return;
-  }
-  canvas.style.display = '';
-  emptyEl.style.display = 'none';
-
-  try { await loadLeaflet(); }
-  catch(e) { canvas.innerHTML = `<div style="padding:40px;text-align:center;color:var(--red)">${e.message}</div>`; return; }
-
-  if (!_map) {
-    _map = L.map('map-canvas', { scrollWheelZoom:true });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19, attribution: '© OpenStreetMap'
-    }).addTo(_map);
-  }
-  _mapMarkers.forEach(mk => _map.removeLayer(mk));
-  _mapMarkers = [];
-  const bounds = [];
-  located.forEach(({p, ll}) => {
-    const color = stageColor(p.status||'watching');
-    const si = stageInfo(p.status||'watching');
-    const mk = L.circleMarker([ll.lat, ll.lng], {
-      radius:10, fillColor:color, color:'#fff', weight:2, fillOpacity:.9
-    }).addTo(_map);
-    const base = Number(p.appraisal)||0;
-    mk.bindPopup(`<div style="font-weight:800;margin-bottom:2px">${p.code?p.code+' — ':''}${p.name}</div>
-      <div style="font-size:12px;color:#666">${p.loc||''}</div>
-      <div style="font-size:12px;margin-top:3px">${si.icon} ${si.label}${base?' · ประเมิน '+fmtNum(base)+' ฿':''}</div>
-      <a href="https://www.google.com/maps/search/?api=1&query=${ll.lat},${ll.lng}" target="_blank" style="font-size:12px">เปิดใน Google Maps ↗</a>`);
-    _mapMarkers.push(mk);
-    bounds.push([ll.lat, ll.lng]);
-  });
-  if (bounds.length === 1) _map.setView(bounds[0], 15);
-  else _map.fitBounds(bounds, { padding:[40,40] });
-  setTimeout(() => _map.invalidateSize(), 100);
 }
 function stageColor(key) {
   return { watching:'#3B82F6', inspecting:'#6366F1', bidding:'#F59E0B',
@@ -2592,11 +2844,11 @@ function surveyCardHtml(x, total, open) {
   return `
     ${legTxt ? `<div style="font-size:11px;color:var(--gray);padding:0 0 6px 17px;margin:-6px 0 0 17px;border-left:2px dashed #CBD5E1">⬇ ${legTxt}</div>` : ''}
     <div class="prop-card ${sv.done ? 'won' : ''} ${open ? 'expanded' : ''}" id="sv-${p.id}" style="${sv.skip ? 'opacity:.55' : ''}">
-      <div class="prop-header" onclick="document.getElementById('sv-${p.id}').classList.toggle('expanded')">
-        <div class="prop-num" style="background:${numBg}">${num}</div>
-        ${thumb}
+      <div class="prop-header sv" onclick="document.getElementById('sv-${p.id}').classList.toggle('expanded')">
+        <div class="prop-media">${thumb}<span class="prop-num" style="background:${numBg}">${num}</span></div>
         <div class="prop-info">
-          <div class="prop-name">${p.code ? `<span style="font-size:12px;font-weight:700;background:var(--blue-lt);color:var(--blue);padding:1px 7px;border-radius:5px;margin-right:6px">${escapeHtml(p.code)}</span>` : ''}${escapeHtml(p.name)}</div>
+          ${p.code ? `<span class="prop-code">${escapeHtml(p.code)}</span>` : ''}
+          <div class="prop-name">${escapeHtml(p.name)}</div>
           <div class="prop-sub">${escapeHtml(p.loc || '')}${base ? (p.loc ? ' · ' : '') + 'ประเมิน ' + fmtNum(base) + ' ฿' : ''}</div>
           ${chips ? `<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:5px">${chips}</div>` : ''}
         </div>
@@ -3495,11 +3747,12 @@ async function surveyRegeocode() {
 
 function updateBadges() {
   const surveyBadge = document.getElementById('badge-survey');
-  if (surveyBadge) surveyBadge.textContent = (S.pool||[]).length;
+  if (surveyBadge) { const n = (S.pool||[]).length; surveyBadge.textContent = n; surveyBadge.classList.toggle('zero', !n); }
   document.getElementById('badge-props').textContent = S.props.length;
   document.getElementById('badge-reno').textContent = S.expenses.length;
   const soldBadge = document.getElementById('badge-sold');
   if (soldBadge) soldBadge.textContent = S.props.filter(p => isSold(p)).length;
+  if (window._fluidReady) syncFluidNav();
 }
 
 // ═══════════════════════════════════════════════
@@ -3774,40 +4027,39 @@ function printPropReport(id) {
   window.print();
 }
 
-// แจ้งเตือน LINE ก่อนวันนัดประมูล 3 วัน (item 6) — toggle ต่อทรัพย์
-function lineNotifyRow(p) {
-  const ti = p.targetRound||0;
-  const rObj = (p.rounds||[])[ti];
-  const tDate = rObj && typeof rObj==='object' ? rObj.date : '';
-  const on = p.lineNotify !== false && !!tDate;  // ค่าเริ่มต้น: เปิด ถ้ามีวันนัด
-  let info = '';
-  if (!tDate) {
-    info = `<span style="color:var(--amber)">⚠️ ใส่วันที่นัดที่ ${ti+1} ก่อน ถึงจะตั้งเตือนได้</span>`;
-  } else {
-    const remind = new Date(tDate+'T00:00:00'); remind.setDate(remind.getDate()-3);
-    const rStr = remind.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'});
-    const dLeft = Math.round((remind - new Date(todayISO()))/86400000);
-    info = p.lineNotify===false
-      ? '<span style="color:var(--gray)">ปิดการเตือน</span>'
-      : `<span style="color:var(--green)">📆 เตือนวันที่ ${rStr}${dLeft>=0?` (อีก ${dLeft} วัน)`:' (ผ่านไปแล้ว)'}</span>`;
-  }
+// แจ้งเตือนผ่านเครื่อง (Web Push) — เตือนทุกนัดที่มีวันที่: ล่วงหน้า 7 / 3 / 1 วัน + เช้าวันนัด
+// ส่งจากเซิร์ฟเวอร์ (edge function auction-push-notify) ทุกวัน 08:00 · ปิดรายทรัพย์ได้ด้วยสวิตช์นี้
+function notifyRow(p) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const upcoming = (p.rounds||[]).map((r,ri) => {
+    const d = r && typeof r==='object' ? r.date : '';
+    if (!d || isHaltedNote(r.note)) return null;
+    const dl = Math.round((new Date(d+'T00:00:00') - today)/86400000);
+    return dl >= 0 ? { ri, d, dl } : null;
+  }).filter(Boolean);
+  const on = p.notify !== false;
+  let info;
+  if (!upcoming.length) info = '<span class="muted">ยังไม่มีนัดที่จะถึง — ใส่วันนัดในหน้าแก้ไขแล้วจะเตือนให้อัตโนมัติ</span>';
+  else if (!on) info = '<span class="muted">ปิดการเตือนทรัพย์นี้ไว้</span>';
+  else info = upcoming.map(x => `<span class="nt-chip${x.dl<=3?' soon':''}">นัด ${x.ri+1} · ${fmtDate(x.d)}</span>`).join('');
   return `
-    <div onclick="event.stopPropagation()" style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--tg-lt);border:1px solid #C7E0F4;border-radius:9px;padding:8px 12px;margin-bottom:14px;flex-wrap:wrap">
-      <div style="font-size:12px;font-weight:700;color:var(--navy)">
-        🔔 แจ้งเตือน LINE ก่อนวันนัดที่ ${ti+1} · 3 วัน
-        <div style="font-size:11px;font-weight:600;margin-top:2px">${info}</div>
+    <div class="notify-row" onclick="event.stopPropagation()">
+      <div style="min-width:0;flex:1">
+        <div class="notify-title">🔔 แจ้งเตือนบนเครื่อง <span class="muted" style="font-weight:600">· ก่อนนัด 7, 3, 1 วัน และเช้าวันนัด</span></div>
+        <div class="notify-chips">${info}</div>
       </div>
-      <label class="switch" title="เปิด/ปิดการเตือน LINE">
-        <input type="checkbox" ${on?'checked':''} ${!tDate?'disabled':''} onchange="setLineNotify('${p.id}',this.checked)">
+      <label class="switch" title="เปิด/ปิดการเตือนทรัพย์นี้">
+        <input type="checkbox" ${on?'checked':''} onchange="setPropNotify('${p.id}',this.checked)">
         <span class="switch-slider"></span>
       </label>
     </div>`;
 }
-function setLineNotify(id, on) {
+function setPropNotify(id, on) {
   const p = S.props.find(x=>x.id===id); if (!p) return;
-  p.lineNotify = !!on;
+  p.notify = !!on;
+  delete p.lineNotify;
   saveS(); renderProps();
-  toast(on ? '🔔 เปิดเตือน LINE ก่อนนัด 3 วัน' : '🔕 ปิดเตือน LINE');
+  toast(on ? '🔔 เปิดเตือนทุกนัดของทรัพย์นี้' : '🔕 ปิดเตือนทรัพย์นี้');
 }
 
 // งบ/ค่ารีโนเวท (item 8) — ช่องกรอกในตัวการ์ด + progress bar + เตือนเกินงบ
@@ -4089,24 +4341,22 @@ function renderProps() {
     return `
       <div class="prop-card ${p.status||'watching'}" id="pp-${p.id}">
         <div class="prop-header" onclick="toggleProp('${p.id}')">
-          <div class="prop-num">${i+1}</div>
-          ${thumb}
+          <div class="prop-media">${thumb}<span class="prop-num">${i+1}</span></div>
           <div class="prop-info">
-            <div class="prop-name">${p.code?`<span style="font-size:12px;font-weight:700;background:var(--blue-lt);color:var(--blue);padding:1px 7px;border-radius:5px;margin-right:6px">${p.code}</span>`:''}${p.name}</div>
-            <div class="prop-sub">
-              ${p.loc?p.loc+' · ':''}${base?'ประเมิณ '+fmtNum(base)+' ฿':''}
-            </div>
+            ${p.code?`<span class="prop-code">${escapeHtml(p.code)}</span>`:''}
+            <div class="prop-name">${escapeHtml(p.name)}</div>
+            <div class="prop-sub">${p.loc?escapeHtml(p.loc):''}${p.loc&&base?' · ':''}${base?'ประเมิน <b>'+fmtNum(base)+'</b> ฿':''}</div>
           </div>
-          <div class="prop-badges" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <div class="prop-badges">
             ${targetChip}
             ${dateChip}
             ${checkChip}
             <span class="badge ${si.badge}">${si.icon} ${si.label}</span>
           </div>
-          <div class="prop-actions" onclick="event.stopPropagation()" style="display:flex;gap:5px;">
-            <button class="icon-btn" onclick="editProp('${p.id}')" title="แก้ไข">✏️</button>
-            <button class="icon-btn del" onclick="deleteProp('${p.id}')" title="ลบ">🗑</button>
-            <span class="chevron" style="margin-left:2px">▼</span>
+          <div class="prop-actions" onclick="event.stopPropagation()">
+            <button class="icon-btn desk-only" onclick="editProp('${p.id}')" title="แก้ไข" aria-label="แก้ไข">✏️</button>
+            <button class="icon-btn more" onclick="openPropMenu('${p.id}')" title="ตัวเลือก" aria-label="ตัวเลือกเพิ่มเติม">⋯</button>
+            <button class="icon-btn chev" onclick="toggleProp('${p.id}')" aria-label="กาง/พับ"><span class="chevron">▼</span></button>
           </div>
         </div>
         <div class="prop-body">
@@ -4139,7 +4389,7 @@ function renderProps() {
           </div>
           <div class="rounds-grid">${roundsHtml}</div>
 
-          ${lineNotifyRow(p)}
+          ${notifyRow(p)}
 
           <div style="margin-bottom:18px;">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap">
@@ -4750,10 +5000,12 @@ async function runAutoSync()  { const ok = await loadFromCloud(); if (ok) render
 
 
 // ── Settings functions ─────────────────────────
-function openSettings() {
+function openSettings(section) {
   refreshCloudStatus();
+  renderPushSettings();
   openModal('modal-settings');
   calcStorageUsage();
+  if (section === 'notify') setTimeout(() => document.getElementById('set-notify')?.scrollIntoView({ block: 'start' }), 60);
 }
 
 // ไม่มีอะไรให้กรอกแล้ว (URL/key/userKey ฝังในโค้ด) — ปุ่มบันทึกแค่ปิดหน้าต่าง
@@ -5134,10 +5386,9 @@ function editExpense(id) {
 }
 
 function renderReno() {
+  // บ้านที่ขายแล้วไม่ค้างหน้านี้ — ดู/เพิ่มค่าใช้จ่ายย้อนหลังได้จากแท็บ "✅ ขายแล้ว"
   const wonProps    = S.props.filter(p => isAcquired(p));
-  const isSold      = p => Number(p.actualSell) > 0;
   const activeProps = wonProps.filter(p => !isSold(p));
-  const soldProps   = wonProps.filter(p =>  isSold(p));
 
   // ── ยอดรวมด้านบน = ทรัพย์ที่กำลังเลือกอยู่ ถ้าไม่ได้เลือกให้รวมทุกบ้านที่ยังไม่ขาย ──
   const selectedProp = renoActiveProp ? S.props.find(p=>p.id===renoActiveProp) : null;
@@ -5173,7 +5424,7 @@ function renderReno() {
       </div>
     </div>`;
 
-  // ── การ์ดเลือกบ้าน (แสดงทุกบ้านที่ชนะประมูล รวมที่ขายแล้ว — กดเพิ่มค่าใช้จ่ายย้อนหลังได้ทุกใบ) ──
+  // ── การ์ดเลือกบ้าน (เฉพาะบ้านที่ชนะประมูลและยังไม่ขาย) ──
   const cardHtml = (p) => {
     const items = S.expenses.filter(e=>e.propId===p.id);
     const tot   = items.reduce((s,e)=>s+Number(e.amount||0),0);
@@ -5193,15 +5444,21 @@ function renderReno() {
       </div>`;
   };
 
-  document.getElementById('reno-house-cards').innerHTML = wonProps.length
-    ? `<div class="house-pick-grid">${wonProps.map(p=>cardHtml(p)).join('')}</div>`
-    : `<div class="empty" style="padding:24px"><div class="empty-icon">🏠</div><p>ยังไม่มีบ้านที่ชนะประมูล — ไปที่แท็บ "ทรัพย์" แล้วตั้งสถานะเป็น ✓ ชนะประมูล</p></div>`;
+  const soldCount = wonProps.length - activeProps.length;
+  document.getElementById('reno-house-cards').innerHTML = activeProps.length
+    ? `<div class="house-pick-grid">${activeProps.map(p=>cardHtml(p)).join('')}</div>`
+    : `<div class="empty" style="padding:24px"><div class="empty-icon">🏠</div><p>${wonProps.length
+        ? 'ทุกบ้านขายแล้ว 🎉'
+        : 'ยังไม่มีบ้านที่ชนะประมูล — ไปที่แท็บ "ทรัพย์" แล้วตั้งสถานะเป็น ✓ ชนะประมูล'}</p></div>`;
 
-  // บ้านที่ขายแล้วตอนนี้แสดงรวมในการ์ดด้านบนแล้ว (มีป้าย "ขายแล้ว") ไม่ต้องมีแบนเนอร์แยกซ้ำ
-  document.getElementById('reno-sold-cards').innerHTML = '';
+  // ลิงก์ไปแท็บขายแล้ว (แทนการโชว์บ้านที่ขายแล้วค้างไว้ในหน้านี้)
+  document.getElementById('reno-sold-cards').innerHTML = soldCount
+    ? `<button class="btn btn-ghost btn-sm" style="margin-top:4px" onclick="switchTab('sold')">✅ บ้านที่ขายแล้ว ${soldCount} หลัง — ดูค่าใช้จ่ายย้อนหลัง / Export ที่แท็บขายแล้ว →</button>`
+    : '';
 
   // ── รายการค่าใช้จ่ายของบ้านที่เลือก ──
-  // ถ้าบ้านที่เลือกไว้ไม่อยู่ในรายการทรัพย์ที่ชนะประมูลแล้ว (เช่นถูกลบ) ให้ยกเลิกการเลือก
+  // ถ้าบ้านที่เลือกไว้ไม่อยู่ในรายการแล้ว (เช่นถูกลบ) ให้ยกเลิกการเลือก
+  // (บ้านที่ขายแล้วยังเลือกค้างได้ — มาจากปุ่ม "+ เพิ่มค่าใช้จ่าย" ในแท็บขายแล้ว)
   const wonIds = new Set(wonProps.map(p=>p.id));
   if (renoActiveProp && !wonIds.has(renoActiveProp)) renoActiveProp = '';
   const filterPropId = renoActiveProp;
@@ -5811,6 +6068,7 @@ function renderSold() {
     <div class="card" style="margin-bottom:16px;background:linear-gradient(135deg,#15803D,#22C55E);color:white;border-radius:14px;padding:18px">
       <div style="font-size:13px;opacity:.9;margin-bottom:6px">✅ ขายแล้ว ${rows.length} หลัง · กำไรสะสมส่วนตัว (÷2)</div>
       <div style="font-size:30px;font-weight:800">${totalNet>=0?'+':''}${fmtNum(Math.round(totalNet))} ฿</div>
+      <button class="btn btn-sm" style="margin-top:12px;background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.4)" onclick="exportSoldReport()">📥 Export สรุปทุกหลัง (Excel)</button>
     </div>
     <div class="house-pick-grid">${rows.map(soldCardHTML).join('')}</div>
     <div id="sold-detail" style="margin-top:6px"></div>`;
@@ -5829,10 +6087,14 @@ function soldCardHTML({ p, sold, costs, net, isP }) {
         🔨 ค่าใช้จ่ายรวม <b style="color:var(--red)">${fmtNum(Math.round(costs.expTotal))}</b>
       </div>
       <div style="margin-top:6px;font-size:15px;font-weight:800;color:${isP?'var(--green)':'var(--red)'}">กำไร÷2 ${isP?'+':''}${fmtNum(Math.round(net))} ฿</div>
-      <div style="display:flex;gap:6px;margin-top:10px">
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
         <button class="btn btn-success btn-xs" style="flex:1" onclick="openRenoForProp('${p.id}')">+ เพิ่มค่าใช้จ่าย</button>
         <button class="btn btn-ghost btn-xs" style="flex:1" onclick="showSoldDetail('${p.id}')">📄 รายละเอียดย้อนหลัง</button>
-        <button class="btn btn-danger btn-xs" onclick="deleteSoldProp('${p.id}')">🗑 ลบ</button>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <button class="btn btn-primary btn-xs" style="flex:1" onclick="exportSoldReport('${p.id}')">📥 Export Excel</button>
+        <button class="btn btn-ghost btn-xs" style="flex:1" onclick="printPropReport('${p.id}')">🖨 PDF</button>
+        <button class="btn btn-danger btn-xs" onclick="deleteSoldProp('${p.id}')" aria-label="ลบ">🗑</button>
       </div>
     </div>`;
 }
@@ -5887,6 +6149,84 @@ function showSoldDetail(id) {
 // รีเฟรชแผงรายละเอียดในแท็บขายแล้ว ถ้าบ้านนี้เปิดค้างอยู่ (เรียกหลังแก้ราคา/มัดจำ/ผู้รับเงิน)
 function refreshSoldDetailIfOpen(id) {
   if (soldDetailOpenId === id) showSoldDetail(id);
+}
+
+// ═══════════════════════════════════════════════
+//  EXPORT สรุปบ้านที่ขายแล้ว → ไฟล์ Excel (.xlsx)
+//  ชีต 1 สรุปผล (1 แถว/หลัง + แถวรวม) · ชีต 2 ค่าใช้จ่ายทุกรายการ · ชีต 3 ยอดโอนคืนระหว่างหุ้นส่วน
+//  ids ว่าง = ทุกหลังที่ขายแล้ว · ส่ง id เดียว = เฉพาะหลังนั้น
+// ═══════════════════════════════════════════════
+let _xlsxLoading = null;
+function loadXlsx() {
+  if (window.XLSX) return Promise.resolve();
+  return _xlsxLoading ||= new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    s.onload = resolve; s.onerror = () => { _xlsxLoading = null; reject(new Error('โหลดตัวสร้างไฟล์ Excel ไม่ได้ — เช็คอินเทอร์เน็ต')); };
+    document.head.appendChild(s);
+  });
+}
+async function exportSoldReport(id) {
+  const props = S.props.filter(p => isSold(p) && (!id || p.id === id));
+  if (!props.length) { toast('ยังไม่มีบ้านที่ขายแล้ว', 'error'); return; }
+  toast('⏳ กำลังสร้างไฟล์...');
+  try { await loadXlsx(); } catch (e) { toast(e.message, 'error'); return; }
+
+  const d = s => s ? fmtDate(s) : '';
+  const payerTH = x => x === 'partner' ? 'หุ้นส่วน' : 'ฉัน';
+  const summary = props.map(p => {
+    const sell = Number(p.actualSell) || 0;
+    const costs = propCosts(p);
+    const st = expenseStats(S.expenses.filter(e => e.propId === p.id));
+    const gross = sell - costs.totalCost;
+    const bal = netBalanceForProps([p.id]);
+    return {
+      'รหัส': p.code || '', 'ชื่อทรัพย์': p.name || '', 'ที่ตั้ง': p.loc || '',
+      'เลขคดี': p.case || '', 'โฉนด': p.deed || '',
+      'วันที่ชนะประมูล': d(p.wonDate), 'วันที่ขาย': d(p.soldDate),
+      'ราคาประเมิน': Number(p.appraisal) || 0, 'ราคาซื้อ (ประมูลได้)': costs.buy || 0, 'ราคาขาย': sell,
+      'ค่าใช้จ่ายรวม (หักจริง)': Math.round(costs.expTotal), 'ฉันจ่าย': Math.round(st.myPaid * 100) / 100, 'หุ้นส่วนจ่าย': Math.round(st.partnerPaid * 100) / 100,
+      'จำนวนรายการค่าใช้จ่าย': S.expenses.filter(e => e.propId === p.id).length,
+      'กำไรรวม': Math.round(gross), 'กำไรส่วนตัว (÷2)': Math.round(gross / 2),
+      '% กำไรต่อราคาขาย': sell ? Math.round(gross / sell * 1000) / 10 : 0,
+      'ค่าธรรมเนียม/ภาษี (ประมาณการ ไม่ได้หัก)': Math.round(costs.fees),
+      'มัดจำ': Number(p.saleDeposit) || 0, 'ผู้รับมัดจำ': Number(p.saleDeposit) > 0 ? payerTH(p.saleDepositReceiver) : '',
+      'ยอดคงเหลือ': Number(p.saleRemaining) || 0, 'ผู้รับยอดคงเหลือ': Number(p.saleRemaining) > 0 ? payerTH(p.saleRemainingReceiver) : '',
+      'ค้างสุทธิ (+หุ้นส่วนต้องคืนฉัน / −ฉันต้องคืน)': Math.round(bal),
+    };
+  });
+  if (summary.length > 1) {
+    const sumOf = k => summary.reduce((s, r) => s + (Number(r[k]) || 0), 0);
+    const tot = { 'รหัส': 'รวม', 'ชื่อทรัพย์': `${summary.length} หลัง` };
+    ['ราคาประเมิน','ราคาซื้อ (ประมูลได้)','ราคาขาย','ค่าใช้จ่ายรวม (หักจริง)','ฉันจ่าย','หุ้นส่วนจ่าย','จำนวนรายการค่าใช้จ่าย',
+     'กำไรรวม','กำไรส่วนตัว (÷2)','ค่าธรรมเนียม/ภาษี (ประมาณการ ไม่ได้หัก)','ค้างสุทธิ (+หุ้นส่วนต้องคืนฉัน / −ฉันต้องคืน)']
+      .forEach(k => tot[k] = Math.round(sumOf(k) * 100) / 100);
+    tot['% กำไรต่อราคาขาย'] = tot['ราคาขาย'] ? Math.round(tot['กำไรรวม'] / tot['ราคาขาย'] * 1000) / 10 : 0;
+    summary.push(tot);
+  }
+  const ids = new Set(props.map(p => p.id));
+  const nameOf = pid => { const p = S.props.find(x => x.id === pid); return p ? [p.code, p.name].filter(Boolean).join(' ') : ''; };
+  const expenses = S.expenses.filter(e => ids.has(e.propId))
+    .sort((a, b) => nameOf(a.propId).localeCompare(nameOf(b.propId)) || (a.date || '').localeCompare(b.date || ''))
+    .map(e => ({ 'ทรัพย์': nameOf(e.propId), 'วันที่': d(e.date), 'รายการ': e.desc || '', 'หมวด': e.cat || '',
+      'ร้าน/ผู้รับเงิน': e.vendor || '', 'ช่องทางจ่าย': e.pay || '', 'ใครจ่าย': payerTH(e.payer), 'ตัดบัญชีแล้ว': e.settled ? '✓' : '', 'จำนวนเงิน': Number(e.amount) || 0 }));
+  const settles = props.flatMap(p => propSettlements(p.id).map(x => ({
+    'ทรัพย์': nameOf(p.id), 'วันที่': d(x.date), 'ใครโอนคืน': payerTH(x.from), 'จำนวนเงิน': Number(x.amount) || 0, 'หมายเหตุ': x.note || '' })));
+
+  const wb = XLSX.utils.book_new();
+  const addSheet = (rows, name, emptyMsg) => {
+    const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{ '': emptyMsg }]);
+    const keys = Object.keys(rows[0] || { '': emptyMsg });
+    ws['!cols'] = keys.map(k => ({ wch: Math.min(48, Math.max(10, k.length + 2, ...rows.map(r => String(r[k] ?? '').length + 2))) }));
+    XLSX.utils.book_append_sheet(wb, ws, name);
+  };
+  addSheet(summary, 'สรุปผล', '');
+  addSheet(expenses, 'ค่าใช้จ่าย', 'ไม่มีรายการค่าใช้จ่าย');
+  addSheet(settles, 'ยอดโอนคืน', 'ไม่มีรายการโอนคืน');
+  const stamp = todayISO();
+  const file = id ? `สรุปขาย_${(props[0].code || props[0].name || 'ทรัพย์').replace(/[\\/:*?"<>|]/g, '-')}_${stamp}.xlsx` : `สรุปบ้านที่ขายแล้ว_${stamp}.xlsx`;
+  XLSX.writeFile(wb, file);
+  toast('📥 ดาวน์โหลด ' + file, 'success');
 }
 
 async function deleteSoldProp(id) {
@@ -6014,8 +6354,13 @@ updateBadges();
 
 // Cloud sync (clock-in pattern): ล็อกอินก่อน → โหลดจาก cloud → subscribe realtime
 // เครื่องใหม่ที่ไม่มี localStorage เลย ก็ได้ข้อมูลครบจาก cloud ทันทีหลังใส่ PIN
+// เครื่องที่เคยใส่ PIN แล้ว → เข้าแอปทันที ไม่ต้องรอเน็ต (ข้อมูลในเครื่องขึ้นก่อน cloud ตามมา)
 (async () => {
-  if (await hasSession()) { AUTHED = true; await afterLogin(); }
+  if (deviceRemembered() || await hasSession()) {
+    AUTHED = true;
+    requestPersistentStorage();
+    await afterLogin();
+  }
   else showLoginGate();
 })();
 
@@ -6290,6 +6635,285 @@ function calcSaveToProperty() {
   if (p.calcCustomBid) p.actualBuy = p.calcCustomBid;
   saveS(); renderProps(); toast('✓ บันทึกข้อมูลการคำนวณกลับทรัพย์แล้ว');
 }
+
+// ═══════════════════════════════════════════════
+//  Fluid menu (มือถือ) — ปุ่มกลมลอยมุมขวาล่าง กดแล้วกางเมนูขึ้นด้านบน
+//  ไอคอนเส้นแบบ lucide (inline SVG) · ลำดับเดียวกับ tabOrder ใน switchTab
+// ═══════════════════════════════════════════════
+const FLUID_TABS = [
+  { t:'props',   label:'ทรัพย์',      svg:'<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>' },
+  { t:'reno',    label:'ค่าใช้จ่าย',   svg:'<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/>' },
+  { t:'summary', label:'สรุปภาพรวม',  svg:'<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>' },
+  { t:'calc',    label:'คำนวณทรัพย์', svg:'<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8"/><path d="M16 14v4"/><path d="M16 10h.01M12 10h.01M8 10h.01M12 14h.01M8 14h.01M12 18h.01M8 18h.01"/>' },
+  { t:'pnl',     label:'กำไร/ขาดทุน', svg:'<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>' },
+  { t:'sold',    label:'ขายแล้ว',     svg:'<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>' },
+  { t:'survey',  label:'สำรวจทรัพย์', svg:'<circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/>' },
+];
+function buildFluidNav() {
+  const nav = document.getElementById('fluid-nav');
+  if (!nav) return;
+  // เมนูแรกอยู่ล่างสุด (ใกล้นิ้วโป้ง) ไล่ขึ้นไปด้านบน · ตัวล่างทับตัวบนให้ขอบวงกลมไหลต่อกันเป็นแคปซูล
+  nav.innerHTML = FLUID_TABS.map((x, i) => `
+    <button class="fl-item" data-tab="${x.t}" style="--i:${i + 1};z-index:${40 - i}" onclick="switchTab('${x.t}');toggleFluidNav(false)" aria-label="${x.label}">
+      <svg viewBox="0 0 24 24" aria-hidden="true">${x.svg}</svg>
+      <span class="fl-label">${x.label}</span>
+      ${x.t === 'survey' ? '<span class="fl-badge" id="fl-badge-survey" style="display:none"></span>' : ''}
+    </button>`).join('') + `
+    <button class="fl-main" onclick="toggleFluidNav()" aria-label="เปิด/ปิดเมนู" aria-expanded="false">
+      <span class="fl-ic fl-burger"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span>
+      <span class="fl-ic fl-x"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span>
+      <span class="fl-dot" id="fl-dot"></span>
+    </button>`;
+  window._fluidReady = true;  // switchTab/updateBadges เรียก syncFluidNav ได้หลังจากนี้ (FLUID_TABS ประกาศท้ายไฟล์)
+  syncFluidNav();
+}
+function toggleFluidNav(force) {
+  const nav = document.getElementById('fluid-nav');
+  if (!nav) return;
+  const open = force === undefined ? nav.dataset.expanded !== 'true' : !!force;
+  nav.dataset.expanded = open;
+  nav.querySelector('.fl-main')?.setAttribute('aria-expanded', open);
+  document.getElementById('fluid-backdrop').classList.toggle('open', open);
+}
+// อัปเดตเมนูที่เลือก + ชื่อหน้าบนหัวแอป + ป้ายจำนวนทรัพย์รอสำรวจ
+function syncFluidNav() {
+  let cur = 'props';
+  try { cur = localStorage.getItem('acktion_lasttab') || 'props'; } catch (e) {}
+  document.querySelectorAll('.fl-item').forEach(b => b.classList.toggle('active', b.dataset.tab === cur));
+  const page = document.getElementById('hdr-page');
+  if (page) page.textContent = (FLUID_TABS.find(x => x.t === cur) || FLUID_TABS[0]).label;
+  const n = (S.pool || []).length;
+  const badge = document.getElementById('fl-badge-survey'), dot = document.getElementById('fl-dot');
+  if (badge) { badge.textContent = n; badge.style.display = n ? 'flex' : 'none'; }
+  if (dot) dot.classList.toggle('on', !!n);
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') toggleFluidNav(false); });
+buildFluidNav();
+
+// ═══════════════════════════════════════════════
+//  เมนูตัวเลือกการ์ด (⋯) — bottom sheet บนมือถือ
+// ═══════════════════════════════════════════════
+function openActionSheet(title, items) {
+  document.getElementById('action-sheet-title').textContent = title || '';
+  const box = document.getElementById('action-sheet-items');
+  box.innerHTML = '';
+  items.forEach(it => {
+    const b = document.createElement('button');
+    b.className = 'sheet-item' + (it.danger ? ' danger' : '');
+    b.innerHTML = `<span class="sheet-ic">${it.icon}</span><span>${escapeHtml(it.label)}</span>`;
+    b.onclick = () => { closeActionSheet(); setTimeout(it.run, 120); };
+    box.appendChild(b);
+  });
+  document.getElementById('action-sheet').classList.add('open');
+}
+function closeActionSheet() { document.getElementById('action-sheet').classList.remove('open'); }
+function openPropMenu(id) {
+  const p = S.props.find(x => x.id === id); if (!p) return;
+  const on = p.notify !== false;
+  openActionSheet([p.code, p.name].filter(Boolean).join(' · '), [
+    { icon: '✏️', label: 'แก้ไขข้อมูลทรัพย์', run: () => editProp(id) },
+    { icon: on ? '🔕' : '🔔', label: on ? 'ปิดแจ้งเตือนทรัพย์นี้' : 'เปิดแจ้งเตือนทรัพย์นี้', run: () => setPropNotify(id, !on) },
+    { icon: '🧮', label: 'คำนวณทรัพย์นี้', run: () => { switchTab('calc'); setTimeout(() => { const s = document.getElementById('calc-prop-sel'); if (s) { s.value = id; calcFillFromProp(); } }, 100); } },
+    { icon: '🖨', label: 'พิมพ์ / PDF', run: () => printPropReport(id) },
+    { icon: '🗑', label: 'ลบทรัพย์', danger: true, run: () => deleteProp(id) },
+  ]);
+}
+
+// เปิดการ์ดทรัพย์จากลิงก์แจ้งเตือน (#prop=ID) — สลับแท็บ กางการ์ด เลื่อนไปให้เห็น
+function openPropById(id) {
+  if (!id || !S.props.some(p => p.id === id)) return;
+  switchTab('props');
+  const el = document.getElementById('pp-' + id);
+  if (!el) return;
+  el.classList.add('expanded', 'flash');
+  setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+  setTimeout(() => el.classList.remove('flash'), 2200);
+}
+function openPropFromHash() {
+  const m = /#prop=([^&]+)/.exec(location.hash || '');
+  if (!m) return;
+  history.replaceState(null, '', location.pathname + location.search);
+  openPropById(decodeURIComponent(m[1]));
+}
+
+// ═══════════════════════════════════════════════
+//  แจ้งเตือนผ่านเครื่อง (Web Push)
+//  เครื่องที่กดเปิด → เก็บ subscription ในตาราง push_subscriptions
+//  เซิร์ฟเวอร์ (edge function auction-push-notify) ส่งเตือนทุกเช้า 08:00
+// ═══════════════════════════════════════════════
+const VAPID_PUBLIC = 'BNPPabgwf4XtLEcv77wlepy10jrZNabRwUObyNAKJ5pUfnsTM-S347fxh62mz9GJSohxL2LnGOowHbdUOQXxg-s';
+const PUSH_NUDGE_KEY = 'auction_push_nudge_hide_until';
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+
+function b64uToBytes(s) {
+  s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '=';
+  return Uint8Array.from(atob(s), c => c.charCodeAt(0));
+}
+function deviceLabel() {
+  const ua = navigator.userAgent;
+  const os = /iPad/.test(ua) || (isIOS() && !/iPhone/.test(ua)) ? 'iPad' : /iPhone/.test(ua) ? 'iPhone' : /Android/.test(ua) ? 'Android'
+    : /Mac OS X/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : 'อุปกรณ์';
+  const br = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) && !/Edg\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : '';
+  return `${os}${br ? ' · ' + br : ''}${isStandalone() ? ' (แอป)' : ''}`;
+}
+async function getPushSub() {
+  if (!pushSupported()) return null;
+  const reg = await navigator.serviceWorker.getRegistration();
+  return reg ? reg.pushManager.getSubscription() : null;
+}
+// subscription ที่สมัครไว้ด้วย key อื่น (เช่นเคยเปลี่ยน VAPID) ใช้ส่งไม่ได้ ต้องสมัครใหม่
+function subMatchesKey(sub) {
+  const k = sub?.options?.applicationServerKey;
+  if (!k) return true;
+  const a = new Uint8Array(k), b = b64uToBytes(VAPID_PUBLIC);
+  return a.length === b.length && a.every((x, i) => x === b[i]);
+}
+async function savePushSub(sub) {
+  const j = sub.toJSON();
+  return initSb().from('push_subscriptions').upsert({
+    endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth,
+    device: deviceLabel(), user_agent: navigator.userAgent.slice(0, 300),
+  });
+}
+
+async function enablePush() {
+  if (!pushSupported()) {
+    toast(isIOS() && !isStandalone() ? 'บน iPhone ต้องเพิ่มแอปไว้ที่หน้าจอโฮมก่อน แล้วเปิดจากไอคอน' : 'เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือน', 'error');
+    renderPushSettings(); return;
+  }
+  const perm = await Notification.requestPermission();
+  if (perm !== 'granted') {
+    toast('ยังไม่ได้อนุญาตการแจ้งเตือน', 'error');
+    renderPushSettings(); renderPushNudge(); return;
+  }
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (sub && !subMatchesKey(sub)) { await sub.unsubscribe(); sub = null; }
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uToBytes(VAPID_PUBLIC) });
+    const { error } = await savePushSub(sub);
+    if (error) throw error;
+    toast('🔔 เปิดแจ้งเตือนบนเครื่องนี้แล้ว', 'success');
+    testPush(true);
+  } catch (e) {
+    toast('เปิดแจ้งเตือนไม่สำเร็จ: ' + (e.message || e), 'error');
+  }
+  renderPushSettings(); renderPushNudge();
+}
+
+async function disablePush() {
+  const sub = await getPushSub();
+  if (sub) {
+    try { await initSb().from('push_subscriptions').delete().eq('endpoint', sub.endpoint); } catch (e) {}
+    try { await sub.unsubscribe(); } catch (e) {}
+  }
+  toast('🔕 ปิดแจ้งเตือนบนเครื่องนี้แล้ว');
+  renderPushSettings(); renderPushNudge();
+}
+
+async function testPush(quiet) {
+  const sub = await getPushSub();
+  if (!sub) { if (!quiet) toast('เครื่องนี้ยังไม่ได้เปิดแจ้งเตือน', 'error'); return; }
+  const { data, error } = await initSb().functions.invoke('auction-push-notify', { body: { action: 'test', endpoint: sub.endpoint } });
+  if (error || !data?.ok) { toast('ส่งทดสอบไม่สำเร็จ: ' + (error?.message || data?.error || 'ไม่ทราบสาเหตุ'), 'error'); return; }
+  if (!quiet) toast(data.delivered ? '📨 ส่งแล้ว — รอแจ้งเตือนเด้งสักครู่' : 'ส่งไม่ถึงเครื่องนี้ ลองปิดแล้วเปิดแจ้งเตือนใหม่', data.delivered ? 'success' : 'error');
+}
+
+async function runPushNow() {
+  const { data, error } = await initSb().functions.invoke('auction-push-notify', { body: { action: 'run' } });
+  if (error || !data?.ok) { toast('ไม่สำเร็จ: ' + (error?.message || data?.error), 'error'); return; }
+  toast(data.sent ? `📨 ส่งเตือน ${data.sent} นัด` : 'วันนี้ไม่มีนัดที่ต้องเตือน (หรือเตือนไปแล้ว)', 'success');
+}
+
+// เปิดแอปทุกครั้ง: ถ้าอนุญาตไว้แล้ว ซิงก์ subscription ขึ้น cloud (กันแถวหาย / browser เปลี่ยน endpoint เอง)
+async function pushSyncOnBoot() {
+  if (pushSupported() && Notification.permission === 'granted') {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (sub && !subMatchesKey(sub)) { await sub.unsubscribe(); sub = null; }
+      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uToBytes(VAPID_PUBLIC) });
+      await savePushSub(sub);
+    } catch (e) { console.log('[push] sync skipped:', e.message); }
+  }
+  renderPushNudge();
+}
+
+async function pushState() {
+  if (!pushSupported()) return isIOS() && !isStandalone() ? 'ios-browser' : 'unsupported';
+  if (Notification.permission === 'denied') return 'denied';
+  const sub = await getPushSub();
+  return sub && Notification.permission === 'granted' ? 'on' : 'off';
+}
+
+const IOS_A2HS_HTML = `บน iPhone/iPad ต้อง<b>เพิ่มแอปไว้ที่หน้าจอโฮม</b>ก่อน:<br>
+  1) แตะปุ่ม <b>แชร์</b> <span class="ios-share">⬆︎</span> ด้านล่างของ Safari<br>
+  2) เลือก <b>"เพิ่มไปยังหน้าจอโฮม"</b><br>
+  3) เปิดแอปจากไอคอนใหม่ แล้วกดเปิดแจ้งเตือนอีกครั้ง`;
+
+async function renderPushSettings() {
+  const st = document.getElementById('push-status'), act = document.getElementById('push-actions');
+  if (!st || !act) return;
+  const s = await pushState();
+  const dot = document.getElementById('hdr-bell-dot');
+  if (dot) dot.style.display = s === 'on' ? 'none' : 'block';
+  if (s === 'on') {
+    st.innerHTML = `✅ เครื่องนี้ <b>รับแจ้งเตือนอยู่</b> <span class="muted">(${escapeHtml(deviceLabel())})</span><div id="push-devices" class="muted" style="margin-top:4px;font-size:12px"></div>`;
+    act.innerHTML = `<button class="btn btn-primary btn-sm" onclick="testPush()">📨 ส่งทดสอบ</button>
+      <button class="btn btn-ghost btn-sm" onclick="runPushNow()">⏰ เช็คนัดวันนี้เลย</button>
+      <button class="btn btn-ghost btn-sm" onclick="disablePush()">🔕 ปิดบนเครื่องนี้</button>`;
+    initSb().from('push_subscriptions').select('device,last_ok_at').order('created_at').then(({ data }) => {
+      const el = document.getElementById('push-devices');
+      if (el && data?.length) el.innerHTML = `เครื่องที่รับแจ้งเตือนทั้งหมด ${data.length} เครื่อง: ` + data.map(d => escapeHtml(d.device || '?')).join(', ');
+    });
+  } else if (s === 'ios-browser') {
+    st.innerHTML = IOS_A2HS_HTML;
+    act.innerHTML = '';
+  } else if (s === 'denied') {
+    st.innerHTML = `🚫 เครื่องนี้<b>บล็อกการแจ้งเตือน</b>ไว้ — เปิดได้ที่ ${isIOS() ? 'การตั้งค่า › การแจ้งเตือน › ทรัพย์ LED' : 'ไอคอนแม่กุญแจ 🔒 ข้างช่อง URL › การแจ้งเตือน › อนุญาต'} แล้วกลับมากดเปิดอีกครั้ง`;
+    act.innerHTML = `<button class="btn btn-primary btn-sm" onclick="enablePush()">🔔 ลองเปิดอีกครั้ง</button>`;
+  } else if (s === 'unsupported') {
+    st.innerHTML = '⚠️ เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือน — ใช้ Chrome / Edge / Safari (iOS 16.4 ขึ้นไป)';
+    act.innerHTML = '';
+  } else {
+    st.innerHTML = '🔕 เครื่องนี้<b>ยังไม่ได้เปิด</b>แจ้งเตือน';
+    act.innerHTML = `<button class="btn btn-primary btn-sm" onclick="enablePush()">🔔 เปิดแจ้งเตือนบนเครื่องนี้</button>`;
+  }
+}
+
+async function renderPushNudge() {
+  const el = document.getElementById('push-nudge');
+  if (!el) return;
+  const s = await pushState();
+  const dot = document.getElementById('hdr-bell-dot');
+  if (dot) dot.style.display = s === 'on' ? 'none' : 'block';
+  let hideUntil = 0;
+  try { hideUntil = +localStorage.getItem(PUSH_NUDGE_KEY) || 0; } catch (e) {}
+  if (!AUTHED || s === 'on' || s === 'unsupported' || Date.now() < hideUntil) { el.style.display = 'none'; return; }
+  const body = s === 'ios-browser'
+    ? `<div class="pn-text"><b>รับแจ้งเตือนวันนัดบน iPhone</b><div>${IOS_A2HS_HTML}</div></div>`
+    : s === 'denied'
+      ? `<div class="pn-text"><b>การแจ้งเตือนถูกบล็อกไว้</b><div>เปิดในการตั้งค่าเครื่องเพื่อรับเตือนวันนัด</div></div><button class="btn btn-primary btn-sm" onclick="openSettings('notify')">วิธีเปิด</button>`
+      : `<div class="pn-text"><b>เปิดแจ้งเตือนวันนัดประมูล</b><div>เตือนทุกนัดล่วงหน้า 7, 3, 1 วัน และเช้าวันนัด</div></div><button class="btn btn-primary btn-sm" onclick="enablePush()">เปิดเลย</button>`;
+  el.innerHTML = `<div class="pn-ic">🔔</div>${body}<button class="pn-x" onclick="hidePushNudge()" aria-label="ซ่อน">✕</button>`;
+  el.style.display = 'flex';
+}
+function hidePushNudge() {
+  try { localStorage.setItem(PUSH_NUDGE_KEY, String(Date.now() + 14 * 86400000)); } catch (e) {}
+  document.getElementById('push-nudge').style.display = 'none';
+}
+
+// ข้อความจาก service worker: แตะแจ้งเตือนตอนแอปเปิดอยู่ / browser เปลี่ยน subscription เอง
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (e) => {
+    if (e.data?.type === 'open-prop') openPropById(e.data.propId);
+    if (e.data?.type === 'resubscribe' && AUTHED) pushSyncOnBoot();
+  });
+}
+window.addEventListener('hashchange', openPropFromHash);
+setTimeout(openPropFromHash, 0);
 
 // ── PWA: ลงทะเบียน service worker (item 13) — ทำงานเฉพาะ https/localhost ไม่ใช่ file:// ──
 if ('serviceWorker' in navigator) {

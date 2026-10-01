@@ -1,12 +1,14 @@
-// Service Worker — ระบบจัดการทรัพย์ กรมบังคับคดี (item 13 PWA)
+// Service Worker — ระบบจัดการทรัพย์ กรมบังคับคดี (PWA + แจ้งเตือน Web Push)
 // เปิดแอปแบบ offline ได้: cache ตัวแอป (app shell) + รูปที่โหลดแล้ว
 // ข้อมูลจริงอยู่ใน localStorage + sync Supabase เมื่อออนไลน์
-const CACHE = 'auction-tracker-v5';
+const CACHE = 'auction-tracker-v6';
 const SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
   './icon.svg',
+  './icon-192.png',
+  './icon-512.png',
 ];
 
 self.addEventListener('install', (e) => {
@@ -60,4 +62,42 @@ self.addEventListener('fetch', (e) => {
       return cached || network;
     })
   );
+});
+
+// ── แจ้งเตือนผ่านเครื่อง (Web Push) ─────────────────────────────
+// เซิร์ฟเวอร์ (edge function auction-push-notify) ส่ง JSON { title, body, tag, url, propId }
+self.addEventListener('push', (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (_) { d = { body: e.data && e.data.text() }; }
+  e.waitUntil(self.registration.showNotification(d.title || 'ระบบจัดการทรัพย์', {
+    body: d.body || '',
+    tag: d.tag || undefined,
+    icon: './icon-192.png',
+    badge: './icon-192.png',
+    lang: 'th',
+    data: { url: d.url || './index.html', propId: d.propId || '' },
+  }));
+});
+
+// แตะแจ้งเตือน → เปิดแอป (ถ้าเปิดอยู่แล้วก็สลับไปหน้านั้น) แล้วกางการ์ดทรัพย์นั้นให้
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const { url, propId } = e.notification.data || {};
+  const target = new URL(url || './index.html', self.registration.scope).href;
+  e.waitUntil((async () => {
+    const wins = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const w of wins) {
+      if (w.url.startsWith(self.registration.scope)) {
+        await w.focus();
+        if (propId) w.postMessage({ type: 'open-prop', propId });
+        return;
+      }
+    }
+    await clients.openWindow(target);
+  })());
+});
+
+// เบราว์เซอร์เปลี่ยน subscription เอง (หมดอายุ/รีเซ็ต) → บอกหน้าแอปให้ลงทะเบียนใหม่ตอนเปิดครั้งถัดไป
+self.addEventListener('pushsubscriptionchange', () => {
+  clients.matchAll({ type: 'window' }).then((ws) => ws.forEach((w) => w.postMessage({ type: 'resubscribe' })));
 });
