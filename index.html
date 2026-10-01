@@ -584,7 +584,7 @@ img, svg, video, canvas { max-width:100%; }
 /* ── ชวนเปิดแจ้งเตือน ── */
 .push-nudge {
   display:flex; align-items:center; gap:12px;
-  max-width:1232px; margin:16px auto 0; width:calc(100% - 48px);
+  margin:0 0 14px;
   background:linear-gradient(135deg,#EEF4FF 0%,#F5F3FF 100%); border:1px solid #DBE6FF;
   border-radius:16px; padding:12px 14px; box-shadow:var(--shadow);
 }
@@ -799,9 +799,14 @@ img, svg, video, canvas { max-width:100%; }
 
   body { padding-bottom:env(safe-area-inset-bottom); }
   .content { padding:12px 12px 24px; }
-  .push-nudge { width:auto; margin:12px 12px 0; }
 
   /* หน้าทรัพย์: ไม่ซ้อนการ์ดในการ์ด → ได้ความกว้างเต็มจอ */
+  /* แถบสรุปค่าใช้จ่าย: ช่องละตัวเลข จัด 2 คอลัมน์ ยอดรวมกว้างเต็มแถว */
+  .reno-summary-bar { display:grid; grid-template-columns:1fr 1fr; gap:14px 16px; padding:16px; border-radius:16px; }
+  .reno-summary-bar > .reno-stat:first-child { grid-column:1 / -1; padding-bottom:12px; border-bottom:1px solid rgba(255,255,255,.18); }
+  .reno-summary-bar > .reno-stat:first-child .reno-stat-num { font-size:26px; }
+  .reno-stat-label { line-height:1.4; }
+
   #tab-props > .card { background:transparent; border:none; box-shadow:none; padding:0; }
   #tab-props > .card > .card-header { margin-bottom:12px; padding:2px 2px 0; }
   #tab-props > .card > .card-header > div:last-child { width:100%; }
@@ -909,8 +914,6 @@ img, svg, video, canvas { max-width:100%; }
 <!-- ฉากมืดตอนกางเมนูมือถือ (ตัวเมนูอยู่ในหัวแอป: #fluid-nav) -->
 <div class="fluid-backdrop" id="fluid-backdrop" onclick="toggleFluidNav(false)"></div>
 
-<!-- ชวนเปิดแจ้งเตือน (โชว์เฉพาะเครื่องที่ยังไม่ได้เปิด) -->
-<div id="push-nudge" class="push-nudge" style="display:none"></div>
 
 <!-- เมนูตัวเลือกของการ์ด (⋯) — มือถือเป็น bottom sheet -->
 <div class="sheet-overlay" id="action-sheet" onclick="if(event.target===this)closeActionSheet()">
@@ -931,6 +934,8 @@ img, svg, video, canvas { max-width:100%; }
 
   <!-- ══ PROPERTIES ════════════════════════════════════ -->
   <div class="tab-panel active" id="tab-props">
+    <!-- ชวนเปิดแจ้งเตือน (โชว์เฉพาะเครื่องที่ยังไม่ได้เปิด · อยู่หน้าทรัพย์อย่างเดียว ไม่กวนหน้าอื่น) -->
+    <div id="push-nudge" class="push-nudge" style="display:none"></div>
     <div class="card">
       <div class="card-header">
         <div class="card-title">🏠 ทรัพย์ที่เล็งไว้</div>
