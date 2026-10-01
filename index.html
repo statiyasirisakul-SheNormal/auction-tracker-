@@ -703,58 +703,82 @@ img, svg, video, canvas { max-width:100%; }
 /* แท็บย่อชื่อ: จอใหญ่ใช้ชื่อเต็ม */
 .t-short { display:none; }
 
-/* ── Fluid menu (มือถือ) — วงกลมซ้อนกันเป็นแคปซูล ไอคอน ☰ หมุนเป็น ✕ ── */
+/* ── Fluid menu (มือถือ) — ปุ่ม ☰ ขวาสุดของหัวแอปข้างเฟือง หมุนเป็น ✕ แล้วกางเมนูลงมาเป็นแผงรายการชิดขวา ── */
 .fluid-nav, .hdr-page { display:none; }
 .hdr-page { font-size:17px; font-weight:700; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.fluid-nav {
-  position:fixed; z-index:450; width:60px; height:60px;
-  right:max(16px,env(safe-area-inset-right)); bottom:calc(16px + env(safe-area-inset-bottom));
-}
+.fluid-nav { position:relative; width:38px; height:38px; flex-shrink:0; }
+/* ฉากมืดอยู่ใต้หัวแอป (header z-index 100) เมนูที่กางจากหัวแอปจึงอยู่เหนือฉากเสมอ */
 .fluid-backdrop {
-  position:fixed; inset:0; z-index:440; background:rgba(15,23,42,.38);
-  -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
+  position:fixed; inset:0; z-index:95; background:rgba(15,23,42,.42);
+  -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px);
   opacity:0; pointer-events:none; transition:opacity .3s;
 }
 .fluid-backdrop.open { opacity:1; pointer-events:auto; }
-.fl-item {
-  position:absolute; left:0; top:0; width:60px; height:60px; border:none; padding:0; cursor:pointer;
-  background:#F1F5F9; color:#475569; border-radius:50%;
-  display:flex; align-items:center; justify-content:center; font:inherit;
-  will-change:transform,opacity; backface-visibility:hidden;
-  transition:transform .3s cubic-bezier(.4,0,.2,1), opacity .35s, background .2s, color .2s;
-  opacity:0; transform:translateY(0); pointer-events:none;
-}
-.fl-item svg { width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; transition:stroke-width .2s; }
-.fl-item:hover svg, .fl-item.active svg { stroke-width:2.3; }
-.fl-item.active { color:var(--blue); background:#E0EAFF; }
-.fluid-nav[data-expanded="true"] .fl-item { opacity:1; pointer-events:auto; transform:translateY(calc(var(--i) * -50px)); }
-.fl-label {
-  position:absolute; right:70px; top:50%; transform:translate(8px,-50%); white-space:nowrap;
-  background:#fff; color:var(--ink); font-size:13.5px; font-weight:600; padding:6px 12px; border-radius:999px;
-  box-shadow:0 4px 14px rgba(15,23,42,.14); opacity:0; transition:opacity .25s, transform .25s; pointer-events:none;
-}
-.fl-item.active .fl-label { color:var(--blue); }
-.fluid-nav[data-expanded="true"] .fl-label { opacity:1; transform:translate(0,-50%); transition-delay:.12s; }
-.fl-badge {
-  position:absolute; top:6px; right:6px; min-width:17px; height:17px; padding:0 4px; border-radius:999px;
-  background:#EF4444; color:#fff; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center;
-  box-shadow:0 0 0 2px #fff;
-}
 .fl-main {
-  position:absolute; inset:0; z-index:60; width:60px; height:60px; border-radius:50%; border:none; cursor:pointer;
-  background:linear-gradient(135deg,#1E4FA3,#13305E); color:#fff;
-  box-shadow:0 8px 24px rgba(19,48,94,.38),0 0 0 1px rgba(255,255,255,.12) inset;
-  display:flex; align-items:center; justify-content:center; transition:transform .15s;
+  position:absolute; inset:0; z-index:60; width:38px; height:38px; border-radius:12px; cursor:pointer;
+  background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.24); color:#fff;
+  display:flex; align-items:center; justify-content:center; transition:background .2s, transform .15s;
 }
 .fl-main:active { transform:scale(.94); }
-.fl-main .fl-ic { position:absolute; width:26px; height:26px; transition:all .3s ease-in-out; transform-origin:center; }
-.fl-main .fl-ic svg { width:26px; height:26px; stroke:#fff; fill:none; stroke-width:1.8; stroke-linecap:round; }
+.fluid-nav[data-expanded="true"] .fl-main { background:#fff; color:var(--navy); }
+.fl-main .fl-ic { position:absolute; width:24px; height:24px; transition:all .3s ease-in-out; transform-origin:center; }
+.fl-main .fl-ic svg { width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; }
 .fl-main .fl-x { opacity:0; transform:scale(0) rotate(-180deg); }
 .fluid-nav[data-expanded="true"] .fl-burger { opacity:0; transform:scale(0) rotate(180deg); }
 .fluid-nav[data-expanded="true"] .fl-x { opacity:1; transform:scale(1) rotate(0); }
-.fl-main .fl-dot { display:none; position:absolute; top:4px; right:4px; width:12px; height:12px; border-radius:50%; background:#EF4444; box-shadow:0 0 0 2px #fff; }
+.fl-main .fl-dot { display:none; position:absolute; top:-3px; right:-3px; width:11px; height:11px; border-radius:50%; background:#EF4444; box-shadow:0 0 0 2px #1B4590; }
 .fl-main .fl-dot.on { display:block; }
 .fluid-nav[data-expanded="true"] .fl-main .fl-dot { display:none; }
+
+/* แต่ละเมนู = แถวใหญ่ ไอคอน + ชื่อเต็ม กดได้ทั้งแถว · ไหลลงมาทีละแถว (cascade) */
+.fl-item {
+  position:absolute; right:0; top:0; width:min(260px, calc(100vw - 28px)); height:52px;
+  display:flex; align-items:center; gap:12px; padding:0 14px 0 8px;
+  border:none; border-radius:16px; cursor:pointer; font:inherit; text-align:left;
+  background:#fff; color:var(--ink); box-shadow:0 6px 20px rgba(15,23,42,.16);
+  opacity:0; pointer-events:none; transform-origin:calc(100% - 19px) 19px;
+  transform:translateY(0) scale(.5);
+  transition:transform .32s cubic-bezier(.4,0,.2,1), opacity .25s;
+  will-change:transform,opacity;
+}
+.fluid-nav[data-expanded="true"] .fl-item {
+  opacity:1; pointer-events:auto;
+  transform:translateY(calc(var(--i) * 58px - 4px)) scale(1);
+  transition-delay:calc(var(--i) * 22ms);
+}
+.fl-icw {
+  width:38px; height:38px; border-radius:12px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; background:#F1F5F9; color:#475569;
+}
+.fl-icw svg { width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.fl-label { flex:1; font-size:16px; font-weight:600; white-space:nowrap; }
+.fl-item:active { transform:translateY(calc(var(--i) * 58px - 4px)) scale(.97); }
+.fl-item.active { background:#EEF4FF; color:var(--blue); box-shadow:0 0 0 2px var(--blue), 0 6px 20px rgba(37,99,235,.2); }
+.fl-item.active .fl-icw { background:var(--blue); color:#fff; }
+.fl-item.active .fl-label::after { content:'กำลังเปิด'; margin-left:8px; font-size:11px; font-weight:700; color:var(--blue); background:#fff; padding:2px 8px; border-radius:999px; vertical-align:2px; }
+.fl-badge {
+  min-width:22px; height:22px; padding:0 7px; border-radius:999px;
+  background:#EF4444; color:#fff; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center;
+}
+
+/* ── บิล/ใบเสร็จ + AI อ่านบิล (ฟอร์มค่าใช้จ่าย) ── */
+.receipt-box { border:1.5px dashed #C7D2FE; background:linear-gradient(135deg,#F5F7FF,#FAF5FF); border-radius:16px; padding:14px; margin-bottom:16px; transition:border-color .15s, background .15s; }
+.receipt-box.drag { border-color:var(--blue); background:#EEF4FF; }
+.receipt-title { font-weight:700; color:var(--navy); font-size:15px; }
+.receipt-sub { font-size:12.5px; color:#475569; margin-top:2px; line-height:1.5; }
+.receipt-actions { display:flex; gap:8px; margin-top:12px; }
+.receipt-actions .btn { flex:1; min-height:46px; font-size:15px !important; }
+.receipt-drop-hint { font-size:11.5px; color:#94A3B8; margin-top:8px; text-align:center; }
+@media (hover:none) { .receipt-drop-hint { display:none; } }
+.ai-status { margin-top:10px; font-size:13px; line-height:1.6; border-radius:12px; padding:10px 12px; background:#fff; border:1px solid var(--border); color:var(--ink-2); }
+.ai-status.busy { border-color:#C7D2FE; color:#4338CA; }
+.ai-status.ok { border-color:#BBF7D0; background:#F0FDF4; color:#166534; }
+.ai-status.warn { border-color:#FDE68A; background:#FFFBEB; color:#92400E; }
+.ai-spin { display:inline-block; width:14px; height:14px; border-radius:50%; border:2px solid #C7D2FE; border-top-color:#4338CA; vertical-align:-2px; margin-right:4px; animation:aiSpin .8s linear infinite; }
+@keyframes aiSpin { to { transform:rotate(360deg); } }
+.ai-items { display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
+.ai-items span { background:#fff; border:1px solid #D1FAE5; border-radius:999px; padding:1px 9px; font-size:11.5px; color:var(--ink-2); }
+.ai-filled { border-color:#8B5CF6 !important; background:#FAF5FF !important; box-shadow:0 0 0 3px rgba(139,92,246,.14) !important; }
 
 /* ══ มือถือ / แท็บเล็ตแนวตั้ง ══ */
 @media (max-width:760px) {
@@ -767,15 +791,14 @@ img, svg, video, canvas { max-width:100%; }
   .header p { display:none; }
   .hdr-btn { width:38px; height:38px; font-size:16px; }
 
-  /* แถบแท็บด้านบนซ่อน → ใช้ fluid menu ลอยมุมขวาล่างแทน */
+  /* แถบแท็บด้านบนซ่อน → ใช้ fluid menu ที่ปุ่ม ☰ ข้างเฟืองบนหัวแอปแทน */
   .tabs { display:none; }
   .fluid-nav { display:block; }
   .hdr-page { display:block; }
   .header h1 { font-size:12px; font-weight:500; opacity:.75; }
 
-  body { padding-bottom:calc(96px + env(safe-area-inset-bottom)); }
+  body { padding-bottom:env(safe-area-inset-bottom); }
   .content { padding:12px 12px 24px; }
-  .toast { bottom:calc(env(safe-area-inset-bottom) + 92px); }
   .push-nudge { width:auto; margin:12px 12px 0; }
 
   /* หน้าทรัพย์: ไม่ซ้อนการ์ดในการ์ด → ได้ความกว้างเต็มจอ */
@@ -852,6 +875,8 @@ img, svg, video, canvas { max-width:100%; }
   </div>
   <button class="hdr-btn" id="hdr-bell" onclick="openSettings('notify')" title="การแจ้งเตือน" aria-label="การแจ้งเตือน">🔔<span class="hdr-dot" id="hdr-bell-dot"></span></button>
   <button class="hdr-btn" onclick="openSettings()" title="ตั้งค่า" aria-label="ตั้งค่า">⚙️</button>
+  <!-- มือถือ: ปุ่มเมนูแบบ fluid menu ขวาสุดของหัวแอป ข้างเฟือง กดแล้วกางลงด้านล่าง (สร้างจาก JS: buildFluidNav) -->
+  <nav class="fluid-nav" id="fluid-nav" data-expanded="false" aria-label="เมนูหลัก (มือถือ)"></nav>
 </div>
 
 <div id="sync-banner" style="display:none;padding:10px 16px;font-size:13px;line-height:1.5;text-align:center;font-weight:600;border-bottom:1px solid"></div>
@@ -881,9 +906,8 @@ img, svg, video, canvas { max-width:100%; }
   </button>
 </nav>
 
-<!-- เมนูมือถือแบบ fluid menu: ปุ่มกลมลอย กดแล้วกางเป็นแคปซูลขึ้นด้านบน (สร้างจาก JS: buildFluidNav) -->
+<!-- ฉากมืดตอนกางเมนูมือถือ (ตัวเมนูอยู่ในหัวแอป: #fluid-nav) -->
 <div class="fluid-backdrop" id="fluid-backdrop" onclick="toggleFluidNav(false)"></div>
-<nav class="fluid-nav" id="fluid-nav" data-expanded="false" aria-label="เมนูหลัก (มือถือ)"></nav>
 
 <!-- ชวนเปิดแจ้งเตือน (โชว์เฉพาะเครื่องที่ยังไม่ได้เปิด) -->
 <div id="push-nudge" class="push-nudge" style="display:none"></div>
@@ -1378,6 +1402,24 @@ img, svg, video, canvas { max-width:100%; }
   <div class="modal modal-wide">
     <h3>🔨 บันทึกค่าใช้จ่าย</h3>
     <input type="hidden" id="reno-edit-id" />
+    <!-- บิล/ใบเสร็จ: ถ่ายรูปหรือเลือกไฟล์ → AI อ่านแล้วกรอกช่องด้านล่างให้เอง (คอม: ลากไฟล์มาวาง หรือ Ctrl+V ได้) -->
+    <div class="receipt-box" id="receipt-box">
+      <div class="receipt-head">
+        <div>
+          <div class="receipt-title">🧾 บิล / ใบเสร็จ</div>
+          <div class="receipt-sub">ถ่ายรูปหรือเลือกรูป แล้ว 🤖 AI จะอ่านและกรอกช่องด้านล่างให้</div>
+        </div>
+      </div>
+      <div class="receipt-actions">
+        <button type="button" class="btn btn-primary" onclick="document.getElementById('reno-cam-input').click()">📷 ถ่ายรูปบิล</button>
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('reno-img-input').click()">🖼️ เลือกรูป</button>
+      </div>
+      <div class="receipt-drop-hint">หรือลากรูปมาวางตรงนี้ · กด Ctrl+V วางภาพที่คัดลอกไว้</div>
+      <div id="reno-ai-status" class="ai-status" style="display:none"></div>
+      <div id="reno-imgs-preview" class="img-grid" style="min-height:0;margin:10px 0 0"></div>
+      <input type="file" id="reno-cam-input" accept="image/*" capture="environment" onchange="handleRenoImgUpload(event)" />
+      <input type="file" id="reno-img-input" accept="image/*" multiple onchange="handleRenoImgUpload(event)" />
+    </div>
     <div class="form-row">
       <div class="form-group">
         <label class="form-label" id="reno-prop-label">ทรัพย์ *</label>
@@ -1430,14 +1472,6 @@ img, svg, video, canvas { max-width:100%; }
           <option>บัตรเครดิต</option><option>เช็ค</option>
         </select>
       </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">อัปโหลดบิล / ใบเสร็จ</label>
-      <div id="reno-imgs-preview" class="img-grid" style="min-height:0;"></div>
-      <div class="upload-zone" onclick="document.getElementById('reno-img-input').click()">
-        📎 คลิกอัปโหลดบิลหรือใบเสร็จ
-      </div>
-      <input type="file" id="reno-img-input" accept="image/*" multiple onchange="handleRenoImgUpload(event)" />
     </div>
     <div class="form-group" style="margin-top:4px">
       <label class="form-label">ผู้จ่ายเงินไปก่อน *</label>
@@ -4865,19 +4899,19 @@ function goCalcFromPropForm() {
 }
 
 // ── Supabase ──────────────────────────────────
-function fileToBase64Compressed(file) {
+function fileToBase64Compressed(file, maxDim = 800, quality = 0.80) {
   return new Promise(resolve => {
     const r = new FileReader();
     r.onload = e => {
       const img = new Image();
       img.onload = () => {
-        const maxW = 800, maxH = 800;
+        const maxW = maxDim, maxH = maxDim;
         let w = img.width, h = img.height;
         if (w > maxW || h > maxH) { const ratio = Math.min(maxW/w, maxH/h); w = Math.round(w*ratio); h = Math.round(h*ratio); }
         const c = document.createElement('canvas');
         c.width = w; c.height = h;
         c.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(c.toDataURL('image/jpeg', 0.80));
+        resolve(c.toDataURL('image/jpeg', quality));
       };
       img.src = e.target.result;
     };
@@ -5193,24 +5227,119 @@ function propDocsHtml(p) {
 
 async function handleRenoImgUpload(ev) {
   const files = [...ev.target.files];
+  ev.target.value = '';
+  await addRenoImages(files);
+}
+// รับรูปบิลจากปุ่มกล้อง / เลือกรูป / ลากวาง / Ctrl+V → เก็บรูป + ให้ AI อ่านรูปแรกแล้วกรอกฟอร์ม
+async function addRenoImages(files) {
+  files = files.filter(f => /^image\//.test(f.type));
+  if (!files.length) return;
   const preview = document.getElementById('reno-imgs-preview');
-  toast('⏳ กำลังอัปโหลดรูป...', '');
+  let aiJob = null;
   for (const f of files) {
-    const b64 = await fileToBase64Compressed(f);
-    const url = await uploadToStorage(b64, f.name);
+    const name = f.name || 'บิล.jpg';
+    // บิลเก็บที่ 1600px (ตัวเลขเล็ก ๆ ยังอ่านออก) · รูปแรกส่งให้ AI อ่านไปพร้อมกับอัปโหลด
+    const b64 = await fileToBase64Compressed(f, 1600, 0.85);
+    if (!aiJob) aiJob = readReceiptWithAI(b64);
+    const url = await uploadToStorage(b64, name);
     const src = url || b64;
     const idx = renoTmpImgs.length;
-    renoTmpImgs.push({name: f.name, data: src});
+    renoTmpImgs.push({ name, data: src });
     const d = document.createElement('div');
     d.className = 'img-thumb';
     d.innerHTML = `<img src="${src}" onclick="showLightbox('${src}')" />
                    <button class="img-del" onclick="renoTmpImgs.splice(${idx},1);this.parentNode.remove()">✕</button>
-                   <div class="img-label">${f.name}</div>`;
+                   <div class="img-label">${escapeHtml(name)}</div>`;
     preview.appendChild(d);
   }
-  toast('✅ อัปโหลดรูปสำเร็จ', 'success');
-  ev.target.value = '';
+  await aiJob;
 }
+
+// ── AI อ่านบิล (edge function receipt-read → Claude) ──
+// กรอกเฉพาะช่องที่ยังว่าง / ยังไม่ได้แตะเอง — ไม่ทับสิ่งที่พิมพ์ไว้แล้ว
+function renoAiStatus(html, kind) {
+  const el = document.getElementById('reno-ai-status');
+  if (!el) return;
+  el.className = 'ai-status' + (kind ? ' ' + kind : '');
+  el.innerHTML = html;
+  el.style.display = html ? 'block' : 'none';
+}
+async function readReceiptWithAI(image) {
+  renoAiStatus('<span class="ai-spin"></span> 🤖 AI กำลังอ่านบิล...', 'busy');
+  try {
+    const categories = [...document.querySelectorAll('#reno-cat option')].map(o => o.value);
+    const payMethods = [...document.querySelectorAll('#reno-pay option')].map(o => o.value);
+    const { data, error } = await initSb().functions.invoke('receipt-read', { body: { image, categories, payMethods } });
+    if (error) throw error;
+    if (!data?.ok) {
+      if (data?.code === 'no_key' || data?.code === 'bad_key') {
+        renoAiStatus('⚙️ ยังเปิดใช้ AI อ่านบิลไม่ได้ — ต้องตั้ง <b>ANTHROPIC_API_KEY</b> ใน Supabase › Edge Functions › Secrets ก่อน (รูปบิลบันทึกไว้แล้ว กรอกช่องเองได้ตามปกติ)', 'warn');
+      } else renoAiStatus('⚠️ AI อ่านบิลไม่สำเร็จ: ' + escapeHtml(data?.error || 'ไม่ทราบสาเหตุ') + ' — กรอกเองได้ตามปกติ', 'warn');
+      return;
+    }
+    applyReceiptToForm(data.data);
+  } catch (e) {
+    renoAiStatus('⚠️ AI อ่านบิลไม่สำเร็จ: ' + escapeHtml(e.message || String(e)) + ' — กรอกเองได้ตามปกติ', 'warn');
+  }
+}
+function applyReceiptToForm(r) {
+  const isNew = !document.getElementById('reno-edit-id').value;
+  const filled = [];
+  const setText = (id, val, label) => {
+    const el = document.getElementById(id);
+    if (!el || !val || el.value.trim()) return;
+    el.value = val; el.classList.add('ai-filled'); filled.push(label);
+  };
+  const setSelect = (id, val, label) => {
+    const el = document.getElementById(id);
+    if (!el || !val || !isNew || el.dataset.touched) return;
+    if (![...el.options].some(o => o.value === val)) return;
+    el.value = val; el.classList.add('ai-filled'); filled.push(label);
+  };
+  if (/^\d{4}-\d{2}-\d{2}$/.test(r.date || '')) setText('reno-date', r.date, 'วันที่');
+  if (Number(r.amount) > 0) {
+    const amt = Number(r.amount);
+    setText('reno-amount', amt.toLocaleString('th-TH', { minimumFractionDigits: amt % 1 ? 2 : 0, maximumFractionDigits: 2 }), 'จำนวนเงิน');
+  }
+  setText('reno-desc', (r.description || '').trim(), 'รายการ');
+  setText('reno-vendor', (r.vendor || '').trim(), 'ร้านค้า');
+  setSelect('reno-cat', r.category, 'หมวดหมู่');
+  setSelect('reno-pay', r.payment, 'วิธีชำระ');
+
+  const conf = { high: '', medium: ' · บางช่อง AI เดา', low: ' · ⚠️ รูปไม่ค่อยชัด' }[r.confidence] || '';
+  const items = (r.items || []).length
+    ? `<div class="ai-items">${r.items.map(i => `<span>${escapeHtml(i.name)} <b>${fmtNum(i.amount)}</b></span>`).join('')}</div>` : '';
+  const note = r.note ? `<div style="margin-top:4px">📝 ${escapeHtml(r.note)}</div>` : '';
+  renoAiStatus(filled.length
+    ? `✅ AI กรอกให้แล้ว: <b>${filled.join(', ')}</b>${conf} — ตรวจสอบก่อนกดบันทึก${note}${items}`
+    : `ℹ️ AI อ่านแล้ว แต่ช่องต่าง ๆ มีข้อมูลอยู่แล้ว จึงไม่ได้แก้ให้${r.amount ? ` (ยอดบนบิล ${fmtNum(r.amount)} ฿)` : ''}${note}${items}`,
+    r.confidence === 'low' ? 'warn' : 'ok');
+}
+// ช่องที่ผู้ใช้แก้เอง → เอาไฮไลต์ AI ออก + จำว่าแตะแล้ว (AI จะไม่ทับ)
+['reno-date','reno-amount','reno-desc','reno-vendor','reno-cat','reno-pay'].forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const mark = () => { el.classList.remove('ai-filled'); el.dataset.touched = '1'; };
+  el.addEventListener('input', mark);
+  el.addEventListener('change', mark);
+});
+// คอม: ลากรูปบิลมาวางในหน้าต่างค่าใช้จ่าย หรือกด Ctrl+V วางภาพที่คัดลอกไว้
+(() => {
+  const modal = document.getElementById('modal-reno');
+  const box = document.getElementById('receipt-box');
+  if (!modal || !box) return;
+  modal.addEventListener('dragover', e => { e.preventDefault(); box.classList.add('drag'); });
+  modal.addEventListener('dragleave', e => { if (!modal.contains(e.relatedTarget)) box.classList.remove('drag'); });
+  modal.addEventListener('drop', e => {
+    e.preventDefault(); box.classList.remove('drag');
+    addRenoImages([...(e.dataTransfer?.files || [])]);
+  });
+  document.addEventListener('paste', e => {
+    if (!modal.classList.contains('open')) return;
+    const files = [...(e.clipboardData?.items || [])].filter(i => i.kind === 'file').map(i => i.getAsFile()).filter(Boolean);
+    if (files.length) { e.preventDefault(); addRenoImages(files); }
+  });
+})();
 
 function clearRenoForm() {
   renoTmpImgs = [];
@@ -5221,6 +5350,11 @@ function clearRenoForm() {
   });
   const cb = document.getElementById('reno-settled');
   if (cb) cb.checked = false;
+  ['reno-date','reno-amount','reno-desc','reno-vendor','reno-cat','reno-pay'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.classList.remove('ai-filled'); delete el.dataset.touched; }
+  });
+  renoAiStatus('');
   const meR = document.getElementById('reno-payer-me');
   if (meR) meR.checked = true;
 }
@@ -6637,7 +6771,7 @@ function calcSaveToProperty() {
 }
 
 // ═══════════════════════════════════════════════
-//  Fluid menu (มือถือ) — ปุ่มกลมลอยมุมขวาล่าง กดแล้วกางเมนูขึ้นด้านบน
+//  Fluid menu (มือถือ) — ปุ่ม ☰ ขวาสุดของหัวแอปข้างเฟือง กดแล้วกางเมนูลงมาเป็นแผงรายการ
 //  ไอคอนเส้นแบบ lucide (inline SVG) · ลำดับเดียวกับ tabOrder ใน switchTab
 // ═══════════════════════════════════════════════
 const FLUID_TABS = [
@@ -6652,10 +6786,10 @@ const FLUID_TABS = [
 function buildFluidNav() {
   const nav = document.getElementById('fluid-nav');
   if (!nav) return;
-  // เมนูแรกอยู่ล่างสุด (ใกล้นิ้วโป้ง) ไล่ขึ้นไปด้านบน · ตัวล่างทับตัวบนให้ขอบวงกลมไหลต่อกันเป็นแคปซูล
+  // ไหลลงมาทีละแถวจากปุ่ม ☰ · แถวบนทับแถวล่างระหว่างแอนิเมชัน
   nav.innerHTML = FLUID_TABS.map((x, i) => `
     <button class="fl-item" data-tab="${x.t}" style="--i:${i + 1};z-index:${40 - i}" onclick="switchTab('${x.t}');toggleFluidNav(false)" aria-label="${x.label}">
-      <svg viewBox="0 0 24 24" aria-hidden="true">${x.svg}</svg>
+      <span class="fl-icw"><svg viewBox="0 0 24 24" aria-hidden="true">${x.svg}</svg></span>
       <span class="fl-label">${x.label}</span>
       ${x.t === 'survey' ? '<span class="fl-badge" id="fl-badge-survey" style="display:none"></span>' : ''}
     </button>`).join('') + `
