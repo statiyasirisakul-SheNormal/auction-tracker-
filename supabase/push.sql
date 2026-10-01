@@ -41,11 +41,11 @@ ALTER TABLE public.push_config ENABLE ROW LEVEL SECURITY;
 --   ('cron_secret',       encode(gen_random_bytes(24),'hex'))
 -- ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
 
--- 5) เลิกใช้ LINE + ตั้งเวลาเตือนผ่านเครื่อง ทุกวัน 08:00 เวลาไทย (= 01:00 UTC)
+-- 5) เลิกใช้ LINE + ตั้งเวลาเตือนผ่านเครื่อง ทุกวัน 00:01 เวลาไทย (= 17:01 UTC ของวันก่อน)
 -- SELECT cron.unschedule('auction-line-notify-daily');
 SELECT cron.schedule(
   'auction-push-notify-daily',
-  '0 1 * * *',
+  '1 17 * * *',
   $$
   SELECT net.http_post(
     url     := 'https://rjpzmaeiopiqtsjaksed.supabase.co/functions/v1/auction-push-notify',

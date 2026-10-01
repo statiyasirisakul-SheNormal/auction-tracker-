@@ -1,7 +1,9 @@
 // ══════════════════════════════════════════════════════════════
-//  Edge Function: auction-push-notify — แจ้งเตือนผ่านเครื่อง (Web Push)
-//  เตือน "ทุกนัด ทุกรอบ" ของทรัพย์ที่เก็บไว้: ล่วงหน้า 7 / 3 / 1 วัน + เช้าวันนัด
-//  รันวันละครั้ง 08:00 เวลาไทยด้วย pg_cron (ดู supabase/push.sql)
+//  Edge Function: auction-push-notify — แจ้งเตือนผ่านเครื่อง (Web Push) แยก 2 แบบ
+//    1) ทุกนัดทุกทรัพย์ (auction_settings.push_all)      → ทันทีที่เปลี่ยนเป็นวันประมูล (00:01)
+//    2) นัดที่เล็งจะเข้าประมูล 🎯 (auction_settings.push_target) → ล่วงหน้า 5 วัน (ข้อความเตรียมตัว)
+//  สวิตช์ทั้งสองตั้งในแอป (⚙️ › แจ้งเตือน) ค่าเริ่มต้น = เปิด
+//  รันวันละครั้ง 00:01 เวลาไทย (= 17:01 UTC ของวันก่อน) ด้วย pg_cron (ดู supabase/push.sql)
 //
 //  เรียกได้ 2 แบบ (verify_jwt ปิด — ตรวจสิทธิ์เองข้างล่าง):
 //    { action:"run" }  + header x-cron-secret     → ส่งเตือนนัดที่ถึงกำหนดวันนี้ (cron)
@@ -13,7 +15,8 @@
 // ══════════════════════════════════════════════════════════════
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const OFFSETS = [7, 3, 1, 0];                         // เตือนเมื่อเหลือกี่วัน
+const ALL_OFFSETS = [0];                              // ทุกนัด: วันประมูล (ส่งตอน 00:01)
+const TARGET_DAYS = 5;                                // นัดที่เล็ง: ล่วงหน้า 5 วัน
 const ROUND_DISC = [0, 0.10, 0.20, 0.30, 0.30, 0.30]; // ตรงกับ ROUNDS ใน index.html
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -126,7 +129,8 @@ async function sendPush(v: Vapid, sub: Sub, payload: unknown): Promise<number> {
 
 // ── หานัดที่ต้องเตือนวันนี้ ────────────────────────────────────
 type Due = { key: string; payload: Record<string, unknown> };
-function dueReminders(rows: { id: string; data: any }[], today: string): Due[] {
+type Prefs = { all: boolean; target: boolean };
+function dueReminders(rows: { id: string; data: any }[], today: string, prefs: Prefs): Due[] {
   const out: Due[] = [];
   for (const row of rows) {
     const p = row.data || {};
@@ -134,24 +138,37 @@ function dueReminders(rows: { id: string; data: any }[], today: string): Due[] {
     if (p.notify === false) continue;                       // ปิดเตือนรายทรัพย์
     if (p.status === "lost" || p.status === "sold") continue;
     const base = Number(p.appraisal) || Number(p.price) || 0;
+    const name = [p.code, p.name].filter(Boolean).join(" ") || "(ไม่มีชื่อ)";
     (p.rounds || []).forEach((r: any, ri: number) => {
       const date = r && typeof r === "object" ? r.date : "";
       if (!date || isHaltedNote(r.note)) return;
       const diff = daysBetween(today, date);
-      if (!OFFSETS.includes(diff)) return;
       const isTarget = ri === (p.targetRound || 0);
       const bid = base ? Math.floor(base * (1 - (ROUND_DISC[ri] || 0))) : 0;
-      const when = diff === 0 ? "วันนี้" : diff === 1 ? "พรุ่งนี้" : `อีก ${diff} วัน`;
-      const title = `${diff === 0 ? "🔴" : diff === 1 ? "🟠" : "⏰"} ประมูล${when} · นัดที่ ${ri + 1}${isTarget ? " 🎯" : ""}`;
-      const body = [
-        [p.code, p.name].filter(Boolean).join(" ") || "(ไม่มีชื่อ)",
-        `🗓 ${fmtTH(date)}${bid ? ` · 💰 ${money(bid)} ฿` : ""}`,
-        p.loc ? `📍 ${p.loc}` : "",
-      ].filter(Boolean).join("\n");
-      out.push({
-        key: `${row.id}:${ri}:${date}:${diff}d`,
-        payload: { title, body, tag: `auction-${row.id}-${ri}`, propId: row.id, url: `./index.html#prop=${row.id}` },
+      const priceLine = `🗓 ${fmtTH(date)}${bid ? ` · 💰 ${money(bid)} ฿` : ""}`;
+      const payload = (title: string, lines: string[]) => ({
+        title, body: lines.filter(Boolean).join("\n"),
+        tag: `auction-${row.id}-${ri}`, propId: row.id, url: `./index.html#prop=${row.id}`,
       });
+
+      // 2) นัดที่เล็งจะเข้าประมูล — ล่วงหน้า 5 วัน ให้มีเวลาเตรียมเงิน/เอกสาร
+      if (prefs.target && isTarget && diff === TARGET_DAYS) {
+        out.push({
+          key: `${row.id}:${ri}:${date}:target${TARGET_DAYS}d`,
+          payload: payload(`🎯 อีก ${TARGET_DAYS} วัน ประมูลนัดที่เล็งไว้ (นัดที่ ${ri + 1})`, [
+            name, priceLine, "เตรียมเงินวางหลักประกัน + ใบมอบอำนาจ/เอกสารให้พร้อม", p.loc ? `📍 ${p.loc}` : "",
+          ]),
+        });
+      }
+      // 1) ทุกนัดทุกทรัพย์ — แจ้งทันทีที่เปลี่ยนเป็นวันประมูล
+      if (prefs.all && ALL_OFFSETS.includes(diff)) {
+        out.push({
+          key: `${row.id}:${ri}:${date}:${diff}d`,
+          payload: payload(`🔴 วันนี้ประมูล · นัดที่ ${ri + 1}${isTarget ? " 🎯 นัดที่เล็งไว้" : ""}`, [
+            name, priceLine, p.loc ? `📍 ${p.loc}` : "",
+          ]),
+        });
+      }
     });
   }
   return out;
@@ -206,7 +223,10 @@ Deno.serve(async (req) => {
       const today = todayBangkok();
       const { data: rows, error } = await sb.from("auction_props").select("id,data");
       if (error) throw error;
-      for (const d of dueReminders(rows ?? [], today)) {
+      const { data: setRows } = await sb.from("auction_settings").select("key,value").in("key", ["push_all", "push_target"]);
+      const set = Object.fromEntries((setRows ?? []).map((r) => [r.key, r.value]));
+      const prefs: Prefs = { all: set.push_all !== "0", target: set.push_target !== "0" };
+      for (const d of dueReminders(rows ?? [], today, prefs)) {
         const { data: already } = await sb.from("push_sent").select("key").eq("key", d.key).maybeSingle();
         if (already) continue;
         await fanout(d.payload);

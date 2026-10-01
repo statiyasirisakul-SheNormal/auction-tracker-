@@ -667,6 +667,9 @@ img, svg, video, canvas { max-width:100%; }
 .notify-chips { display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; font-size:11.5px; }
 .nt-chip { background:#fff; border:1px solid #DBE6FF; color:#1D4ED8; padding:2px 9px; border-radius:999px; font-weight:600; white-space:nowrap; }
 .nt-chip.soon { background:#FEF2F2; border-color:#FECACA; color:#B91C1C; }
+.nt-chip.target { background:#FFF7E6; border-color:#FCD34D; color:#B45309; }
+.pref-row { display:flex; align-items:center; justify-content:space-between; gap:12px; background:#fff; border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin-bottom:8px; font-size:13.5px; line-height:1.45; }
+.pref-row .muted { font-size:12px; margin-top:1px; }
 
 /* ── เมนูตัวเลือก (⋯) ── */
 .sheet-overlay { position:fixed; inset:0; z-index:650; background:rgba(15,23,42,.45); display:none; align-items:center; justify-content:center; padding:20px; }
@@ -1561,8 +1564,16 @@ img, svg, video, canvas { max-width:100%; }
     <!-- แจ้งเตือนผ่านเครื่อง (Web Push) -->
     <div class="set-sec" id="set-notify" style="--sec:#2563EB;--sec-bg:#EFF6FF;--sec-bd:#BFDBFE">
       <div class="set-sec-title">🔔 แจ้งเตือนวันนัดประมูล</div>
-      <div class="set-sec-desc">เตือนทุกนัดของทุกทรัพย์ที่เก็บไว้ — ล่วงหน้า 7, 3, 1 วัน และเช้าวันนัด (08:00) แม้ไม่ได้เปิดแอป</div>
-      <div id="push-status" class="set-status">—</div>
+      <div class="set-sec-desc">เด้งบนมือถือแม้ไม่ได้เปิดแอป · เลือกเปิด/ปิดได้ 2 แบบ (มีผลทุกเครื่อง)</div>
+      <div class="pref-row">
+        <div><b>🔴 ทุกนัดทุกทรัพย์</b><div class="muted">เด้งทันทีตอน 00:01 ของวันประมูล</div></div>
+        <label class="switch"><input type="checkbox" id="pref-push-all" onchange="savePushPref('all', this.checked)"><span class="switch-slider"></span></label>
+      </div>
+      <div class="pref-row">
+        <div><b>🎯 นัดที่เลือกจะเข้าซื้อ</b><div class="muted">เตือนล่วงหน้า 5 วัน ให้เตรียมเงินและเอกสาร (เฉพาะนัด 🎯 ของแต่ละทรัพย์)</div></div>
+        <label class="switch"><input type="checkbox" id="pref-push-target" onchange="savePushPref('target', this.checked)"><span class="switch-slider"></span></label>
+      </div>
+      <div id="push-status" class="set-status" style="margin-top:10px">—</div>
       <div id="push-actions" style="display:flex;gap:8px;flex-wrap:wrap"></div>
     </div>
 
@@ -1694,6 +1705,11 @@ let S = {
   expenses: [],
   notifSent: {},
 };
+
+// สวิตช์แจ้งเตือน 2 แบบ (ทุกนัด / นัดที่เล็ง) — เก็บในตาราง auction_settings ให้เซิร์ฟเวอร์อ่านได้
+// สำเนาในเครื่องไว้แสดงผลตอนออฟไลน์ · ประกาศตรงนี้เพราะ renderProps ใช้ตั้งแต่ตอนเปิดแอป
+let pushPrefs = { all: true, target: true };
+try { Object.assign(pushPrefs, JSON.parse(localStorage.getItem('auction_push_prefs') || '{}')); } catch(e) {}
 
 // ทรัพย์รอสำรวจเก็บในตาราง auction_props เดียวกัน แยกด้วย data.pool = true
 // (ไม่ต้องสร้างตารางใหม่ · กด "เอา" = เอา flag ออก แถวเดิม id เดิม)
@@ -3670,10 +3686,29 @@ async function loadCloudSettings() {
   const client = initSb(); if (!client) return;
   const { data, error } = await client.from('auction_settings').select('key,value').eq('user_key', USER_KEY);
   if (error || !data) return;
+  applyPushPrefs(data);
   const k = (data.find(r => r.key === 'gmaps_key') || {}).value || '';
   const changed = k !== gmapsKey();
   try { if (k) localStorage.setItem('acktion_gmaps_key', k); else localStorage.removeItem('acktion_gmaps_key'); } catch(e) {}
   if (changed && document.getElementById('tab-survey')?.classList.contains('active')) renderSurvey();
+}
+// สวิตช์แจ้งเตือน: '0' = ปิด, ไม่มีแถว/อื่น ๆ = เปิด (ตรงกับ edge function auction-push-notify)
+function applyPushPrefs(rows) {
+  const get = k => (rows.find(r => r.key === k) || {}).value;
+  const next = { all: get('push_all') !== '0', target: get('push_target') !== '0' };
+  const changed = next.all !== pushPrefs.all || next.target !== pushPrefs.target;
+  pushPrefs = next;
+  try { localStorage.setItem('auction_push_prefs', JSON.stringify(pushPrefs)); } catch(e) {}
+  if (changed) { renderProps(); renderPushSettings(); }
+}
+async function savePushPref(which, on) {
+  const key = which === 'all' ? 'push_all' : 'push_target';
+  const { error } = await initSb().from('auction_settings').upsert({ user_key: USER_KEY, key, value: on ? '1' : '0', updated_at: new Date().toISOString() });
+  if (error) { toast('❌ บันทึกไม่สำเร็จ: ' + error.message, 'error'); renderPushSettings(); return; }
+  pushPrefs[which] = !!on;
+  try { localStorage.setItem('auction_push_prefs', JSON.stringify(pushPrefs)); } catch(e) {}
+  renderProps();
+  toast(on ? '🔔 เปิดแล้ว — มีผลทุกเครื่อง' : '🔕 ปิดแล้ว — มีผลทุกเครื่อง', 'success');
 }
 async function saveGmapsKey() {
   const v = document.getElementById('gmaps-key-input').value.trim();
@@ -4066,10 +4101,14 @@ function printPropReport(id) {
   window.print();
 }
 
-// แจ้งเตือนผ่านเครื่อง (Web Push) — เตือนทุกนัดที่มีวันที่: ล่วงหน้า 7 / 3 / 1 วัน + เช้าวันนัด
-// ส่งจากเซิร์ฟเวอร์ (edge function auction-push-notify) ทุกวัน 08:00 · ปิดรายทรัพย์ได้ด้วยสวิตช์นี้
+// แจ้งเตือนผ่านเครื่อง (Web Push) แยก 2 แบบ — ส่งจากเซิร์ฟเวอร์ (edge function auction-push-notify) ทุกวัน 00:01
+//   1) ทุกนัดทุกทรัพย์: เด้งทันทีที่เปลี่ยนเป็นวันประมูล
+//   2) นัดที่เล็ง 🎯: ล่วงหน้า 5 วัน ให้เตรียมเงิน/เอกสาร
+// เปิด/ปิดทั้งสองแบบได้ใน ⚙️ (pushPrefs) · ปิดรายทรัพย์ได้ด้วยสวิตช์นี้
+const PUSH_TARGET_DAYS = 5;
 function notifyRow(p) {
   const today = new Date(); today.setHours(0,0,0,0);
+  const ti = p.targetRound || 0;
   const upcoming = (p.rounds||[]).map((r,ri) => {
     const d = r && typeof r==='object' ? r.date : '';
     if (!d || isHaltedNote(r.note)) return null;
@@ -4077,14 +4116,24 @@ function notifyRow(p) {
     return dl >= 0 ? { ri, d, dl } : null;
   }).filter(Boolean);
   const on = p.notify !== false;
+  // วันที่ส่งเตือน 🎯 (ลบ 5 วันแบบเวลาท้องถิ่น — ห้ามใช้ toISOString เพราะเป็น UTC จะถอยไป 1 วันในไทย)
+  const warnDate = d => {
+    const w = new Date(d+'T00:00:00'); w.setDate(w.getDate() - PUSH_TARGET_DAYS);
+    return `${w.getFullYear()}-${String(w.getMonth()+1).padStart(2,'0')}-${String(w.getDate()).padStart(2,'0')}`;
+  };
   let info;
   if (!upcoming.length) info = '<span class="muted">ยังไม่มีนัดที่จะถึง — ใส่วันนัดในหน้าแก้ไขแล้วจะเตือนให้อัตโนมัติ</span>';
   else if (!on) info = '<span class="muted">ปิดการเตือนทรัพย์นี้ไว้</span>';
-  else info = upcoming.map(x => `<span class="nt-chip${x.dl<=3?' soon':''}">นัด ${x.ri+1} · ${fmtDate(x.d)}</span>`).join('');
+  else info = upcoming.map(x => x.ri === ti
+    ? `<span class="nt-chip target">🎯 นัด ${x.ri+1} · ${fmtDate(x.d)}${pushPrefs.target && x.dl >= PUSH_TARGET_DAYS ? ` · เตือน ${fmtDate(warnDate(x.d))}` : ''}</span>`
+    : `<span class="nt-chip${x.dl<=3?' soon':''}">นัด ${x.ri+1} · ${fmtDate(x.d)}</span>`).join('');
   return `
     <div class="notify-row" onclick="event.stopPropagation()">
       <div style="min-width:0;flex:1">
-        <div class="notify-title">🔔 แจ้งเตือนบนเครื่อง <span class="muted" style="font-weight:600">· ก่อนนัด 7, 3, 1 วัน และเช้าวันนัด</span></div>
+        <div class="notify-title">🔔 แจ้งเตือน <span class="muted" style="font-weight:600">· ${[
+          pushPrefs.all ? 'ทุกนัดเด้ง 00:01 วันประมูล' : '',
+          pushPrefs.target ? `🎯 นัดที่เล็งเตือนก่อน ${PUSH_TARGET_DAYS} วัน` : '',
+        ].filter(Boolean).join(' · ') || 'ปิดทั้งสองแบบใน ⚙️'}</span></div>
         <div class="notify-chips">${info}</div>
       </div>
       <label class="switch" title="เปิด/ปิดการเตือนทรัพย์นี้">
@@ -6878,7 +6927,7 @@ function openPropFromHash() {
 // ═══════════════════════════════════════════════
 //  แจ้งเตือนผ่านเครื่อง (Web Push)
 //  เครื่องที่กดเปิด → เก็บ subscription ในตาราง push_subscriptions
-//  เซิร์ฟเวอร์ (edge function auction-push-notify) ส่งเตือนทุกเช้า 08:00
+//  เซิร์ฟเวอร์ (edge function auction-push-notify) ส่งเตือนทุกวัน 00:01 (ทุกนัด = วันประมูล · นัดที่เล็ง 🎯 = ล่วงหน้า 5 วัน)
 // ═══════════════════════════════════════════════
 const VAPID_PUBLIC = 'BNPPabgwf4XtLEcv77wlepy10jrZNabRwUObyNAKJ5pUfnsTM-S347fxh62mz9GJSohxL2LnGOowHbdUOQXxg-s';
 const PUSH_NUDGE_KEY = 'auction_push_nudge_hide_until';
@@ -6995,6 +7044,9 @@ const IOS_A2HS_HTML = `บน iPhone/iPad ต้อง<b>เพิ่มแอ�
 async function renderPushSettings() {
   const st = document.getElementById('push-status'), act = document.getElementById('push-actions');
   if (!st || !act) return;
+  const pa = document.getElementById('pref-push-all'), pt = document.getElementById('pref-push-target');
+  if (pa) pa.checked = pushPrefs.all;
+  if (pt) pt.checked = pushPrefs.target;
   const s = await pushState();
   const dot = document.getElementById('hdr-bell-dot');
   if (dot) dot.style.display = s === 'on' ? 'none' : 'block';
@@ -7035,7 +7087,7 @@ async function renderPushNudge() {
     ? `<div class="pn-text"><b>รับแจ้งเตือนวันนัดบน iPhone</b><div>${IOS_A2HS_HTML}</div></div>`
     : s === 'denied'
       ? `<div class="pn-text"><b>การแจ้งเตือนถูกบล็อกไว้</b><div>เปิดในการตั้งค่าเครื่องเพื่อรับเตือนวันนัด</div></div><button class="btn btn-primary btn-sm" onclick="openSettings('notify')">วิธีเปิด</button>`
-      : `<div class="pn-text"><b>เปิดแจ้งเตือนวันนัดประมูล</b><div>เตือนทุกนัดล่วงหน้า 7, 3, 1 วัน และเช้าวันนัด</div></div><button class="btn btn-primary btn-sm" onclick="enablePush()">เปิดเลย</button>`;
+      : `<div class="pn-text"><b>เปิดแจ้งเตือนวันนัดประมูล</b><div>เด้ง 00:01 วันประมูลทุกนัด · 🎯 นัดที่เลือกเข้าซื้อเตือนก่อน 5 วัน</div></div><button class="btn btn-primary btn-sm" onclick="enablePush()">เปิดเลย</button>`;
   el.innerHTML = `<div class="pn-ic">🔔</div>${body}<button class="pn-x" onclick="hidePushNudge()" aria-label="ซ่อน">✕</button>`;
   el.style.display = 'flex';
 }
