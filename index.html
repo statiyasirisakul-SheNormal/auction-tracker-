@@ -949,7 +949,7 @@ img, svg, video, canvas { max-width:100%; }
     <div id="push-nudge" class="push-nudge" style="display:none"></div>
     <div class="card">
       <div class="card-header">
-        <div class="card-title">🏠 ทรัพย์ที่เล็งไว้</div>
+        <div class="card-title">🏠 ทรัพย์ที่ต้องการ</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn btn-ghost btn-sm" onclick="openModal('modal-doctype')">📋 จัดการประเภทเอกสาร</button>
           <button class="btn btn-primary btn-sm" onclick="openAddPropModal()">+ เพิ่มทรัพย์</button>
@@ -1714,7 +1714,7 @@ let S = {
   notifSent: {},
 };
 
-// สวิตช์แจ้งเตือน 2 แบบ (ทุกนัด / นัดที่เล็ง) — เก็บในตาราง auction_settings ให้เซิร์ฟเวอร์อ่านได้
+// สวิตช์แจ้งเตือน 2 แบบ (ทุกนัด / นัดที่เข้าซื้อ) — เก็บในตาราง auction_settings ให้เซิร์ฟเวอร์อ่านได้
 // สำเนาในเครื่องไว้แสดงผลตอนออฟไลน์ · ประกาศตรงนี้เพราะ renderProps ใช้ตั้งแต่ตอนเปิดแอป
 let pushPrefs = { all: true, target: true };
 try { Object.assign(pushPrefs, JSON.parse(localStorage.getItem('auction_push_prefs') || '{}')); } catch(e) {}
@@ -2191,11 +2191,11 @@ const ROUNDS = [
 ];
 
 // ══════════════════════════════════════════════════
-//  PIPELINE STAGES (item 7) — เล็ง→ตรวจสอบ→ประมูล→ชนะ→รีโนเวท→ประกาศขาย→ขายแล้ว
-//  (สถานะเดิม watching/won/lost ยังทำงานได้ปกติ ไม่ต้อง migrate ข้อมูล)
+//  PIPELINE STAGES (item 7) — ตรวจสอบ→ประมูล→ชนะ→รีโนเวท→ประกาศขาย→ขายแล้ว
+//  ไม่มีขั้น "เล็ง" แล้ว: ทรัพย์ที่อยู่หน้าแรก = ทรัพย์ที่ต้องการอยู่แล้ว (เล็ง/คัดทิ้งทำในแท็บสำรวจ)
+//  ข้อมูลเก่าที่ status = 'watching' ยังใช้ได้ — นับเป็นขั้น "ตรวจสอบ" (ไม่ต้อง migrate)
 // ══════════════════════════════════════════════════
 const STAGES = [
-  { key:'watching',   label:'เล็ง',      icon:'👁', badge:'badge-blue'  },
   { key:'inspecting', label:'ตรวจสอบ',   icon:'🔍', badge:'badge-blue'  },
   { key:'bidding',    label:'ประมูล',    icon:'🔨', badge:'badge-amber' },
   { key:'won',        label:'ชนะประมูล', icon:'✓',  badge:'badge-green' },
@@ -2206,7 +2206,7 @@ const STAGES = [
 const STAGE_KEYS = STAGES.map(s => s.key);
 const WON_IDX    = STAGE_KEYS.indexOf('won');
 const LOST_INFO  = { key:'lost', label:'ไม่ได้ทรัพย์', icon:'✗', badge:'badge-red' };
-function stageIdx(st)  { const i = STAGE_KEYS.indexOf(st); return i < 0 ? 0 : i; }
+function stageIdx(st)  { const i = STAGE_KEYS.indexOf(st === 'watching' ? 'inspecting' : st); return i < 0 ? 0 : i; }
 function stageInfo(st) { return st === 'lost' ? LOST_INFO : STAGES[stageIdx(st)]; }
 // "เป็นเจ้าของทรัพย์แล้ว" = ชนะประมูลขึ้นไป (won/renovating/listed/sold) แต่ไม่ใช่ lost
 function isAcquired(p) { return p.status !== 'lost' && stageIdx(p.status) >= WON_IDX; }
@@ -2501,7 +2501,7 @@ function parseLatLng(str) {
   return null;
 }
 function stageColor(key) {
-  return { watching:'#3B82F6', inspecting:'#6366F1', bidding:'#F59E0B',
+  return { watching:'#6366F1', inspecting:'#6366F1', bidding:'#F59E0B',
            won:'#16A34A', renovating:'#0EA5E9', listed:'#8B5CF6',
            sold:'#059669', lost:'#EF4444' }[key] || '#6B7280';
 }
@@ -4171,7 +4171,7 @@ function printPropReport(id) {
 
 // แจ้งเตือนผ่านเครื่อง (Web Push) แยก 2 แบบ — ส่งจากเซิร์ฟเวอร์ (edge function auction-push-notify) ทุกวัน 00:01
 //   1) ทุกนัดทุกทรัพย์: เด้งทันทีที่เปลี่ยนเป็นวันประมูล
-//   2) นัดที่เล็ง 🎯: ล่วงหน้า 5 วัน ให้เตรียมเงิน/เอกสาร
+//   2) นัดที่เข้าซื้อ 🎯: ล่วงหน้า 5 วัน ให้เตรียมเงิน/เอกสาร
 // เปิด/ปิดทั้งสองแบบได้ใน ⚙️ (pushPrefs) · ปิดรายทรัพย์ได้ด้วยสวิตช์นี้
 const PUSH_TARGET_DAYS = 5;
 function notifyRow(p) {
@@ -4200,7 +4200,7 @@ function notifyRow(p) {
       <div style="min-width:0;flex:1">
         <div class="notify-title">🔔 แจ้งเตือน <span class="muted" style="font-weight:600">· ${[
           pushPrefs.all ? 'ทุกนัดเด้ง 00:01 วันประมูล' : '',
-          pushPrefs.target ? `🎯 นัดที่เล็งเตือนก่อน ${PUSH_TARGET_DAYS} วัน` : '',
+          pushPrefs.target ? `🎯 นัดที่เข้าซื้อ เตือนก่อน ${PUSH_TARGET_DAYS} วัน` : '',
         ].filter(Boolean).join(' · ') || 'ปิดทั้งสองแบบใน ⚙️'}</span></div>
         <div class="notify-chips">${info}</div>
       </div>
@@ -4393,7 +4393,7 @@ function renderProps() {
   // ทรัพย์ที่ขายแล้วย้ายไปอยู่แท็บ "✅ ขายแล้ว" โดยเฉพาะ ไม่ต้องโชว์ซ้ำในลิสต์นี้
   const activeProps = S.props.filter(p => !isSold(p));
   if (!activeProps.length) {
-    el.innerHTML = `<div class="empty"><div class="empty-icon">🏠</div><p>ยังไม่มีทรัพย์ที่เล็ง</p></div>`;
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🏠</div><p>ยังไม่มีทรัพย์ — เก็บทรัพย์จากแท็บ 🧭 สำรวจ หรือกด + เพิ่มทรัพย์</p></div>`;
     updateBadges(); return;
   }
   el.innerHTML = activeProps.map((p,i) => {
@@ -4735,7 +4735,7 @@ function openAddPropModal() {
   document.getElementById('prop-edit-id').value = '';
   document.getElementById('prop-to-pool').value = '';
   document.getElementById('prop-land-url').value = '';
-  document.getElementById('modal-prop-title').textContent = '🏠 เพิ่มทรัพย์ที่เล็งไว้';
+  document.getElementById('modal-prop-title').textContent = '🏠 เพิ่มทรัพย์';
   ['prop-code','prop-name','prop-loc','prop-size','prop-deed','prop-case','prop-appraisal','prop-target-sell','prop-actual-sell','prop-reno-budget','prop-notes','prop-map'].forEach(id=>{
     document.getElementById(id).value='';
   });
@@ -5899,7 +5899,7 @@ function renderDashboard() {
   const kpi = (num,label,color,sub)=>`<div class="stat-card"><div class="stat-num" style="color:${color};font-size:${String(num).length>9?'19px':'24px'}">${num}</div><div class="stat-label">${label}</div>${sub?`<div style="font-size:10px;color:var(--gray);margin-top:2px">${sub}</div>`:''}</div>`;
 
   // pipeline donut
-  const donutSegs = STAGES.map(s=>({ label:s.icon+' '+s.label, value:S.props.filter(p=>(p.status||'watching')===s.key).length, color:stageColor(s.key) }))
+  const donutSegs = STAGES.map(s=>({ label:s.icon+' '+s.label, value:S.props.filter(p=>stageInfo(p.status||'watching').key===s.key).length, color:stageColor(s.key) }))
     .concat([{ label:'✗ ไม่ได้ทรัพย์', value:S.props.filter(p=>p.status==='lost').length, color:stageColor('lost') }]);
 
   const profitBars = profitRows.slice().sort((a,b)=>b.net-a.net).map(x=>({
@@ -6994,7 +6994,7 @@ function openPropFromHash() {
 // ═══════════════════════════════════════════════
 //  แจ้งเตือนผ่านเครื่อง (Web Push)
 //  เครื่องที่กดเปิด → เก็บ subscription ในตาราง push_subscriptions
-//  เซิร์ฟเวอร์ (edge function auction-push-notify) ส่งเตือนทุกวัน 00:01 (ทุกนัด = วันประมูล · นัดที่เล็ง 🎯 = ล่วงหน้า 5 วัน)
+//  เซิร์ฟเวอร์ (edge function auction-push-notify) ส่งเตือนทุกวัน 00:01 (ทุกนัด = วันประมูล · นัดที่เข้าซื้อ 🎯 = ล่วงหน้า 5 วัน)
 // ═══════════════════════════════════════════════
 const VAPID_PUBLIC = 'BNPPabgwf4XtLEcv77wlepy10jrZNabRwUObyNAKJ5pUfnsTM-S347fxh62mz9GJSohxL2LnGOowHbdUOQXxg-s';
 const PUSH_NUDGE_KEY = 'auction_push_nudge_hide_until';

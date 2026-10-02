@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════
 //  Edge Function: auction-push-notify — แจ้งเตือนผ่านเครื่อง (Web Push) แยก 2 แบบ
 //    1) ทุกนัดทุกทรัพย์ (auction_settings.push_all)      → ทันทีที่เปลี่ยนเป็นวันประมูล (00:01)
-//    2) นัดที่เล็งจะเข้าประมูล 🎯 (auction_settings.push_target) → ล่วงหน้า 5 วัน (ข้อความเตรียมตัว)
+//    2) นัดที่เข้าซื้อ 🎯 (auction_settings.push_target) → ล่วงหน้า 5 วัน (ข้อความเตรียมตัว)
 //  สวิตช์ทั้งสองตั้งในแอป (⚙️ › แจ้งเตือน) ค่าเริ่มต้น = เปิด
 //  รันวันละครั้ง 00:01 เวลาไทย (= 17:01 UTC ของวันก่อน) ด้วย pg_cron (ดู supabase/push.sql)
 //
@@ -16,7 +16,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ALL_OFFSETS = [0];                              // ทุกนัด: วันประมูล (ส่งตอน 00:01)
-const TARGET_DAYS = 5;                                // นัดที่เล็ง: ล่วงหน้า 5 วัน
+const TARGET_DAYS = 5;                                // นัดที่เข้าซื้อ: ล่วงหน้า 5 วัน
 const ROUND_DISC = [0, 0.10, 0.20, 0.30, 0.30, 0.30]; // ตรงกับ ROUNDS ใน index.html
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -151,11 +151,11 @@ function dueReminders(rows: { id: string; data: any }[], today: string, prefs: P
         tag: `auction-${row.id}-${ri}`, propId: row.id, url: `./index.html#prop=${row.id}`,
       });
 
-      // 2) นัดที่เล็งจะเข้าประมูล — ล่วงหน้า 5 วัน ให้มีเวลาเตรียมเงิน/เอกสาร
+      // 2) นัดที่เข้าซื้อ — ล่วงหน้า 5 วัน ให้มีเวลาเตรียมเงิน/เอกสาร
       if (prefs.target && isTarget && diff === TARGET_DAYS) {
         out.push({
           key: `${row.id}:${ri}:${date}:target${TARGET_DAYS}d`,
-          payload: payload(`🎯 อีก ${TARGET_DAYS} วัน ประมูลนัดที่เล็งไว้ (นัดที่ ${ri + 1})`, [
+          payload: payload(`🎯 อีก ${TARGET_DAYS} วัน ประมูลนัดที่เข้าซื้อ (นัดที่ ${ri + 1})`, [
             name, priceLine, "เตรียมเงินวางหลักประกัน + ใบมอบอำนาจ/เอกสารให้พร้อม", p.loc ? `📍 ${p.loc}` : "",
           ]),
         });
@@ -164,7 +164,7 @@ function dueReminders(rows: { id: string; data: any }[], today: string, prefs: P
       if (prefs.all && ALL_OFFSETS.includes(diff)) {
         out.push({
           key: `${row.id}:${ri}:${date}:${diff}d`,
-          payload: payload(`🔴 วันนี้ประมูล · นัดที่ ${ri + 1}${isTarget ? " 🎯 นัดที่เล็งไว้" : ""}`, [
+          payload: payload(`🔴 วันนี้ประมูล · นัดที่ ${ri + 1}${isTarget ? " 🎯 นัดที่เข้าซื้อ" : ""}`, [
             name, priceLine, p.loc ? `📍 ${p.loc}` : "",
           ]),
         });
