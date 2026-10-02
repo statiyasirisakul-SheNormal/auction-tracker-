@@ -122,9 +122,17 @@ body { font-family:'Sarabun','Segoe UI',sans-serif; background:var(--bg); color:
   position:fixed; inset:0; background:rgba(0,0,0,.55);
   display:none; align-items:center; justify-content:center;
   z-index:500; padding:20px; overflow-y:auto;
+  padding-top:max(20px, calc(env(safe-area-inset-top, 0px) + 10px));
 }
 /* ปุ่ม +/− ของ Leaflet ตั้ง z-index 1000 มาเอง → ลอยทับหน้าต่าง popup ต้องกดให้ต่ำกว่า modal */
 .leaflet-top, .leaflet-bottom { z-index:450 !important; }
+.sk-hbtn { background:rgba(255,255,255,.15) !important; color:#fff !important; white-space:nowrap; flex-shrink:0; min-height:32px !important; }
+@media (max-width:600px) { .sk-lbl { display:none; } #sk-saved { display:none; } }
+/* ตำแหน่งแปลงที่ดินในการ์ด */
+.parcel-box { border:1.5px solid #BFDBFE; border-radius:10px; padding:10px; margin-bottom:12px; background:#F8FBFF; }
+.parcel-map { height:230px; border-radius:8px; overflow:hidden; background:#E2E8F0; margin-bottom:8px; position:relative; isolation:isolate; }
+/* แผนที่ทุกกล่อง: ขังปุ่ม +/− ไว้ในกล่อง ไม่ให้ลอยทับหัวเว็บตอนเลื่อน */
+#map-canvas, #survey-canvas { isolation:isolate; }
 .dol-num { width:30px; height:30px; border-radius:50%; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px; }
 .modal-overlay.open { display:flex; }
 .modal {
@@ -1369,18 +1377,18 @@ img, svg, video, canvas { max-width:100%; }
 
 <!-- หน้าบันทึกรายละเอียด: Excalidraw (วาด/เขียน/รูปทรง/ข้อความ/แทรกรูป) + ช่องพิมพ์บันทึก -->
 <div id="sketch-overlay" style="display:none;position:fixed;inset:0;z-index:600;background:#fff;flex-direction:column">
-  <div style="background:var(--navy);color:#fff;padding:7px 10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-    <div id="sk-title" style="font-weight:800;font-size:14px;flex:1;min-width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📝 บันทึกรายละเอียด</div>
-    <button class="btn btn-xs" style="background:rgba(255,255,255,.15);color:#fff" onclick="skToggleText()">📝 ข้อความ</button>
-    <button class="btn btn-xs" id="sk-ins-prop" style="background:rgba(255,255,255,.15);color:#fff" onclick="skInsertImage('prop')">🖼 แทรกรูปทรัพย์</button>
-    <button class="btn btn-xs" id="sk-ins-land" style="background:rgba(255,255,255,.15);color:#fff" onclick="skInsertImage('land')">🗺 แทรกแผนที่</button>
-    <span id="sk-saved" style="font-size:11px;opacity:.8"></span>
-    <button class="btn btn-sm" id="sk-done" style="background:#fff;color:var(--navy)" onclick="closeSketch()">✓ เสร็จ</button>
+  <div id="sk-head" style="background:var(--navy);color:#fff;padding:7px 10px;padding-top:calc(7px + env(safe-area-inset-top, 0px));display:flex;align-items:center;gap:6px;flex-wrap:nowrap">
+    <div id="sk-title" style="font-weight:800;font-size:14px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📝 บันทึกรายละเอียด</div>
+    <span id="sk-saved" style="font-size:11px;opacity:.8;white-space:nowrap"></span>
+    <button class="btn btn-xs sk-hbtn" onclick="skToggleText()" title="พิมพ์บันทึก">📝<span class="sk-lbl"> ข้อความ</span></button>
+    <button class="btn btn-xs sk-hbtn" id="sk-ins-prop" onclick="skInsertImage('prop')" title="แทรกรูปทรัพย์">🖼<span class="sk-lbl"> แทรกรูปทรัพย์</span></button>
+    <button class="btn btn-xs sk-hbtn" id="sk-ins-land" onclick="skInsertImage('land')" title="แทรกแผนที่แปลง">🗺<span class="sk-lbl"> แทรกแผนที่</span></button>
+    <button class="btn btn-sm" id="sk-done" style="background:#fff;color:var(--navy);white-space:nowrap;flex-shrink:0" onclick="closeSketch()">✓ เสร็จ</button>
   </div>
   <div id="sk-textbox" style="display:none;padding:8px 10px;background:#F8FAFC;border-bottom:1px solid var(--border)">
     <textarea id="sk-text" class="form-textarea" placeholder="📝 พิมพ์บันทึก — สภาพทรัพย์ มีคนอยู่ไหม ทางเข้า เพื่อนบ้าน สิ่งที่ต้องซ่อม..." style="min-height:70px;font-size:15px;margin:0;background:#fff" oninput="skTextChanged()"></textarea>
   </div>
-  <div id="ex-root" style="flex:1;position:relative;min-height:0"></div>
+  <div id="ex-root" style="flex:1;position:relative;min-height:0;margin-bottom:env(safe-area-inset-bottom, 0px)"></div>
 </div>
 
 <!-- Add survey property from PDF -->
@@ -2506,6 +2514,71 @@ function stageColor(key) {
 const OSRM = 'https://router.project-osrm.org';   // เส้นทางถนนจริง ฟรี ไม่ต้องใช้ key (ล่มเมื่อไหร่ถอยไปใช้ระยะเส้นตรง)
 let _smap = null, _smapLayers = [], _surveyGeom = null, _surveyGps = null;
 
+// ── กล่อง "ตำแหน่งแปลงที่ดิน" ในการ์ด (แทนปุ่มค้นใน LandsMaps เดิม) ──
+//  • มีภาพที่แนบจาก LandsMaps (p.imgLand) → โชว์ภาพนั้น (เห็นเส้นแบ่งแปลงสีแดง)
+//  • ไม่มีภาพ แต่มีพิกัดจริง → แผนที่ดาวเทียม Google ซูมระดับแปลง + หมุด (วาดเมื่อกางการ์ด)
+//  • พิกัดยังเป็นแค่กลางตำบล/ไม่มี (เฉพาะทรัพย์รอสำรวจ) → ช่องวางพิกัด
+function parcelBlockHtml(p) {
+  const ll = parseLatLng(p.mapUrl), exact = !!ll && !p.llApprox;
+  const hasImg = isImageSrc(p.imgLand);
+  const src = p.llLevel === 'DOL' ? 'พิกัดจากกรมที่ดิน' : exact ? 'พิกัดที่ใส่ไว้' : ll ? '≈ พิกัดประมาณ' : 'ยังไม่มีพิกัด';
+  const nav = ll ? `https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=${ll.lat},${ll.lng}` : '';
+  return `<div class="parcel-box" onclick="event.stopPropagation()">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+      <b style="font-size:13px;color:var(--navy);flex:1">🗺 ตำแหน่งแปลงที่ดิน</b>
+      <span class="badge ${exact ? 'badge-green' : 'badge-amber'}">${src}</span>
+    </div>
+    ${hasImg ? `<img src="${p.imgLand}" style="width:100%;max-height:320px;object-fit:contain;border-radius:8px;background:#fff;border:1px solid var(--border);cursor:zoom-in;margin-bottom:8px" onclick="showLightbox('${p.imgLand}')" title="ภาพแผนที่แปลงจาก LandsMaps">`
+      : exact ? `<div class="parcel-map" data-pmap="${p.id}" data-ll="${ll.lat},${ll.lng}"><div style="padding:90px 0;text-align:center;font-size:12px;color:var(--gray)">⏳ กำลังโหลดภาพดาวเทียม...</div></div>` : ''}
+    ${!exact && p.pool ? `<div style="background:var(--amber-lt);border:1px solid #FCD34D;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:12px">
+        <div style="font-weight:700;color:var(--amber);margin-bottom:6px">ยังไม่มีพิกัดแปลงจริง — วางพิกัดจาก LandsMaps ที่นี่ (หรือบอก Claude ให้หาให้):</div>
+        <input class="form-input" style="font-size:12px;padding:6px 9px" placeholder="เช่น 17.4102, 102.8231" onchange="surveySetLL('${p.id}', this.value)">
+      </div>` : ''}
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <label class="btn btn-primary btn-xs" style="cursor:pointer;margin:0">📷 ${hasImg ? 'เปลี่ยนภาพแผนที่แปลง' : 'แนบภาพแผนที่แปลง'}
+        <input type="file" accept="image/*" style="display:none" onchange="attachParcelImg('${p.id}', this)"></label>
+      ${p.deed ? `<button class="btn btn-ghost btn-xs" onclick="openLandsMaps('${escapeHtml(p.deed)}','${p.id}')" title="เปิด LandsMaps ที่แปลงนี้ แล้วแคปหน้าจอมาแนบ">🔎 เปิด LandsMaps</button>` : ''}
+      ${ll ? `<a class="btn btn-ghost btn-xs" href="${nav}" target="_blank">🚗 นำทาง</a>` : ''}
+      ${hasImg ? `<button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="removeParcelImg('${p.id}')">✕ ลบภาพ</button>` : ''}
+    </div>
+  </div>`;
+}
+// แนบภาพแคปจาก LandsMaps → เก็บใน Storage เป็นรูปแผนที่แปลงของทรัพย์นี้
+async function attachParcelImg(id, input) {
+  const p = findAnyProp(id); const file = input.files?.[0]; if (!p || !file) return;
+  toast('⏳ กำลังอัปโหลดภาพแผนที่แปลง...');
+  const b64 = await fileToBase64Compressed(file);
+  const url = await uploadToStorage(b64, file.name || 'parcel.jpg');
+  p.imgLand = url || b64;
+  saveS(); renderSurvey(); renderProps();
+  toast(url ? '✓ แนบภาพแผนที่แปลงแล้ว' : '⚠️ เก็บภาพในเครื่องไว้ก่อน (อัปขึ้น Cloud ไม่ได้)', url ? 'success' : '');
+}
+function removeParcelImg(id) {
+  const p = findAnyProp(id); if (!p || !confirm('ลบภาพแผนที่แปลง? (กลับไปแสดงภาพดาวเทียมแทน)')) return;
+  p.imgLand = ''; saveS(); renderSurvey(); renderProps();
+}
+// วาดแผนที่ดาวเทียมเล็กในการ์ดที่กางอยู่ (วาดครั้งเดียวต่อกล่อง · ไม่มี Google key → OpenStreetMap)
+async function initParcelMaps() {
+  await new Promise(r => setTimeout(r, 30));   // รอการ์ดกางเสร็จ
+  const boxes = [...document.querySelectorAll('.parcel-map[data-pmap]:not([data-done])')].filter(el => el.offsetParent !== null);
+  if (!boxes.length) return;
+  const useGoogle = gmapsKey() && !window.__gmAuthFailed;
+  try { if (useGoogle) await loadGoogleMaps(); else await loadLeaflet(); } catch(e) { return; }
+  boxes.forEach(el => {
+    el.dataset.done = '1'; el.innerHTML = '';
+    const [lat, lng] = el.dataset.ll.split(',').map(Number);
+    if (useGoogle && window.google?.maps) {
+      const m = new google.maps.Map(el, { center: { lat, lng }, zoom: 19, mapTypeId: 'hybrid', disableDefaultUI: true, zoomControl: true, gestureHandling: 'cooperative', tilt: 0 });
+      new google.maps.Marker({ position: { lat, lng }, map: m, title: 'ตำแหน่งแปลงที่ดิน' });
+    } else {
+      const m = L.map(el, { zoomControl: true, attributionControl: false }).setView([lat, lng], 18);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(m);
+      L.marker([lat, lng]).addTo(m);
+      setTimeout(() => m.invalidateSize(), 100);
+    }
+  });
+}
+
 function landMapButton(p) {
   if (isImageSrc(p.imgLand)) return `<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();showLightbox('${p.imgLand}')">🗺 แผนที่กรมที่ดิน</button>`;
   if (p.landMapUrl) return `<a href="${escapeHtml(p.landMapUrl)}" target="_blank" class="btn btn-ghost btn-xs">🗺 แผนที่กรมที่ดิน</a>`;
@@ -2899,7 +2972,7 @@ function surveyCardHtml(x, total, open) {
   return `
     ${legTxt ? `<div style="font-size:11px;color:var(--gray);padding:0 0 6px 17px;margin:-6px 0 0 17px;border-left:2px dashed #CBD5E1">⬇ ${legTxt}</div>` : ''}
     <div class="prop-card ${sv.done ? 'won' : ''} ${open ? 'expanded' : ''}" id="sv-${p.id}" style="${sv.skip ? 'opacity:.55' : ''}">
-      <div class="prop-header sv" onclick="document.getElementById('sv-${p.id}').classList.toggle('expanded')">
+      <div class="prop-header sv" onclick="document.getElementById('sv-${p.id}').classList.toggle('expanded');initParcelMaps()">
         <div class="prop-media">${thumb}<span class="prop-num" style="background:${numBg}">${num}</span></div>
         <div class="prop-info">
           ${p.code ? `<span class="prop-code">${escapeHtml(p.code)}</span>` : ''}
@@ -2916,8 +2989,8 @@ function surveyCardHtml(x, total, open) {
         </div>
       </div>
       <div class="prop-body">
-        ${[p.imgProp, p.imgDetail, p.imgLand].some(isImageSrc) ? `<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-          ${[[p.imgProp, 'รูปทรัพย์'], [p.imgDetail, 'รูปรายละเอียด'], [p.imgLand, 'แผนที่กรมที่ดิน']].filter(([s]) => isImageSrc(s)).map(([s, t]) =>
+        ${[p.imgProp, p.imgDetail].some(isImageSrc) ? `<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          ${[[p.imgProp, 'รูปทรัพย์'], [p.imgDetail, 'รูปรายละเอียด']].filter(([s]) => isImageSrc(s)).map(([s, t]) =>
             `<img src="${s}" style="height:90px;border-radius:8px;object-fit:cover;border:1.5px solid var(--border);cursor:zoom-in" onclick="showLightbox('${s}')" title="${t}">`).join('')}
         </div>` : ''}
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
@@ -2930,14 +3003,9 @@ function surveyCardHtml(x, total, open) {
           ${p.pdfUrl ? `<button class="btn btn-ghost btn-xs" data-pdfbtn="${p.id}" onclick="surveyTogglePdf('${p.id}')">${_svPdfOpen.has(p.id) ? '📄 ซ่อน PDF' : '📄 ดู PDF ประกาศ'}</button>` : ''}
           ${x.ll ? `<a href="${nav}" target="_blank" class="btn btn-primary btn-xs">🚗 นำทาง</a>
           <a href="https://www.google.com/maps/search/?api=1&query=${x.ll.lat},${x.ll.lng}" target="_blank" class="btn btn-ghost btn-xs">📍 Google Map</a>` : ''}
-          ${landMapButton(p)}
-          ${landMapFallback(p)}
         </div>
         ${p.pdfUrl ? `<div id="svpdf-${p.id}" style="${_svPdfOpen.has(p.id) ? '' : 'display:none;'}max-height:70vh;overflow:auto;background:#F1F5F9;border-radius:9px;padding:8px;margin-bottom:12px"></div>` : ''}
-        ${!x.ll || p.llApprox ? `<div style="background:var(--amber-lt);border:1px solid #FCD34D;border-radius:9px;padding:10px 12px;margin-bottom:12px;font-size:12px">
-          <div style="font-weight:700;color:var(--amber);margin-bottom:6px">${x.ll ? '≈ พิกัดตอนนี้เป็นแค่กลางตำบล' : '📍 ยังไม่มีพิกัด'} — เปิด LandsMaps หาแปลงโฉนด แล้ววางพิกัด/ลิงก์ Google Maps ที่นี่:</div>
-          <div style="display:flex;gap:6px"><input class="form-input" style="font-size:12px;padding:6px 9px;flex:1" placeholder="เช่น 17.4102, 102.8231 หรือลิงก์ Google Maps" onchange="surveySetLL('${p.id}', this.value)"></div>
-        </div>` : ''}
+        ${parcelBlockHtml(p)}
         ${led.court || led.plaintiff || led.office ? `<div style="font-size:12px;color:#374151;line-height:1.7;margin-bottom:12px">
           ${led.type ? `<div>🏷 ${escapeHtml(led.type)}</div>` : ''}
           ${led.court ? `<div>⚖️ ศาล${escapeHtml(led.court)}</div>` : ''}
@@ -4448,10 +4516,9 @@ function renderProps() {
           </div>
         </div>
         <div class="prop-body">
-          ${(isImageSrc(p.imgProp)||isImageSrc(p.imgDetail)||isImageSrc(p.imgLand))?`<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          ${(isImageSrc(p.imgProp)||isImageSrc(p.imgDetail))?`<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
             ${isImageSrc(p.imgProp)?`<img src="${p.imgProp}" style="height:90px;border-radius:8px;object-fit:cover;border:1.5px solid var(--border);cursor:zoom-in" onclick="showLightbox('${p.imgProp}')" title="รูปทรัพย์">`:'' }
             ${isImageSrc(p.imgDetail)?`<img src="${p.imgDetail}" style="height:90px;border-radius:8px;object-fit:cover;border:1.5px solid var(--border);cursor:zoom-in" onclick="showLightbox('${p.imgDetail}')" title="รูปรายละเอียด">`:'' }
-            ${isImageSrc(p.imgLand)?`<img src="${p.imgLand}" style="height:90px;border-radius:8px;object-fit:cover;border:1.5px solid #A7C7E7;cursor:zoom-in" onclick="showLightbox('${p.imgLand}')" title="แผนที่กรมที่ดิน">`:'' }
           </div>`:''}
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
             ${p.code?`<span class="badge badge-blue">🔖 ${p.code}</span>`:''}
@@ -4459,12 +4526,12 @@ function renderProps() {
             ${p.case?`<span class="badge badge-gray">คดี ${p.case}</span>`:''}
             ${Number(p.actualSell)>0?`<span class="badge badge-green">💵 ขายได้ ${fmtNum(Number(p.actualSell))} ฿</span>`:''}
             ${p.mapUrl?`<a href="${p.mapUrl.startsWith('http')?p.mapUrl:'https://maps.google.com/?q='+encodeURIComponent(p.mapUrl)}" target="_blank" class="btn btn-ghost btn-xs">📍 แผนที่</a>`:''}
-            ${landMapButton(p) || (p.deed ? landMapFallback(p) : '')}
             <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openSketch('${p.id}')">📝 บันทึก${hasSketch(p) ? ' ✏️' : ''}</button>
             ${pdfButton(p)}
             <button class="btn btn-ghost btn-xs" onclick="switchTab('calc');setTimeout(()=>{const s=document.getElementById('calc-prop-sel');if(s){s.value='${p.id}';calcFillFromProp();}},100)">🧮 คำนวณ</button>
             <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();printPropReport('${p.id}')">🖨 พิมพ์ / PDF</button>
           </div>
+          ${parcelBlockHtml(p)}
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px">
             <div class="section-title" style="margin-bottom:0">📅 ตารางนัด</div>
             <div onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:6px">
@@ -4625,7 +4692,7 @@ function renderProps() {
   updateBadges();
 }
 
-function toggleProp(id) { document.getElementById('pp-'+id).classList.toggle('expanded'); }
+function toggleProp(id) { document.getElementById('pp-'+id).classList.toggle('expanded'); initParcelMaps(); }
 
 function cycleRound(propId, ri) {
   const p = S.props.find(x=>x.id===propId); if (!p) return;
