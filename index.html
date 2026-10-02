@@ -2518,6 +2518,9 @@ let _smap = null, _smapLayers = [], _surveyGeom = null, _surveyGps = null;
 //  • มีภาพที่แนบจาก LandsMaps (p.imgLand) → โชว์ภาพนั้น (เห็นเส้นแบ่งแปลงสีแดง)
 //  • ไม่มีภาพ แต่มีพิกัดจริง → แผนที่ดาวเทียม Google ซูมระดับแปลง + หมุด (วาดเมื่อกางการ์ด)
 //  • พิกัดยังเป็นแค่กลางตำบล/ไม่มี (เฉพาะทรัพย์รอสำรวจ) → ช่องวางพิกัด
+// ทรัพย์ที่ยังขาดพิกัดจากกรมที่ดิน หรือภาพแผนที่แปลง → รอ Claude ค้นใน LandsMaps ให้ (บอกในแชทว่า "ทำต่อ")
+function parcelExact(p) { return p.llLevel === 'DOL' || (!!parseLatLng(p.mapUrl) && !p.llApprox && !/goo\.gl|maps\.app/.test(p.mapUrl || '')); }
+function parcelPending(p) { return !!p.deed && (!parcelExact(p) || !isImageSrc(p.imgLand)); }
 function parcelBlockHtml(p) {
   const ll = parseLatLng(p.mapUrl), exact = !!ll && !p.llApprox;
   const hasImg = isImageSrc(p.imgLand);
@@ -2527,7 +2530,9 @@ function parcelBlockHtml(p) {
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">
       <b style="font-size:13px;color:var(--navy);flex:1">🗺 ตำแหน่งแปลงที่ดิน</b>
       <span class="badge ${exact ? 'badge-green' : 'badge-amber'}">${src}</span>
+      ${parcelPending(p) ? `<span class="badge badge-amber">⏳ รอ${!parcelExact(p) ? 'พิกัด/' : ''}ภาพแปลง</span>` : ''}
     </div>
+    ${parcelPending(p) ? `<div style="font-size:11px;color:var(--amber);margin:-4px 0 8px">บอก Claude ในแชทว่า <b>"ทำต่อ"</b> — จะค้นโฉนดใน LandsMaps แล้วใส่พิกัด + ภาพแผนที่แปลงให้</div>` : ''}
     ${hasImg ? `<img src="${p.imgLand}" style="width:100%;max-height:320px;object-fit:contain;border-radius:8px;background:#fff;border:1px solid var(--border);cursor:zoom-in;margin-bottom:8px" onclick="showLightbox('${p.imgLand}')" title="ภาพแผนที่แปลงจาก LandsMaps">`
       : exact ? `<div class="parcel-map" data-pmap="${p.id}" data-ll="${ll.lat},${ll.lng}"><div style="padding:90px 0;text-align:center;font-size:12px;color:var(--gray)">⏳ กำลังโหลดภาพดาวเทียม...</div></div>` : ''}
     ${!exact && p.pool ? `<div style="background:var(--amber-lt);border:1px solid #FCD34D;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:12px">
@@ -2954,6 +2959,7 @@ function surveyCardHtml(x, total, open) {
     nr ? `<span class="badge badge-blue">📅 นัด ${nr.i + 1} · ${fmtDate(nr.date)}</span>` : '',
     sv.done ? `<span class="badge badge-green">✓ ไปแล้ว</span>` : '',
     sv.note || hasSketch(p) ? `<span class="badge badge-gray" title="มีบันทึกรายละเอียด">📝 บันทึก</span>` : '',
+    parcelPending(p) ? `<span class="badge badge-amber" title="ยังไม่มีพิกัดจากกรมที่ดิน/ภาพแผนที่แปลง — บอก Claude ว่า &quot;ทำต่อ&quot;">⏳ รอพิกัด/ภาพแปลง</span>` : '',
   ].join('');
   const legTxt = inRoute && sv.leg ? `${sv.leg.est ? '≈ ' : ''}${fmtKm(sv.leg.km)} กม. · ${fmtMin(sv.leg.min)} ${idx === 0 ? 'จากจุดเริ่ม' : 'จากจุดก่อนหน้า'}` : (inRoute && idx === 0 ? 'จุดแรก' : '');
   const led = p.led || {};
