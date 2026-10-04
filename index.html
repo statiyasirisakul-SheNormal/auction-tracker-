@@ -128,6 +128,23 @@ body { font-family:'Sarabun','Segoe UI',sans-serif; background:var(--bg); color:
 .leaflet-top, .leaflet-bottom { z-index:450 !important; }
 .sk-hbtn { background:rgba(255,255,255,.15) !important; color:#fff !important; white-space:nowrap; flex-shrink:0; min-height:32px !important; }
 @media (max-width:600px) { .sk-lbl { display:none; } #sk-saved { display:none; } }
+.sk-hbtn.on { background:rgba(255,255,255,.38) !important; }
+/* แถบตั้งค่าเส้นด้านซ้าย: ไอแพด = แถบของ Excalidraw เอง (กดซ่อนได้) · มือถือ = #sk-props ของเราแทน (Excalidraw โหมดมือถือไม่มีแถบซ้าย) */
+#sketch-overlay.sk-hide-props .excalidraw .App-menu__left { display:none !important; }
+#sk-props { position:absolute; top:64px; left:8px; z-index:5; width:172px; max-height:calc(100% - 150px); overflow-y:auto;
+  background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,.14); padding:10px; display:none;
+  -webkit-user-select:none; user-select:none; }
+#sketch-overlay.sk-mobile:not(.sk-hide-props) #sk-props { display:block; }
+#sk-props .skp-h { font-size:11px; color:#4b5563; margin:8px 0 5px; }
+#sk-props .skp-h:first-child { margin-top:0; }
+#sk-props .skp-row { display:flex; gap:5px; flex-wrap:wrap; }
+#sk-props .skp-row button { width:26px; height:26px; border-radius:6px; border:1px solid #e5e7eb; padding:0; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; font-size:13px; background:#f3f4f6; color:#1e1e1e; touch-action:manipulation; }
+#sk-props .skp-row button.on { outline:2px solid #6965db; outline-offset:1px; }
+#sk-props .skp-row.wide button { width:34px; height:30px; }
+#sk-props .skp-tr { background-image:linear-gradient(45deg,#ddd 25%,transparent 25%,transparent 75%,#ddd 75%),linear-gradient(45deg,#ddd 25%,#fff 25%,#fff 75%,#ddd 75%) !important;
+  background-size:8px 8px !important; background-position:0 0,4px 4px !important; }
+#sk-props input[type=range] { width:100%; accent-color:#6965db; font-size:12px !important; }
 /* ตำแหน่งแปลงที่ดินในการ์ด */
 .parcel-box { border:1.5px solid #BFDBFE; border-radius:10px; padding:10px; margin-bottom:12px; background:#F8FBFF; }
 .parcel-map { height:230px; border-radius:8px; overflow:hidden; background:#E2E8F0; margin-bottom:8px; position:relative; isolation:isolate; }
@@ -1388,6 +1405,7 @@ img, svg, video, canvas { max-width:100%; }
   <div id="sk-head" style="background:var(--navy);color:#fff;padding:7px 10px;padding-top:calc(7px + env(safe-area-inset-top, 0px));display:flex;align-items:center;gap:6px;flex-wrap:nowrap">
     <div id="sk-title" style="font-weight:800;font-size:14px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📝 บันทึกรายละเอียด</div>
     <span id="sk-saved" style="font-size:11px;opacity:.8;white-space:nowrap"></span>
+    <button class="btn btn-xs sk-hbtn" id="sk-props-btn" onclick="skToggleProps()" title="แสดง/ซ่อนแถบสีและขนาดเส้น">🎨<span class="sk-lbl"> แถบเครื่องมือ</span></button>
     <button class="btn btn-xs sk-hbtn" onclick="skToggleText()" title="พิมพ์บันทึก">📝<span class="sk-lbl"> ข้อความ</span></button>
     <button class="btn btn-xs sk-hbtn" id="sk-ins-prop" onclick="skInsertImage('prop')" title="แทรกรูปทรัพย์">🖼<span class="sk-lbl"> แทรกรูปทรัพย์</span></button>
     <button class="btn btn-xs sk-hbtn" id="sk-ins-land" onclick="skInsertImage('land')" title="แทรกแผนที่แปลง">🗺<span class="sk-lbl"> แทรกแผนที่</span></button>
@@ -1396,7 +1414,24 @@ img, svg, video, canvas { max-width:100%; }
   <div id="sk-textbox" style="display:none;padding:8px 10px;background:#F8FAFC;border-bottom:1px solid var(--border)">
     <textarea id="sk-text" class="form-textarea" placeholder="📝 พิมพ์บันทึก — สภาพทรัพย์ มีคนอยู่ไหม ทางเข้า เพื่อนบ้าน สิ่งที่ต้องซ่อม..." style="min-height:70px;font-size:15px;margin:0;background:#fff" oninput="skTextChanged()"></textarea>
   </div>
-  <div id="ex-root" style="flex:1;position:relative;min-height:0;margin-bottom:env(safe-area-inset-bottom, 0px)"></div>
+  <div style="flex:1;position:relative;min-height:0;margin-bottom:env(safe-area-inset-bottom, 0px)">
+    <div id="ex-root" style="position:absolute;inset:0"></div>
+    <div id="sk-props">
+      <div class="skp-h">สีเส้น</div>
+      <div class="skp-row" data-k="stroke"></div>
+      <div class="skp-h">สีพื้น</div>
+      <div class="skp-row" data-k="bg"></div>
+      <div class="skp-h">ขนาดเส้น</div>
+      <div class="skp-row wide" data-k="width"></div>
+      <div class="skp-h">ความทึบ <span id="skp-op-v"></span></div>
+      <input type="range" min="0" max="100" step="10" id="skp-op" oninput="skSetProp('opacity', +this.value)">
+      <div class="skp-h">ชั้น (เลือกชิ้นก่อน)</div>
+      <div class="skp-row wide">
+        <button onclick="skLayer('back')" title="ไปล่างสุด">⤓</button><button onclick="skLayer('down')" title="ลงหนึ่งชั้น">↓</button>
+        <button onclick="skLayer('up')" title="ขึ้นหนึ่งชั้น">↑</button><button onclick="skLayer('front')" title="ขึ้นบนสุด">⤒</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Add survey property from PDF -->
@@ -3183,6 +3218,7 @@ async function openSketch(id) {
   try { await loadExcalidraw(); }
   catch(e) { host.innerHTML = '<div style="padding:40px;text-align:center;color:var(--red)">โหลดหน้าวาดไม่สำเร็จ — ต้องต่ออินเทอร์เน็ตครั้งแรก แล้วลองใหม่</div>'; return; }
   if (SK !== mySK) return;   // ปิดไปก่อนโหลดเสร็จ
+  skPropsInit();
   const sx = p.sketchX || {};
   const elements = sx.elements ? sx.elements : (p.sketch ? legacyToElements(p.sketch) : []);
   const files = [];
@@ -3201,7 +3237,7 @@ async function openSketch(id) {
       appState: { viewBackgroundColor: '#ffffff', currentItemRoughness: 0, currentItemStrokeWidth: 1,
                   currentItemFontFamily: EX.FONT_FAMILY?.Helvetica || 2, currentItemStrokeColor: '#1e1e1e' } },
     excalidrawAPI: api => { if (SK === mySK) { SK.api = api; setTimeout(() => { try { api.setActiveTool({ type: 'freedraw' }); } catch(e) {} }, 50); } },
-    onChange: (els, st, fl) => { if (SK === mySK) skOnChange(els, fl); },
+    onChange: (els, st, fl) => { if (SK === mySK) { skSyncProps(st); skOnChange(els, fl); } },
     UIOptions: { canvasActions: { loadScene: false, saveToActiveFile: false, toggleTheme: false, export: false, saveAsImage: true, clearCanvas: true, changeViewBackgroundColor: true } },
     name: p.code || 'บันทึก',
   }));
@@ -3224,6 +3260,92 @@ function skOnChange(els, files) {
   skDirty();
 }
 function skTextChanged() { skDirty(); }
+
+// ── แถบสี/ขนาดเส้นด้านซ้าย (กดปุ่ม 🎨 บนหัวเพื่อซ่อน/แสดง จำค่าไว้ในเครื่อง) ──
+// ค่าเดียวกับปุ่มลัดของ Excalidraw — เลือกชิ้นไว้ = เปลี่ยนชิ้นนั้น · ไม่ได้เลือก = ตั้งค่าสำหรับเส้นถัดไป
+const SKP = {
+  stroke: { ak: 'currentItemStrokeColor', ek: 'strokeColor', v: ['#1e1e1e', '#e03131', '#2f9e44', '#1971c2', '#f08c00'] },
+  bg:     { ak: 'currentItemBackgroundColor', ek: 'backgroundColor', v: ['transparent', '#ffc9c9', '#b2f2bb', '#a5d8ff', '#ffec99'] },
+  width:  { ak: 'currentItemStrokeWidth', ek: 'strokeWidth', v: [1, 2, 4] },
+  opacity:{ ak: 'currentItemOpacity', ek: 'opacity' },
+};
+let _skpKey = '';
+function skPropsOpen() { try { return localStorage.getItem('sk_props_open') !== '0'; } catch(e) { return true; } }
+function skPropsInit() {
+  document.querySelectorAll('#sk-props .skp-row[data-k]').forEach(row => {
+    const k = row.dataset.k;
+    row.innerHTML = SKP[k].v.map(v => k === 'width'
+      ? `<button data-v="${v}" onclick="skSetProp('width',${v})" title="ขนาด ${v}"><span style="display:block;width:16px;height:${v === 1 ? 1.5 : v === 2 ? 3 : 5}px;background:#1e1e1e;border-radius:2px"></span></button>`
+      : `<button data-v="${v}" class="${v === 'transparent' ? 'skp-tr' : ''}" style="${v === 'transparent' ? '' : 'background:' + v}" onclick="skSetProp('${k}','${v}')"></button>`).join('');
+  });
+  _skpKey = '';
+  skApplyPropsVis();
+}
+function skApplyPropsVis() {
+  const open = skPropsOpen();
+  document.getElementById('sketch-overlay').classList.toggle('sk-hide-props', !open);
+  document.getElementById('sk-props-btn').classList.toggle('on', open);
+}
+function skToggleProps() {
+  try { localStorage.setItem('sk_props_open', skPropsOpen() ? '0' : '1'); } catch(e) {}
+  skApplyPropsVis();
+}
+// อัปเดตปุ่มให้ตรงกับชิ้นที่เลือก/ค่าปัจจุบัน — onChange ถี่มาก เทียบ key ก่อนค่อยแตะ DOM
+function skSyncProps(st) {
+  const ov = document.getElementById('sketch-overlay');
+  const mob = !!document.querySelector('#ex-root .excalidraw--mobile');
+  if (ov.classList.contains('sk-mobile') !== mob) ov.classList.toggle('sk-mobile', mob);
+  if (!mob || !st || !SK?.api) return;
+  const ids = Object.keys(st.selectedElementIds || {});
+  const sel = ids.length ? SK.api.getSceneElements().find(e => e.id === ids[0]) : null;
+  const cur = {};
+  for (const k in SKP) cur[k] = sel ? sel[SKP[k].ek] : st[SKP[k].ak];
+  const key = JSON.stringify(cur);
+  if (key === _skpKey) return;
+  _skpKey = key;
+  document.querySelectorAll('#sk-props .skp-row[data-k]').forEach(row => {
+    row.querySelectorAll('button').forEach(b => b.classList.toggle('on', String(cur[row.dataset.k]) === b.dataset.v));
+  });
+  document.getElementById('skp-op').value = cur.opacity ?? 100;
+  document.getElementById('skp-op-v').textContent = (cur.opacity ?? 100) + '%';
+}
+function skSetProp(k, v) {
+  const api = SK?.api; if (!api) return;
+  const { ak, ek } = SKP[k];
+  const sel = api.getAppState().selectedElementIds || {};
+  let changed = false;
+  const els = api.getSceneElementsIncludingDeleted().map(e => {
+    if (!sel[e.id] || e.isDeleted) return e;
+    changed = true; return EXL.EX.newElementWith(e, { [ek]: v });
+  });
+  api.updateScene({ appState: { [ak]: v },
+    ...(changed ? { elements: els, captureUpdate: EXL.EX.CaptureUpdateAction.IMMEDIATELY } : {}) });
+}
+// เลื่อนชั้นชิ้นที่เลือก (ล่างสุด/ลง/ขึ้น/บนสุด) — เรียงลำดับใน array ใหม่ Excalidraw จัด index ให้เอง
+function skLayer(dir) {
+  const api = SK?.api; if (!api) return;
+  const sel = api.getAppState().selectedElementIds || {};
+  const all = api.getSceneElementsIncludingDeleted();
+  const s = all.filter(e => sel[e.id] && !e.isDeleted), o = all.filter(e => !(sel[e.id] && !e.isDeleted));
+  if (!s.length) { toast('เลือกชิ้นที่จะย้ายชั้นก่อน (เครื่องมือลูกศร)'); return; }
+  let next;
+  if (dir === 'back') next = [...s, ...o];
+  else if (dir === 'front') next = [...o, ...s];
+  else {
+    const idx = all.map((e, i) => s.includes(e) ? i : -1).filter(i => i >= 0);
+    let k = dir === 'down' ? idx[0] - 1 : idx[idx.length - 1] + 1;
+    while (k >= 0 && k < all.length && all[k].isDeleted) k += dir === 'down' ? -1 : 1;
+    if (k < 0 || k >= all.length) return;
+    const anchor = all[k];
+    next = [];
+    for (const e of o) {
+      if (e === anchor && dir === 'down') next.push(...s);
+      next.push(e);
+      if (e === anchor && dir === 'up') next.push(...s);
+    }
+  }
+  api.updateScene({ elements: next, captureUpdate: EXL.EX.CaptureUpdateAction.IMMEDIATELY });
+}
 function skToggleText() {
   const b = document.getElementById('sk-textbox');
   b.style.display = b.style.display === 'none' ? '' : 'none';
