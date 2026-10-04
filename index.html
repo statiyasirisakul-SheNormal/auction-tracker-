@@ -3280,6 +3280,17 @@ function skPropsInit() {
   });
   _skpKey = '';
   skApplyPropsVis();
+  // เริ่มเขียน/วาดบนกระดาษ → พับแถบซ้ายเก็บเอง ไม่ให้ขวาง (กด 🎨 เพื่อเปิดใหม่)
+  // ใช้เครื่องมือเลือก/มือเลื่อนอยู่ = ไม่พับ เพราะอาจกำลังเลือกชิ้นเพื่อเปลี่ยนสี
+  const host = document.getElementById('ex-root');
+  if (!host._skpAuto) {
+    host._skpAuto = true;
+    host.addEventListener('pointerdown', e => {
+      if (e.target.tagName !== 'CANVAS' || !skPropsOpen() || !SK?.api) return;
+      const t = SK.api.getAppState().activeTool?.type;
+      if (t && !['selection', 'hand', 'lasso', 'laser'].includes(t)) skToggleProps();
+    }, true);
+  }
 }
 function skApplyPropsVis() {
   const open = skPropsOpen();
