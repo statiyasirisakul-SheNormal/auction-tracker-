@@ -855,6 +855,14 @@ img, svg, video, canvas { max-width:100%; }
 
   .modal { border-radius:22px 22px 0 0; }
 }
+/* ไอแพด/แท็บเล็ต (จอสัมผัส กว้างเกิน 760) ซ่อนแถบแท็บใช้เมนู ☰ เหมือนมือถือ — เครื่องที่มีเมาส์ยังเห็นแถบแท็บตามเดิม */
+@media (min-width:761px) and (max-width:1366px) and (hover:none) and (pointer:coarse) {
+  .tabs { display:none; }
+  .fluid-nav { display:block; }
+  .hdr-page { display:block; }
+  .header h1 { font-size:12px; font-weight:500; opacity:.75; }
+  .header p { display:none; }
+}
 @media (max-width:360px) {
   .tab-btn { font-size:9.5px; }
   .tab-btn .tab-ic { font-size:19px; }
