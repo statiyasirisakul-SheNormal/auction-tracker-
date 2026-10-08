@@ -885,6 +885,8 @@ img, svg, video, canvas { max-width:100%; }
   .tab-btn .tab-ic { font-size:19px; }
   .header h1 .hdr-sub-inline { display:none; }
 }
+/* สถานะล่าสุดบนหัวการ์ด — ยาวเกินให้ตัด … */
+.last-status { max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 /* ── Accessibility (WCAG 2.1 AA) ── */
 .form-input, .form-select, .form-textarea { border-color:#8A94A6; }          /* ขอบช่องกรอก ≥3:1 (1.4.11) */
 .form-input:focus, .form-select:focus, .form-textarea:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(37,99,235,.35); }
@@ -4608,6 +4610,13 @@ function renderProps() {
       ? `<span class="badge badge-red" title="ถึงวันนัดแล้วแต่ยังไม่ได้กรอกหมายเหตุผลการประมูล">🔎 เช็คนัดที่${missingNoteRound.ri+1} · ${fmtDate(missingNoteRound.date)}</span>`
       : '';
 
+    // 📌 สถานะล่าสุด = หมายเหตุผลการประมูลของนัดล่าสุด (วันที่ล่าสุด) ที่กรอกไว้แล้ว — โชว์บนหัวการ์ด
+    const lastNoted = (p.rounds||[]).map((r,ri)=> r && typeof r==='object' && (r.note||'').trim() ? { ri, date:r.date||'', note:r.note.trim() } : null)
+      .filter(Boolean).sort((a,b)=> (a.date||'').localeCompare(b.date||'') || a.ri-b.ri).pop();
+    const lastChip = lastNoted
+      ? `<span class="badge ${isHaltedNote(lastNoted.note)?'badge-red':'badge-gray'} last-status" title="สถานะล่าสุด · นัดที่${lastNoted.ri+1}${lastNoted.date?' '+fmtDate(lastNoted.date):''}: ${escapeHtml(lastNoted.note)}">📌 นัด${lastNoted.ri+1}: ${escapeHtml(lastNoted.note.length>28?lastNoted.note.slice(0,28)+'…':lastNoted.note)}</span>`
+      : '';
+
     const roundsHtml = ROUNDS.map((r,ri) => {
       const rObj = (p.rounds||[])[ri];
       const rSt  = rObj&&typeof rObj==='object' ? (rObj.status||'pending') : (rObj||'pending');
@@ -4672,6 +4681,7 @@ function renderProps() {
             ${targetChip}
             ${dateChip}
             ${checkChip}
+            ${lastChip}
             <span class="badge ${si.badge}">${si.icon} ${si.label}</span>
           </div>
           <div class="prop-actions" onclick="event.stopPropagation()">
