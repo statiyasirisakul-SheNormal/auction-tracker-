@@ -3210,7 +3210,9 @@ function surveyCardHtml(x, total, open) {
           ${p.deed ? `<span class="badge badge-gray">โฉนด ${escapeHtml(p.deed)}</span>` : ''}
           ${p.case ? `<span class="badge badge-gray">คดี ${escapeHtml(p.case)}</span>` : ''}
           ${led.area ? `<span class="badge badge-gray">📐 ${escapeHtml(led.area)}</span>` : ''}
-          ${led.free ? `<span class="badge badge-green">${escapeHtml(led.free)}</span>` : ''}
+          ${led.free ? (led.free === 'ติดจำนอง'
+              ? `<span class="badge badge-amber" title="${escapeHtml(led.mortgagee || '')}">⚠️ ติดจำนอง${led.mortgage ? ' ' + fmtNum(led.mortgage) + ' ฿' : ''}</span>`
+              : `<span class="badge badge-green">${escapeHtml(led.free)}</span>`) : ''}
           ${led.deposit ? `<span class="badge badge-amber">หลักประกัน ${fmtNum(led.deposit)} ฿</span>` : ''}
           ${p.pdfUrl ? `<button class="btn btn-ghost btn-xs" data-pdfbtn="${p.id}" onclick="surveyTogglePdf('${p.id}')">${_svPdfOpen.has(p.id) ? '📄 ซ่อน PDF' : '📄 ดู PDF ประกาศ'}</button>` : ''}
           <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openCalcFor('${p.id}')">🧮 คำนวณ</button>
@@ -3826,7 +3828,11 @@ async function readLedPdf(file) {
       owner:     grab(/ผู้ถือกรรมสิทธิ์\s*(.+?)\s*ติดต่อ/),
       office:    grab(/\/\s*กอง\s*(.+?)\s*โทรศัพท์/),
       phone:     grab(/โทรศัพท์\s*([\d(),\-\s]+?)\s*เจ้าของ/),
-      free:      grab(/จะทำการขายโดย\s*(\S+การจำนอง|ติดจำนอง\S*)/),
+      // "จะทำการขายโดย ปลอดการจำนอง" หรือ "...การจำนองติดไป ติดจำนอง <ผู้รับจำนอง> ยอดหนี้จำนอง 1,377,848.25 บาท"
+      free:      /ติดจำนอง|จำนองติดไป/.test(flat.split('จะทำการขายโดย')[1]?.slice(0, 80) || '') ? 'ติดจำนอง'
+                 : grab(/จะทำการขายโดย\s*([ก-๙]+)/),   // ปลอดการจำนอง / ไม่มีภาระจำนอง ฯลฯ
+      mortgage:  money(grab(/ยอดหนี้จำนอง\s*([\d,]+(?:\.\d+)?)/)),
+      mortgagee: grab(/ติดจำนอง\s*(.+?)\s*ยอดหนี้จำนอง/),
       deposit:   money(grab(/วางหลักประกันเป็นจำนวน\s*([\d,.]+)/)),
       announced: grab(/วันที่ประกาศขึ้นเว็บ\s*([\d\-]+)/),
     },
@@ -4953,6 +4959,7 @@ function renderProps() {
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
             ${p.deed?`<span class="badge badge-gray">โฉนด ${p.deed}</span>`:''}
             ${p.case?`<span class="badge badge-gray">คดี ${p.case}</span>`:''}
+            ${p.led?.free==='ติดจำนอง'?`<span class="badge badge-amber" title="${escapeHtml(p.led.mortgagee||'')}">⚠️ ติดจำนอง${p.led.mortgage?' '+fmtNum(p.led.mortgage)+' ฿':''}</span>`:p.led?.free?`<span class="badge badge-green">${escapeHtml(p.led.free)}</span>`:''}
             ${Number(p.actualSell)>0?`<span class="badge badge-green">💵 ขายได้ ${fmtNum(Number(p.actualSell))} ฿</span>`:''}
             ${p.mapUrl?`<a href="${p.mapUrl.startsWith('http')?p.mapUrl:'https://maps.google.com/?q='+encodeURIComponent(p.mapUrl)}" target="_blank" class="btn btn-ghost btn-xs">📍 แผนที่</a>`:''}
             <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openSketch('${p.id}')">📝 บันทึก${hasSketch(p) ? ' ✏️' : ''}</button>
@@ -7133,7 +7140,8 @@ function calcFillFromProp() {
   document.getElementById('calc-repair').value         = p.calcRepair || propRenoSpent(p) || p.renoBudget || 0;
   document.getElementById('calc-broker').value         = p.calcBroker    || 0;
   document.getElementById('calc-broker-pct').value     = p.calcBrokerPct || '';
-  setNumInput('calc-mortgage', p.calcMortgage || '');
+  // ราคาติดจำนอง: ค่าที่กรอกเองในหน้าคำนวณ → ยอดหนี้จำนองจากประกาศ (ทรัพย์ขายแบบติดจำนอง)
+  setNumInput('calc-mortgage', Number(p.calcMortgage) || Number(p.led?.mortgage) || 0);
   document.getElementById('calc-custom-bid-store').value = p.calcCustomBid || '';
   // show header
   if (hdr) {
