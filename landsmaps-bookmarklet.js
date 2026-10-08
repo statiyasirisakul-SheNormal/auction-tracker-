@@ -11,7 +11,7 @@
   if (window.__acktionLM) { window.__acktionLM.open(); return; }
 
   const SRC = (document.currentScript && document.currentScript.src) || '';
-  const APP_URL = SRC ? new URL('./', SRC).href : 'https://statiyasirisakul-shenormal.github.io/auction-tracker-/';
+  const APP_URL = SRC ? new URL('./', SRC).href : 'https://auction-tracker.s-tatiyasirisakul.workers.dev/';
   const APP_ORIGIN = new URL(APP_URL).origin;
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const findBtn = t => [...document.querySelectorAll('button')].find(b => b.offsetParent && b.textContent.includes(t));
