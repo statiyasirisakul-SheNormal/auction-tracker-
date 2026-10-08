@@ -4701,9 +4701,14 @@ function propTargetDays(p) {
   const d = daysUntil(r.date);
   return d !== null && d >= 0 ? d : null;
 }
+// มีนัดที่ถึงวันแล้ว (วันนี้หรือผ่านมาแล้ว) แต่ยังไม่ได้ใส่หมายเหตุผลการประมูล = ป้าย 🔎 เช็คนัด บนหัวการ์ด
+function propNeedsResult(p) {
+  return (p.rounds||[]).some(r => r && typeof r === 'object' && r.date && !(r.note||'').trim() && daysUntil(r.date) <= 0);
+}
 const PROP_FILTERS = [
   { k:'all',    label:'ทั้งหมด',        fn:() => true },
   { k:'soon',   label:'🎯 นัดเข้าซื้อใน 7 วัน', fn:p => { const d = propTargetDays(p); return d !== null && d <= 7; } },
+  { k:'check',  label:'🔎 รอใส่ผลนัด',   fn:p => propNeedsResult(p) },
   { k:'active', label:'🔨 กำลังประมูล',  fn:p => !isAcquired(p) && p.status !== 'lost' },
   { k:'owned',  label:'✓ ได้ทรัพย์แล้ว', fn:p => isAcquired(p) },
 ];
