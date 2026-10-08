@@ -885,6 +885,19 @@ img, svg, video, canvas { max-width:100%; }
   .tab-btn .tab-ic { font-size:19px; }
   .header h1 .hdr-sub-inline { display:none; }
 }
+/* ค้นหา/กรองทรัพย์ */
+.prop-toolbar { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+.prop-search { margin:0; }
+.prop-filters { display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; padding-bottom:2px; }
+.prop-filters::-webkit-scrollbar { display:none; }
+.pf-chip { flex-shrink:0; border:1.5px solid var(--border); background:#fff; color:var(--navy); border-radius:999px; padding:7px 13px; font:700 13px/1.2 inherit; font-family:inherit; cursor:pointer; min-height:38px; white-space:nowrap; }
+.pf-chip.on { background:var(--navy); border-color:var(--navy); color:#fff; }
+.pf-n { display:inline-block; min-width:18px; padding:0 5px; border-radius:9px; background:rgba(15,23,42,.08); font-size:12px; text-align:center; }
+.pf-chip.on .pf-n { background:rgba(255,255,255,.22); }
+/* การ์ดตอนกาง: ขั้นทรัพย์ไว้บนสุด · ซ่อนนัดที่ยังว่าง */
+.prop-stage-block { margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+.rounds-grid.compact .round-tile.round-empty { display:none; }
+.rounds-more { margin:-10px 0 16px; }
 /* สถานะล่าสุดบนหัวการ์ด — ยาวเกินให้ตัด … */
 .last-status { max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 /* ── Accessibility (WCAG 2.1 AA) ── */
@@ -990,9 +1003,12 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
       <div class="card-header">
         <div class="card-title">🏠 ทรัพย์ที่ต้องการ</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="btn btn-ghost btn-sm" onclick="openModal('modal-doctype')">📋 จัดการประเภทเอกสาร</button>
           <button class="btn btn-primary btn-sm" onclick="openAddPropModal()">+ เพิ่มทรัพย์</button>
         </div>
+      </div>
+      <div class="prop-toolbar" style="display:none">
+        <input class="form-input prop-search" id="prop-search" type="search" placeholder="🔍 ค้นหารหัส / ชื่อ / โฉนด / ที่ตั้ง" oninput="setPropFilter({q:this.value})" aria-label="ค้นหาทรัพย์" autocomplete="off">
+        <div class="prop-filters" id="prop-filters" role="group" aria-label="กรองทรัพย์"></div>
       </div>
       <div id="doctypes-list" style="display:none"></div>
       <div id="props-list"></div>
@@ -1626,6 +1642,7 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
 <div class="modal-overlay" id="modal-settings">
   <div class="modal" style="max-width:540px">
     <h3>⚙️ ตั้งค่าระบบ</h3>
+    <button class="btn btn-ghost btn-sm" style="width:100%;margin-bottom:12px" onclick="closeModal('modal-settings');openModal('modal-doctype')">📋 จัดการประเภทเอกสาร</button>
     <!-- แจ้งเตือนผ่านเครื่อง (Web Push) -->
     <div class="set-sec" id="set-notify" style="--sec:#2563EB;--sec-bg:#EFF6FF;--sec-bd:#BFDBFE">
       <div class="set-sec-title">🔔 แจ้งเตือนวันนัดประมูล</div>
@@ -2253,12 +2270,12 @@ const ROUNDS = [
 //  ข้อมูลเก่าที่ status = 'watching' ยังใช้ได้ — นับเป็นขั้น "ตรวจสอบ" (ไม่ต้อง migrate)
 // ══════════════════════════════════════════════════
 const STAGES = [
-  { key:'inspecting', label:'ตรวจสอบ',   icon:'🔍', badge:'badge-blue'  },
-  { key:'bidding',    label:'ประมูล',    icon:'🔨', badge:'badge-amber' },
-  { key:'won',        label:'ชนะประมูล', icon:'✓',  badge:'badge-green' },
-  { key:'renovating', label:'รีโนเวท',   icon:'🛠', badge:'badge-amber' },
-  { key:'listed',     label:'ประกาศขาย', icon:'🏷', badge:'badge-green' },
-  { key:'sold',       label:'ขายแล้ว',   icon:'💰', badge:'badge-green' },
+  { key:'inspecting', label:'ตรวจสอบ', short:'ตรวจ',   icon:'🔍', badge:'badge-blue'  },
+  { key:'bidding',    label:'ประมูล', short:'ประมูล',    icon:'🔨', badge:'badge-amber' },
+  { key:'won',        label:'ชนะประมูล', short:'ชนะ', icon:'✓',  badge:'badge-green' },
+  { key:'renovating', label:'รีโนเวท', short:'รีโน',   icon:'🛠', badge:'badge-amber' },
+  { key:'listed',     label:'ประกาศขาย', short:'ประกาศ', icon:'🏷', badge:'badge-green' },
+  { key:'sold',       label:'ขายแล้ว', short:'ขายแล้ว',   icon:'💰', badge:'badge-green' },
 ];
 const STAGE_KEYS = STAGES.map(s => s.key);
 const WON_IDX    = STAGE_KEYS.indexOf('won');
@@ -2586,10 +2603,10 @@ function parcelBlockHtml(p) {
   return `<div class="parcel-box" onclick="event.stopPropagation()">
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">
       <b style="font-size:13px;color:var(--navy);flex:1">🗺 ตำแหน่งแปลงที่ดิน</b>
-      <span class="badge ${exact ? 'badge-green' : 'badge-amber'}">${src}</span>
+      ${parcelPending(p) && !exact ? '' : `<span class="badge ${exact ? 'badge-green' : 'badge-amber'}">${src}</span>`}
       ${parcelPending(p) ? `<span class="badge badge-amber">⏳ รอ${!parcelExact(p) ? 'พิกัด/' : ''}ภาพแปลง</span>` : ''}
     </div>
-    ${parcelPending(p) ? `<div style="font-size:12px;color:var(--amber);margin:-4px 0 8px">บอก Claude ในแชทว่า <b>"ทำต่อ"</b> — จะค้นโฉนดใน LandsMaps แล้วใส่พิกัด + ภาพแผนที่แปลงให้</div>` : ''}
+    ${parcelPending(p) ? `<div style="font-size:12px;color:var(--amber);margin:-4px 0 8px">รอใส่พิกัดและภาพแผนที่แปลงจากกรมที่ดิน</div>` : ''}
     ${hasImg ? `<img src="${p.imgLand}" style="width:100%;max-height:320px;object-fit:contain;border-radius:8px;background:#fff;border:1px solid var(--border);cursor:zoom-in;margin-bottom:8px" onclick="showLightbox('${p.imgLand}')" title="ภาพแผนที่แปลงจาก LandsMaps" alt="ภาพแผนที่แปลง ${escapeHtml(p.code||p.name||'')}">`
       : exact ? `<div class="parcel-map" data-pmap="${p.id}" data-ll="${ll.lat},${ll.lng}"><div style="padding:90px 0;text-align:center;font-size:12px;color:var(--gray)">⏳ กำลังโหลดภาพดาวเทียม...</div></div>` : ''}
     ${!exact && p.pool ? `<div style="background:var(--amber-lt);border:1px solid #FCD34D;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:12px">
@@ -4395,13 +4412,14 @@ function renoBudgetBar(p, spent, acqCost) {
   const input = `
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:${budget?'8px':'2px'}">
       <span style="font-size:12px;font-weight:700;color:var(--navy);white-space:nowrap">🛠 ค่ารีโนเวท/ซ่อมแซม (ประเมิน)</span>
+      <span style="display:flex;align-items:center;gap:6px;flex:1;min-width:150px">
       <input type="text" inputmode="numeric"
         value="${budget?budget.toLocaleString('th-TH'):''}"
         placeholder="เช่น 300,000"
         oninput="fmtNumInput(this)"
         onblur="savePropRenoBudget('${p.id}',this.value)"
-        style="flex:1;min-width:120px;border:1.5px solid #0EA5E9;border-radius:7px;padding:6px 10px;font-size:14px;font-weight:700;color:var(--navy);background:white;outline:none">
-      <span style="font-size:12px;color:var(--gray)">฿</span>
+        style="flex:1;min-width:0;border:1.5px solid #0EA5E9;border-radius:7px;padding:6px 10px;font-size:14px;font-weight:700;color:var(--navy);background:white;outline:none">
+      <span style="font-size:13px;font-weight:700;color:var(--gray)">฿</span></span>
     </div>
     <div style="font-size:12px;color:var(--gray);margin-bottom:${budget?'10px':'0'}">
       → ใช้เป็น “ค่าซ่อมแซม” ในหน้าคำนวณอัตโนมัติ${size?` · พื้นที่ ${size} ตร.ว.${budget?` ≈ ${fmtNum(Math.round(budget/size))} ฿/ตร.ว.`:''}`:''}
@@ -4551,6 +4569,41 @@ function toggleDocList(id) {
   if (show) docsOpen.add(id); else docsOpen.delete(id);
 }
 
+// ── ค้นหา + กรองทรัพย์ (หน้าทรัพย์) ──
+let propFilter = { q:'', f:'all' };
+try { propFilter.f = localStorage.getItem('acktion_propfilter') || 'all'; } catch(e) {}
+function setPropFilter(o) {
+  Object.assign(propFilter, o);
+  try { localStorage.setItem('acktion_propfilter', propFilter.f); } catch(e) {}
+  renderProps();
+}
+// จำนวนวันถึงนัดถัดไปที่ยังขายจริง (ข้ามนัดงดขาย) · ไม่มี = null
+function propNextDays(p) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const ds = (p.rounds||[]).filter(r => r && typeof r==='object' && r.date && !isHaltedNote(r.note))
+    .map(r => { const d = new Date(r.date); d.setHours(0,0,0,0); return Math.round((d-today)/86400000); })
+    .filter(d => d >= 0);
+  return ds.length ? Math.min(...ds) : null;
+}
+const PROP_FILTERS = [
+  { k:'all',    label:'ทั้งหมด',        fn:() => true },
+  { k:'soon',   label:'⏰ ใกล้นัด 7 วัน', fn:p => { const d = propNextDays(p); return d !== null && d <= 7; } },
+  { k:'active', label:'🔨 กำลังประมูล',  fn:p => !isAcquired(p) && p.status !== 'lost' },
+  { k:'owned',  label:'✓ ได้ทรัพย์แล้ว', fn:p => isAcquired(p) },
+];
+function propMatchesQuery(p, q) {
+  q = (q||'').trim().toLowerCase(); if (!q) return true;
+  return [p.code, p.name, p.deed, p.loc, p.case].some(v => String(v||'').toLowerCase().includes(q));
+}
+function renderPropFilters(list) {
+  const box = document.getElementById('prop-filters'); if (!box) return;
+  box.parentElement.style.display = list.length ? '' : 'none';
+  box.innerHTML = PROP_FILTERS.map(f => {
+    const n = list.filter(f.fn).length, on = propFilter.f === f.k;
+    return `<button class="pf-chip${on?' on':''}" aria-pressed="${on}" onclick="setPropFilter({f:'${f.k}'})">${f.label} <span class="pf-n">${n}</span></button>`;
+  }).join('');
+}
+
 function renderProps() {
   const el = document.getElementById('props-list');
   // จำ card ที่กางอยู่ก่อน re-render
@@ -4559,11 +4612,19 @@ function renderProps() {
   );
   // ทรัพย์ที่ขายแล้วย้ายไปอยู่แท็บ "✅ ขายแล้ว" โดยเฉพาะ ไม่ต้องโชว์ซ้ำในลิสต์นี้
   const activeProps = S.props.filter(p => !isSold(p));
+  renderPropFilters(activeProps);
   if (!activeProps.length) {
     el.innerHTML = `<div class="empty"><div class="empty-icon">🏠</div><p>ยังไม่มีทรัพย์ — เก็บทรัพย์จากแท็บ 🧭 สำรวจ หรือกด + เพิ่มทรัพย์</p></div>`;
     updateBadges(); return;
   }
-  el.innerHTML = activeProps.map((p,i) => {
+  const curFilter = PROP_FILTERS.find(f => f.k === propFilter.f) || PROP_FILTERS[0];
+  const shownProps = activeProps.filter(p => curFilter.fn(p) && propMatchesQuery(p, propFilter.q));
+  if (!shownProps.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🔍</div><p>ไม่พบทรัพย์ที่ตรงกับการค้นหา/ตัวกรอง</p>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('prop-search').value='';setPropFilter({q:'',f:'all'})">ล้างตัวกรอง</button></div>`;
+    updateBadges(); return;
+  }
+  el.innerHTML = shownProps.map((p,i) => {
     const base = Number(p.appraisal)||Number(p.price)||0;
     const si = stageInfo(p.status||'watching');
 
@@ -4583,22 +4644,22 @@ function renderProps() {
       const dt = new Date(d); dt.setHours(0,0,0,0);
       return { ri, dt, daysLeft: Math.round((dt-today)/86400000) };
     }).filter(Boolean).sort((a,b)=>a.dt-b.dt).find(x=>x.daysLeft>=0);
-    let dateChip = '';
-    if (allHalted) {
-      dateChip = `<span class="badge badge-red">⛔ งดขาย</span>`;
-    } else if (nextRound) {
-      const dl = nextRound.daysLeft;
-      if      (dl === 0) dateChip = `<span class="badge badge-red">🔴 นัดที่${nextRound.ri+1} วันนี้!</span>`;
-      else if (dl <= 3)  dateChip = `<span class="badge badge-red">⚠️ นัดที่${nextRound.ri+1} อีก ${dl} วัน</span>`;
-      else if (dl <= 7)  dateChip = `<span class="badge badge-amber">นัดที่${nextRound.ri+1} อีก ${dl} วัน</span>`;
-      else               dateChip = `<span class="badge badge-blue">นัดที่${nextRound.ri+1} อีก ${dl} วัน</span>`;
-    }
-
-    // 🎯 นัดที่เลือกไว้เข้าซื้อ (targetRound) — โชว์บนหัวการ์ดเลย ไม่ต้องกางดู
-    const targetIdx = p.targetRound||0;
-    const targetObj = (p.rounds||[])[targetIdx];
+    // ป้ายหัวการ์ด — สี: แดง = ด่วน/ต้องทำ · ส้ม = นัดที่เลือกเข้าซื้อ · เทา = ข้อมูล
+    const targetIdx  = p.targetRound||0;
+    const targetObj  = (p.rounds||[])[targetIdx];
     const targetDate = targetObj&&typeof targetObj==='object' ? targetObj.date : '';
-    const targetChip = `<span class="badge badge-amber" title="นัดที่เลือกไว้เข้าซื้อ">🎯 นัดที่${targetIdx+1}${targetDate?' · '+fmtDate(targetDate):''}</span>`;
+    let dateChip = '', targetChip = '';
+    if (allHalted) {
+      dateChip = `<span class="badge badge-gray">⛔ งดขายทุกนัด</span>`;
+    } else if (nextRound) {
+      const dl = nextRound.daysLeft, isT = nextRound.ri === targetIdx;
+      const nDate = (p.rounds[nextRound.ri]||{}).date || '';
+      const cls = dl <= 3 ? 'badge-red' : isT ? 'badge-amber' : 'badge-gray';
+      dateChip = `<span class="badge ${cls}" title="นัดถัดไป${isT?' (นัดที่เลือกเข้าซื้อ)':''} · ${fmtDate(nDate)}">${isT?'🎯':'📅'} นัด${nextRound.ri+1} · ${dl===0?'วันนี้!':'อีก '+dl+' วัน'}</span>`;
+    }
+    // นัดเป้าหมายคนละนัดกับนัดถัดไป → โชว์แยก (ถ้ายังไม่ผ่านไป)
+    if (!allHalted && !(nextRound && nextRound.ri === targetIdx) && (!targetDate || daysUntil(targetDate) >= 0))
+      targetChip = `<span class="badge badge-amber" title="นัดที่เลือกไว้เข้าซื้อ">🎯 นัด${targetIdx+1}${targetDate?' · '+fmtDate(targetDate):''}</span>`;
 
     // ⚠️ นัดที่วันที่ผ่านไปแล้วแต่ยังไม่ได้กรอกหมายเหตุ (ลืมเช็คผลว่าเกิดอะไรขึ้น) — เตือนที่หัวการ์ดเลย
     const missingNoteRound = (p.rounds||[]).map((r,ri)=>{
@@ -4614,7 +4675,7 @@ function renderProps() {
     const lastNoted = (p.rounds||[]).map((r,ri)=> r && typeof r==='object' && (r.note||'').trim() ? { ri, date:r.date||'', note:r.note.trim() } : null)
       .filter(Boolean).sort((a,b)=> (a.date||'').localeCompare(b.date||'') || a.ri-b.ri).pop();
     const lastChip = lastNoted
-      ? `<span class="badge ${isHaltedNote(lastNoted.note)?'badge-red':'badge-gray'} last-status" title="สถานะล่าสุด · นัดที่${lastNoted.ri+1}${lastNoted.date?' '+fmtDate(lastNoted.date):''}: ${escapeHtml(lastNoted.note)}">📌 นัด${lastNoted.ri+1}: ${escapeHtml(lastNoted.note.length>28?lastNoted.note.slice(0,28)+'…':lastNoted.note)}</span>`
+      ? `<span class="badge badge-gray last-status" title="สถานะล่าสุด · นัดที่${lastNoted.ri+1}${lastNoted.date?' '+fmtDate(lastNoted.date):''}: ${escapeHtml(lastNoted.note)}">📌 นัด${lastNoted.ri+1}: ${escapeHtml(lastNoted.note.length>28?lastNoted.note.slice(0,28)+'…':lastNoted.note)}</span>`
       : '';
 
     const roundsHtml = ROUNDS.map((r,ri) => {
@@ -4624,7 +4685,8 @@ function renderProps() {
       const rNote= rObj&&typeof rObj==='object' ? rObj.note : '';
       const isTarget = ri === (p.targetRound||0);
       const halted = isHaltedNote(rNote);   // งดขาย / งดบังคับคดี → แถบแดง
-      const cls  = (halted?'halted ':'') + (rSt==='joined'?'joined': rSt==='skipped'?'skipped': isTarget?'target':'');
+      const cls  = (halted?'halted ':'') + (rSt==='joined'?'joined': rSt==='skipped'?'skipped': isTarget?'target':'')
+                 + (!rDate && !rNote && !isTarget ? ' round-empty' : '');
       const icon = rSt==='joined'?'✓': rSt==='skipped'?'—': isTarget?'🎯':'';
       const price = base ? fmtNum(Math.floor(base*(1-r.disc)))+' ฿' : '—';
       const dL = rDate ? Math.round((new Date(rDate).setHours(0,0,0,0)-today.getTime())/86400000) : null;
@@ -4678,8 +4740,8 @@ function renderProps() {
             <div class="prop-sub">${p.loc?escapeHtml(p.loc):''}${p.loc&&base?' · ':''}${base?'ประเมิน <b>'+fmtNum(base)+'</b> ฿':''}</div>
           </div>
           <div class="prop-badges">
-            ${targetChip}
             ${dateChip}
+            ${targetChip}
             ${checkChip}
             ${lastChip}
             <span class="badge ${si.badge}">${si.icon} ${si.label}</span>
@@ -4691,12 +4753,34 @@ function renderProps() {
           </div>
         </div>
         <div class="prop-body">
+          <div class="prop-stage-block">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+              <span style="font-size:12px;font-weight:700;color:var(--gray)">ขั้นของทรัพย์</span>
+              <button class="btn btn-xs ${p.status==='lost'?'btn-primary':'btn-ghost'}"
+                      style="${p.status==='lost'?'background:var(--red);border-color:var(--red)':''}"
+                      onclick="setPropStatus('${p.id}','lost')">✗ ไม่ได้ทรัพย์</button>
+            </div>
+            ${p.status==='lost' ? `
+              <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:8px 12px;font-size:12px;color:var(--red);font-weight:600">
+                ทรัพย์นี้ประมูลไม่ได้ — <button class="btn btn-ghost btn-xs" onclick="setPropStatus('${p.id}','watching')">↩ กลับมาติดตามใหม่</button>
+              </div>` : `
+              <div class="stage-stepper">
+                ${STAGES.map((s,si2)=>{
+                  const cur = stageIdx(p.status||'watching');
+                  const done = si2 < cur, active = si2 === cur;
+                  const cls = active ? 'active' : done ? 'done' : '';
+                  return `<button class="stage-step ${cls}" onclick="setPropStatus('${p.id}','${s.key}')" title="${s.label}">
+                    <span class="stage-dot">${done?'✓':s.icon}</span>
+                    <span class="stage-lbl">${s.short||s.label}</span>
+                  </button>`;
+                }).join('<span class="stage-arrow">›</span>')}
+              </div>`}
+          </div>
           ${(isImageSrc(p.imgProp)||isImageSrc(p.imgDetail))?`<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
             ${isImageSrc(p.imgProp)?`<img src="${p.imgProp}" style="height:90px;border-radius:8px;object-fit:cover;border:1.5px solid var(--border);cursor:zoom-in" onclick="showLightbox('${p.imgProp}')" title="รูปทรัพย์">`:'' }
             ${isImageSrc(p.imgDetail)?`<img src="${p.imgDetail}" style="height:90px;border-radius:8px;object-fit:cover;border:1.5px solid var(--border);cursor:zoom-in" onclick="showLightbox('${p.imgDetail}')" title="รูปรายละเอียด">`:'' }
           </div>`:''}
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-            ${p.code?`<span class="badge badge-blue">🔖 ${p.code}</span>`:''}
             ${p.deed?`<span class="badge badge-gray">โฉนด ${p.deed}</span>`:''}
             ${p.case?`<span class="badge badge-gray">คดี ${p.case}</span>`:''}
             ${Number(p.actualSell)>0?`<span class="badge badge-green">💵 ขายได้ ${fmtNum(Number(p.actualSell))} ฿</span>`:''}
@@ -4717,33 +4801,16 @@ function renderProps() {
               </select>
             </div>
           </div>
-          <div class="rounds-grid">${roundsHtml}</div>
+          ${(() => {
+            // นัดที่ยังไม่มีวันที่/หมายเหตุ ซ่อนไว้ก่อน (กดดูได้) — การ์ดสั้นลง
+            const anyDated = (p.rounds||[]).some(r => r && typeof r==='object' && r.date);
+            const nEmpty = (roundsHtml.match(/round-empty/g)||[]).length;
+            const compact = anyDated && nEmpty > 0;
+            return `<div class="rounds-grid${compact?' compact':''}">${roundsHtml}</div>`
+              + (compact ? `<button class="btn btn-ghost btn-xs rounds-more" onclick="event.stopPropagation();const g=this.previousElementSibling;g.classList.toggle('compact');this.textContent=g.classList.contains('compact')?'▾ แสดงนัดที่ยังไม่มีวันที่ (${nEmpty})':'▴ ซ่อนนัดที่ยังไม่มีวันที่'">▾ แสดงนัดที่ยังไม่มีวันที่ (${nEmpty})</button>` : '');
+          })()}
 
           ${notifyRow(p)}
-
-          <div style="margin-bottom:18px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap">
-              <span style="font-size:12px;font-weight:700;color:var(--gray)">สถานะทรัพย์ (Pipeline):</span>
-              <button class="btn btn-xs ${p.status==='lost'?'btn-primary':'btn-ghost'}"
-                      style="${p.status==='lost'?'background:var(--red);border-color:var(--red)':''}"
-                      onclick="setPropStatus('${p.id}','lost')">✗ ไม่ได้ทรัพย์</button>
-            </div>
-            ${p.status==='lost' ? `
-              <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:8px 12px;font-size:12px;color:var(--red);font-weight:600">
-                ทรัพย์นี้ประมูลไม่ได้ — <button class="btn btn-ghost btn-xs" onclick="setPropStatus('${p.id}','watching')">↩ กลับมาติดตามใหม่</button>
-              </div>` : `
-              <div class="stage-stepper">
-                ${STAGES.map((s,si2)=>{
-                  const cur = stageIdx(p.status||'watching');
-                  const done = si2 < cur, active = si2 === cur;
-                  const cls = active ? 'active' : done ? 'done' : '';
-                  return `<button class="stage-step ${cls}" onclick="setPropStatus('${p.id}','${s.key}')" title="${s.label}">
-                    <span class="stage-dot">${done?'✓':s.icon}</span>
-                    <span class="stage-lbl">${s.label}</span>
-                  </button>`;
-                }).join('<span class="stage-arrow">›</span>')}
-              </div>`}
-          </div>
 
           <!-- RENO SECTION -->
           <div style="margin-bottom:16px">
