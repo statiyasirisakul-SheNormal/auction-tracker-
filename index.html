@@ -1653,6 +1653,16 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
     <h3>⚙️ ตั้งค่าระบบ</h3>
     <button class="btn btn-ghost btn-sm" style="width:100%;margin-bottom:12px" onclick="closeModal('modal-settings');openModal('modal-doctype')">📋 จัดการประเภทเอกสาร</button>
     <!-- แจ้งเตือนผ่านเครื่อง (Web Push) -->
+    <div class="set-sec" id="set-landsmaps" style="--sec:#15803D;--sec-bg:#ECFDF3;--sec-bd:#BBF7D0">
+      <div class="set-sec-title">📍 ปุ่มลัด LandsMaps (พิกัด + ภาพแปลง)</div>
+      <div class="set-sec-desc">ใช้บนคอม (Chrome / Edge) · ทำครั้งเดียว: ลากปุ่มเขียวด้านล่างไปวางที่แถบบุ๊กมาร์ก</div>
+      <a id="lm-bookmarklet" class="btn btn-success btn-sm" href="#" draggable="true" onclick="event.preventDefault();toast('ลากปุ่มนี้ไปวางที่แถบบุ๊กมาร์ก (Ctrl+Shift+B เพื่อโชว์แถบ)')" style="margin:6px 0 8px">📍 ส่งแปลงเข้า Auction Tracker</a>
+      <ol style="font-size:13px;margin:0;padding-left:20px;line-height:1.7">
+        <li>ในการ์ดทรัพย์ กด <b>🔎 เปิด LandsMaps</b> แล้วล็อกอิน (ThaiID) ให้หน้าต่างข้อมูลแปลงขึ้น</li>
+        <li>กดบุ๊กมาร์ก <b>📍 ส่งแปลงเข้า Auction Tracker</b> → กด <b>📸 ถ่ายภาพ + ส่ง</b> → เลือก "แท็บนี้" แล้วกดแชร์</li>
+        <li>กลับมาที่แอป ตรวจทรัพย์ที่เลือกให้ แล้วกด <b>บันทึก</b></li>
+      </ol>
+    </div>
     <div class="set-sec" id="set-notify" style="--sec:#2563EB;--sec-bg:#EFF6FF;--sec-bd:#BFDBFE">
       <div class="set-sec-title">🔔 แจ้งเตือนวันนัดประมูล</div>
       <div class="set-sec-desc">เด้งบนมือถือแม้ไม่ได้เปิดแอป · เลือกเปิด/ปิดได้ 2 แบบ (มีผลทุกเครื่อง)</div>
@@ -2615,7 +2625,7 @@ function parcelBlockHtml(p) {
       ${parcelPending(p) && !exact ? '' : `<span class="badge ${exact ? 'badge-green' : 'badge-amber'}">${src}</span>`}
       ${parcelPending(p) ? `<span class="badge badge-amber">⏳ รอ${!parcelExact(p) ? 'พิกัด/' : ''}ภาพแปลง</span>` : ''}
     </div>
-    ${parcelPending(p) ? `<div style="font-size:12px;color:var(--amber);margin:-4px 0 8px">รอใส่พิกัดและภาพแผนที่แปลงจากกรมที่ดิน</div>` : ''}
+    ${parcelPending(p) ? `<div style="font-size:12px;color:var(--amber);margin:-4px 0 8px">รอพิกัดจากกรมที่ดิน — กด 🔎 เปิด LandsMaps แล้วกดปุ่มลัด 📍 (ตั้งค่าที่ ⚙️)</div>` : ''}
     ${hasImg ? `<img src="${p.imgLand}" style="width:100%;max-height:320px;object-fit:contain;border-radius:8px;background:#fff;border:1px solid var(--border);cursor:zoom-in;margin-bottom:8px" onclick="showLightbox('${p.imgLand}')" title="ภาพแผนที่แปลงจาก LandsMaps" alt="ภาพแผนที่แปลง ${escapeHtml(p.code||p.name||'')}">`
       : exact ? `<div class="parcel-map" data-pmap="${p.id}" data-ll="${ll.lat},${ll.lng}"><div style="padding:90px 0;text-align:center;font-size:12px;color:var(--gray)">⏳ กำลังโหลดภาพดาวเทียม...</div></div>` : ''}
     ${!exact && p.pool ? `<div style="background:var(--amber-lt);border:1px solid #FCD34D;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:12px">
@@ -2691,12 +2701,102 @@ function landsMapsLink(p) {
   if (!prov || !amp || !deed) return 'https://landsmaps.dol.go.th/';
   return 'https://landsmaps.dol.go.th?qrcodeToken=' + btoa(`${prov},${amp},${deed}`);
 }
+// ── รับข้อมูลแปลงจากปุ่มลัด LandsMaps (landsmaps-bookmarklet.js) ──
+// ปุ่มลัดอ่านพิกัด/เนื้อที่จากหน้าต่างข้อมูลแปลง + ถ่ายภาพแท็บ แล้ว postMessage มา → ผู้ใช้เลือกทรัพย์แล้วกดบันทึกเอง
+const LM_ORIGIN = 'https://landsmaps.dol.go.th';
+let lmTarget = null, lmPending = null;
+window.addEventListener('message', e => {
+  if (e.origin !== LM_ORIGIN) return;
+  const d = e.data;
+  if (!d || d.type !== 'acktion-landsmaps') return;
+  const lat = +d.lat, lng = +d.lng;
+  if (!(lat > 5 && lat < 21 && lng > 97 && lng < 106)) return;
+  const img = typeof d.img === 'string' && /^data:image\/(jpeg|png);base64,/.test(d.img) && d.img.length < 4e6 ? d.img : '';
+  try { e.source.postMessage({ type:'acktion-landsmaps-ok' }, e.origin); } catch (_) {}
+  openLmImport({
+    lat, lng, img,
+    area:  String(d.area  || '').replace(/[^\d.\-]/g, '').slice(0, 20),
+    price: String(d.price || '').replace(/[^\d,]/g, '').slice(0, 20),
+    token: /^[A-Za-z0-9+/=]{4,80}$/.test(d.token || '') ? d.token : '',
+    deed:  /^\d+,\d+,\d+$/.test(d.deedKey || '') ? d.deedKey.split(',')[2] : ''
+  });
+});
+// แอปถูกเปิดจากปุ่มลัด (ไม่มีแท็บแอปเดิม) → รอล็อกอินเสร็จแล้วบอก LandsMaps ว่าพร้อมรับข้อมูล
+if (location.hash === '#lm-import' && window.opener) {
+  history.replaceState(null, '', location.pathname + location.search);
+  const t = setInterval(() => {
+    if (!AUTHED) return;
+    clearInterval(t);
+    try { window.opener.postMessage({ type:'acktion-lm-ready' }, LM_ORIGIN); } catch (_) {}
+  }, 500);
+}
+function lmGuessProp(data) {
+  const all = [...(S.props||[]), ...(S.pool||[])];
+  const digits = v => String(v||'').split(/[^\d]+/).filter(Boolean)[0] || '';
+  if (data.deed) { const p = all.find(x => digits(x.deed) === data.deed); if (p) return p.id; }
+  if (lmTarget && Date.now() - lmTarget.at < 30*60*1000 && findAnyProp(lmTarget.id)) return lmTarget.id;
+  return '';
+}
+function openLmImport(data) {
+  lmPending = data;
+  document.getElementById('modal-lm')?.remove();
+  const guess = lmGuessProp(data);
+  const opt = p => `<option value="${p.id}" ${p.id===guess?'selected':''}>${escapeHtml((p.pool?'🧭 สำรวจ · ':'🏠 ')+(p.code?p.code+' · ':'')+(p.name||'(ไม่มีชื่อ)'))}${parcelPending(p)?' ⏳':''}</option>`;
+  const ov = document.createElement('div');
+  ov.className = 'modal-overlay open'; ov.id = 'modal-lm';
+  ov.innerHTML = `<div class="modal" style="max-width:520px">
+    <h3>📍 รับแปลงจาก LandsMaps</h3>
+    ${data.img ? `<img src="${data.img}" alt="ภาพแผนที่แปลงจาก LandsMaps" style="width:100%;max-height:300px;object-fit:contain;border-radius:10px;border:1px solid var(--border);background:#fff;margin-bottom:10px">` : `<div style="font-size:13px;color:var(--amber);margin-bottom:10px">ไม่มีภาพแผนที่แปลง (ส่งมาแค่พิกัด)</div>`}
+    <div style="background:var(--bg);border-radius:10px;padding:8px 12px;font-size:14px;margin-bottom:12px">
+      พิกัด <b>${data.lat.toFixed(6)}, ${data.lng.toFixed(6)}</b>${data.area?` · เนื้อที่ <b>${escapeHtml(data.area)}</b>`:''}${data.price?` · ราคาประเมิน <b>${escapeHtml(data.price)}</b> ฿/ตร.ว.`:''}
+    </div>
+    <div class="form-group"><label class="form-label" for="lm-prop">บันทึกเข้าทรัพย์</label>
+      <select class="form-select" id="lm-prop"><option value="">— เลือกทรัพย์ —</option>
+        <optgroup label="ทรัพย์ที่ต้องการ">${(S.props||[]).filter(p=>!isSold(p)).map(opt).join('')}</optgroup>
+        <optgroup label="รอสำรวจ">${(S.pool||[]).map(opt).join('')}</optgroup>
+      </select></div>
+    <div style="font-size:12px;color:var(--gray);margin-bottom:12px">${guess ? 'เลือกให้อัตโนมัติจากเลขโฉนด/ทรัพย์ที่เพิ่งกดเปิด LandsMaps — ตรวจอีกครั้งก่อนบันทึก' : 'หาทรัพย์ที่ตรงกันไม่เจอ — เลือกเองจากรายการ'}</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+      <button class="btn btn-ghost" onclick="closeLmImport()">ยกเลิก</button>
+      <button class="btn btn-primary" id="lm-save" onclick="saveLmImport()">บันทึกพิกัด${data.img?' + ภาพแปลง':''}</button>
+    </div></div>`;
+  document.body.appendChild(ov);
+  ov.addEventListener('click', e => { if (e.target === ov) closeLmImport(); });
+  if (typeof a11yModalOpened === 'function') a11yModalOpened('modal-lm');
+  toast('📍 ได้ข้อมูลแปลงจาก LandsMaps แล้ว — เลือกทรัพย์แล้วกดบันทึก');
+}
+function closeLmImport() {
+  document.getElementById('modal-lm')?.remove();
+  lmPending = null;
+  if (typeof a11yModalClosed === 'function') a11yModalClosed();
+}
+async function saveLmImport() {
+  const data = lmPending; if (!data) return;
+  const p = findAnyProp(document.getElementById('lm-prop').value);
+  if (!p) { toast('เลือกทรัพย์ก่อน'); return; }
+  const btn = document.getElementById('lm-save'); btn.disabled = true; btn.textContent = '⏳ กำลังบันทึก...';
+  if (data.img) {
+    const blob = await (await fetch(data.img)).blob();
+    const url = await uploadBlobToStorage(blob, 'parcel_' + (p.code || p.id) + '.jpg');
+    p.imgLand = url || data.img;   // อัปไม่ได้ → เก็บในเครื่องไว้ก่อน (เหมือนแนบภาพเอง)
+  }
+  if (p.mapUrl && /goo\.gl|maps\.app|google\./.test(p.mapUrl)) p.gmapLink = p.mapUrl;
+  p.mapUrl = data.lat.toFixed(8) + ', ' + data.lng.toFixed(8);
+  p.llLevel = 'DOL'; delete p.llApprox;
+  if (data.token) p.landMapUrl = 'https://landsmaps.dol.go.th?qrcodeToken=' + data.token;
+  p.dol = { area: data.area, landprice: data.price };
+  saveS(); renderProps(); if (typeof renderSurvey === 'function') renderSurvey();
+  closeLmImport();
+  toast('✓ บันทึกพิกัด' + (data.img ? ' + ภาพแปลง' : '') + ' เข้า ' + (p.code || p.name || 'ทรัพย์') + ' แล้ว', 'success');
+}
+
 function openLandsMaps(deed, id) {
   const p = id ? findAnyProp(id) : null;
   const url = landsMapsLink(p);
   const direct = url.includes('qrcodeToken');
   if (!direct && deed && navigator.clipboard) navigator.clipboard.writeText(deed).then(() => toast('📋 คัดลอกเลขโฉนด ' + deed + ' แล้ว — วางในช่องค้นหาของ LandsMaps')).catch(() => {});
   if (direct) toast('🔎 เปิด LandsMaps ที่แปลงโฉนด ' + deed);
+  lmTarget = p ? { id: p.id, at: Date.now() } : null;
   window.open(url, '_blank');
 }
 // รอบสำรวจใช้ "ทรัพย์รอสำรวจ" (S.pool) ที่มาจาก PDF — ยังไม่อยู่หน้าทรัพย์
@@ -4594,9 +4694,16 @@ function propNextDays(p) {
     .filter(d => d >= 0);
   return ds.length ? Math.min(...ds) : null;
 }
+// จำนวนวันถึง "นัดที่เลือกเข้าซื้อ" (🎯 targetRound) · ไม่มีวันที่/งดขาย/ผ่านไปแล้ว = null
+function propTargetDays(p) {
+  const r = (p.rounds||[])[p.targetRound||0];
+  if (!r || typeof r !== 'object' || !r.date || isHaltedNote(r.note)) return null;
+  const d = daysUntil(r.date);
+  return d !== null && d >= 0 ? d : null;
+}
 const PROP_FILTERS = [
   { k:'all',    label:'ทั้งหมด',        fn:() => true },
-  { k:'soon',   label:'⏰ ใกล้นัด 7 วัน', fn:p => { const d = propNextDays(p); return d !== null && d <= 7; } },
+  { k:'soon',   label:'🎯 นัดเข้าซื้อใน 7 วัน', fn:p => { const d = propTargetDays(p); return d !== null && d <= 7; } },
   { k:'active', label:'🔨 กำลังประมูล',  fn:p => !isAcquired(p) && p.status !== 'lost' },
   { k:'owned',  label:'✓ ได้ทรัพย์แล้ว', fn:p => isAcquired(p) },
 ];
@@ -7440,6 +7547,14 @@ if ('serviceWorker' in navigator) {
 }
 </script>
 <script>
+// ปุ่มลัด LandsMaps: href ต้องเป็น URL เต็มของไฟล์สคริปต์บนโดเมนแอปนี้
+(function(){
+  const a = document.getElementById('lm-bookmarklet'); if (!a) return;
+  const src = new URL('landsmaps-bookmarklet.js', location.href).href;
+  a.href = "javascript:(function(){var s=document.createElement('script');s.src='" + src + "?v='+Date.now();document.body.appendChild(s);})();";
+})();
+</script>
+<script>
 // ═══ Accessibility layer (WCAG 2.1 AA) ═══
 // ใส่ชื่อ/บทบาท/การกดด้วยคีย์บอร์ด ให้ส่วนที่ render แบบไดนามิกโดยอัตโนมัติ
 (function(){
@@ -7494,7 +7609,7 @@ if ('serviceWorker' in navigator) {
   window.a11yModalOpened = id => {
     const ov = document.getElementById(id); if (!ov) return;
     if (!lastFocus) lastFocus = document.activeElement;
-    fix(ov);
+    fix(ov.parentElement || document.body);
     // focus ตัวหน้าต่าง ไม่ใช่ช่องกรอก — กันคีย์บอร์ดมือถือเด้งขึ้นเอง
     setTimeout(() => ov.querySelector('.modal')?.focus({ preventScroll:true }), 30);
   };
