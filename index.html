@@ -1099,8 +1099,8 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
                 <input class="form-input" type="text" inputmode="numeric" id="calc-appraisal" placeholder="2,285,947" oninput="fmtNumInput(this);calcUpdate()" style="padding:8px 10px" aria-label="ราคาประเมิน กรมบังคับคดี (ฐานราคาประมูล)">
               </div>
               <div>
-                <div style="font-size:12px;font-weight:700;color:var(--gray);margin-bottom:4px">ราคาประเมินที่ดิน (กรมธนารักษ์)</div>
-                <input class="form-input" type="text" inputmode="numeric" id="calc-land-appr" placeholder="ไม่มี = ใช้ราคากรมบังคับคดี" oninput="fmtNumInput(this);calcUpdate()" style="padding:8px 10px" aria-label="ราคาประเมินที่ดิน กรมธนารักษ์">
+                <div style="font-size:12px;font-weight:700;color:var(--gray);margin-bottom:4px">ราคาประเมินที่ดิน (กรมธนารักษ์) · ไม่บังคับ</div>
+                <input class="form-input" type="text" inputmode="numeric" id="calc-land-appr" placeholder="ว่าง = ใช้ราคากรมบังคับคดี" oninput="fmtNumInput(this);calcUpdate()" style="padding:8px 10px" aria-label="ราคาประเมินที่ดิน กรมธนารักษ์">
                 <div id="calc-land-hint" style="font-size:12px;color:var(--gray);margin-top:4px;line-height:1.4"></div>
               </div>
               <div>
@@ -2253,12 +2253,13 @@ function dolLandValue(p) {
   const wa = Number(m[1]) * 400 + Number(m[2]) * 100 + Number(m[3]);
   return wa > 0 ? { wa, price, value: Math.round(wa * price) } : null;
 }
+// ผู้ใช้เลือก (8 ต.ค.): คิดค่าโอน/ภาษีขาเข้าจากราคากรมบังคับคดี — ราคาที่ดินจาก LandsMaps เป็นแค่ข้อมูลอ้างอิง ใช้เมื่อกรอกแทนเองเท่านั้น
 function propLandAppraisal(p) {
-  return Number(p.landAppraisal) || (dolLandValue(p)?.value) || 0;
+  return Number(p.landAppraisal) || 0;
 }
 function propCosts(p) {
   const appr  = Number(p.appraisal) || 0;
-  const land  = propLandAppraisal(p) || appr;   // ไม่มีข้อมูลกรมที่ดิน → ใช้ราคากรมบังคับคดีแทน (แบบเดิม)
+  const land  = propLandAppraisal(p) || appr;   // ค่าเริ่มต้น = ราคาประเมินกรมบังคับคดี
   const sell  = Number(p.actualSell) || 0;
   const buy   = Number(p.actualBuy) || Number(p.calcCustomBid) || 0;
   const broker = p.calcBrokerPct > 0 && sell > 0
@@ -7037,16 +7038,15 @@ function calcFillFromProp() {
   if (!id) { if(hdr) hdr.style.display='none'; calcUpdate(); return; }
   const p = S.props.find(x => x.id === id);
   if (!p) return;
-  const appr = p.appraisal || p.price;
-  if (appr) setNumInput('calc-appraisal', appr);
-  // ราคาประเมินที่ดิน: ค่าที่แก้เองไว้ → คำนวณจาก LandsMaps → ว่าง (ใช้ราคากรมบังคับคดีแทน)
+  // ตั้งทุกช่องใหม่เสมอ (ว่างถ้าทรัพย์นี้ไม่มีค่า) — เดิมข้ามช่องที่ไม่มีค่า ทำให้ค้างตัวเลขของทรัพย์ก่อนหน้า
+  setNumInput('calc-appraisal', p.appraisal || p.price || 0);
+  setNumInput('calc-market', p.calcMarket || 0);
+  // ราคาประเมินที่ดิน: ว่างไว้ = คิดค่าโอน/ภาษีขาเข้าจากราคากรมบังคับคดี · ค่าจาก LandsMaps โชว์ไว้อ้างอิง
   const dv = dolLandValue(p), landEl = document.getElementById('calc-land-appr'), hint = document.getElementById('calc-land-hint');
-  const land = Number(p.landAppraisal) || dv?.value || 0;
-  if (landEl) { if (land) setNumInput('calc-land-appr', land); else landEl.value = ''; }
-  if (hint) hint.textContent = dv
-    ? `จาก LandsMaps: ${fmtN(dv.wa)} ตร.ว. × ${fmtN(dv.price)} ฿ = ${fmtN(dv.value)} ฿ (ที่ดินเปล่า — มีสิ่งปลูกสร้างให้บวกราคาประเมินอาคารเพิ่ม)${Number(p.landAppraisal) && Number(p.landAppraisal) !== dv.value ? ' · ตอนนี้ใช้ค่าที่แก้เอง' : ''}`
-    : 'ยังไม่มีข้อมูลกรมที่ดิน — ใส่เอง หรือดึงพิกัดจาก LandsMaps ก่อน';
-  if (p.targetSell) setNumInput('calc-sell', p.targetSell);
+  if (landEl) { if (Number(p.landAppraisal)) setNumInput('calc-land-appr', p.landAppraisal); else landEl.value = ''; }
+  if (hint) hint.textContent = (Number(p.landAppraisal) ? 'ใช้ค่าที่กรอกเอง · ' : 'ว่างไว้ = คิดจากราคากรมบังคับคดี · ')
+    + (dv ? `อ้างอิง LandsMaps: ${fmtN(dv.wa)} ตร.ว. × ${fmtN(dv.price)} ฿ = ${fmtN(dv.value)} ฿ (ที่ดินเปล่า)` : 'ยังไม่มีข้อมูลกรมที่ดิน');
+  setNumInput('calc-sell', p.targetSell || 0);
   // โหลดค่า repair / broker / customBid ที่บันทึกไว้
   // ค่ารีโนเวท: ใช้ค่าที่เคยกรอกในหน้าคำนวณก่อน → ถ้ายังไม่มี ดึงจากค่าใช้จ่ายจริง → ถ้ายังไม่มี ใช้งบรีโนเวทที่ตั้งไว้ (item 8)
   document.getElementById('calc-repair').value         = p.calcRepair || propRenoSpent(p) || p.renoBudget || 0;
@@ -7128,7 +7128,9 @@ function calcClearAll() {
 
 function calcUpdate(skipFeeRows) {
   const appraisal = parseNumInput(document.getElementById('calc-appraisal').value);
-  const landAppr  = parseNumInput(document.getElementById('calc-land-appr')?.value) || appraisal;
+  const landIn    = parseNumInput(document.getElementById('calc-land-appr')?.value);
+  const landAppr  = landIn || appraisal;   // ว่าง = คิดค่าโอน/ภาษีขาเข้าจากราคากรมบังคับคดี
+  const inBase    = landIn ? 'ของราคาประเมินที่ดิน' : 'ของราคากรมบังคับคดี';
   const sell      = parseNumInput(document.getElementById('calc-sell').value);
   const market    = parseNumInput(document.getElementById('calc-market')?.value);
 
@@ -7154,9 +7156,9 @@ function calcUpdate(skipFeeRows) {
   const fees = [
     { label:'ราคาขายที่คาดหวัง',            rate:'',      baseLabel:'',                        val: sell,        isHeader: true },
     { label:'ราคาประเมิน กรมบังคับคดี',      rate:'',      baseLabel:'ฐานราคาประมูล',           val: appraisal,   isHeader: true },
-    { label:'ราคาประเมินที่ดิน (กรมธนารักษ์)', rate:'',    baseLabel:'ฐานค่าโอน/ภาษีขาเข้า',     val: landAppr,    isHeader: true },
-    { label:'ค่าธรรมเนียมโอนเข้า',          rate:'1%',    baseLabel:'ของราคาประเมินที่ดิน',      val: landAppr * 0.01 },
-    { label:'ค่าภาษีเงินได้บุคคล (เข้า)',   rate:'2%',    baseLabel:'ของราคาประเมินที่ดิน',      val: landAppr * 0.02 },
+    ...(landIn ? [{ label:'ราคาประเมินที่ดิน (กรมธนารักษ์)', rate:'', baseLabel:'ฐานค่าโอน/ภาษีขาเข้า', val: landIn, isHeader: true }] : []),
+    { label:'ค่าธรรมเนียมโอนเข้า',          rate:'1%',    baseLabel:inBase,                    val: landAppr * 0.01 },
+    { label:'ค่าภาษีเงินได้บุคคล (เข้า)',   rate:'2%',    baseLabel:inBase,                    val: landAppr * 0.02 },
     { label:'ค่าธรรมเนียมโอนออก',           rate:'1%',    baseLabel:'ของราคาขาย',              val: sell * 0.01 },
     { label:'ภาษีเงินได้ ณ ที่จ่าย',        rate:'1%',    baseLabel:'ของราคาขาย',              val: sell * 0.01 },
     { label:'ค่าซ่อมแซม วิเคราะห์จากพื้นที่จริง', rate:'', baseLabel:'',                    val: repair,      editable:'repair' },
@@ -7274,14 +7276,15 @@ function calcSaveToProperty() {
   if (!selPropId) { toast('เลือกทรัพย์ก่อน','error'); return; }
   const p = S.props.find(x=>x.id===selPropId); if (!p) return;
   p.appraisal    = parseNumInput(document.getElementById('calc-appraisal').value);
-  // เก็บราคาประเมินที่ดินเฉพาะเมื่อแก้ต่างจากที่คำนวณจาก LandsMaps (ไม่งั้นให้ตามข้อมูลกรมที่ดินเสมอ)
+  // ราคาประเมินที่ดิน: กรอกไว้ = ใช้แทนราคากรมบังคับคดีในค่าโอน/ภาษีขาเข้า · ว่าง = ลบทิ้ง
   const landIn = parseNumInput(document.getElementById('calc-land-appr')?.value);
-  if (landIn && landIn !== dolLandValue(p)?.value) p.landAppraisal = landIn; else delete p.landAppraisal;
+  if (landIn) p.landAppraisal = landIn; else delete p.landAppraisal;
   p.targetSell   = parseNumInput(document.getElementById('calc-sell').value);
   p.calcRepair    = Number(document.getElementById('calc-repair').value)    || 0;
   p.calcBroker    = Number(document.getElementById('calc-broker').value)    || 0;
   p.calcBrokerPct = parseFloat(document.getElementById('calc-broker-pct').value) || 0;
   p.calcMortgage  = parseNumInput(document.getElementById('calc-mortgage').value);
+  p.calcMarket    = parseNumInput(document.getElementById('calc-market')?.value);
   p.calcCustomBid = parseNumInput(document.getElementById('calc-custom-bid')?.value);
   if (p.calcCustomBid) p.actualBuy = p.calcCustomBid;
   saveS(); renderProps(); toast('✓ บันทึกข้อมูลการคำนวณกลับทรัพย์แล้ว');
