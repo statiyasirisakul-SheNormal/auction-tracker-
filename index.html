@@ -900,6 +900,13 @@ img, svg, video, canvas { max-width:100%; }
 .rounds-more { margin:-10px 0 16px; }
 /* สถานะล่าสุดบนหัวการ์ด — ยาวเกินให้ตัด … */
 .last-status { max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+/* แถวค่าใช้จ่ายบนมือถือ: บรรทัดแรก วันที่+รายการ · บรรทัดสอง คนจ่าย ยอด ปุ่ม */
+@media (max-width:640px) {
+  .exp-row { flex-wrap:wrap; row-gap:6px; }
+  .exp-row .exp-desc { flex:1 0 calc(100% - 80px) !important; }
+  .exp-row > button:first-of-type { margin-left:auto; }
+  .exp-row .exp-settled { display:none; }   /* ซ้ำกับปุ่ม ✓ตัด — ซ่อนบนจอแคบ */
+}
 /* ── Accessibility (WCAG 2.1 AA) ── */
 .form-input, .form-select, .form-textarea { border-color:#8A94A6; }          /* ขอบช่องกรอก ≥3:1 (1.4.11) */
 .form-input:focus, .form-select:focus, .form-textarea:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(37,99,235,.35); }
@@ -911,6 +918,8 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
   .btn-sm { min-height:44px; }
   .btn-xs { min-height:40px; }
   .img-thumb .img-del { width:32px; height:32px; }
+  .round-cal { min-height:40px; padding:8px 12px !important; }
+  .mini-tap { min-height:40px; min-width:40px; }
 }
 @media print { .tabs, .push-nudge, .sheet-overlay { display:none !important; } body { padding:0 !important; } }
 </style>
@@ -4694,7 +4703,7 @@ function renderProps() {
       const calKey = `cal-${p.id}-${ri}-${rDate}`;
       const calSaved = !!localStorage.getItem(calKey);
       const lineCtrl = '';
-      const calBtn = rDate ? `<div onclick="event.stopPropagation()" style="margin-top:3px;text-align:center"><button onclick="addRoundToCalendar('${p.id}',${ri})" style="font-size:12px;background:${calSaved?'#F0FDF4':'#EFF6FF'};color:${calSaved?'#15803D':'#1D4ED8'};border:1px solid ${calSaved?'#86EFAC':'#BFDBFE'};border-radius:4px;padding:2px 6px;cursor:pointer;font-weight:700">${calSaved?'✓ บันทึกแล้ว':'📅 ปฏิทิน'}</button></div>` : '';
+      const calBtn = rDate ? `<div onclick="event.stopPropagation()" style="margin-top:3px;text-align:center"><button class="round-cal" onclick="addRoundToCalendar('${p.id}',${ri})" style="font-size:12px;background:${calSaved?'#F0FDF4':'#EFF6FF'};color:${calSaved?'#15803D':'#1D4ED8'};border:1px solid ${calSaved?'#86EFAC':'#BFDBFE'};border-radius:4px;padding:2px 6px;cursor:pointer;font-weight:700">${calSaved?'✓ บันทึกแล้ว':'📅 ปฏิทิน'}</button></div>` : '';
       // หมายเหตุจากหน้าแก้ไข → โชว์บนไทล์ด้วย ไม่ใช่ซ่อนไว้ใน tooltip อย่างเดียว
       const noteHtml = rNote
         ? (halted ? '' : `<div class="round-note">📝 ${escapeHtml(rNote)}</div>`)
@@ -4832,17 +4841,17 @@ function renderProps() {
                 const payerBadge = isP
                   ? `<span style="font-size:12px;background:var(--blue-lt);color:var(--blue);padding:1px 5px;border-radius:4px;font-weight:700;flex-shrink:0" title="หุ้นส่วนจ่าย">🤝 หุ้นส่วน</span>`
                   : `<span style="font-size:12px;background:#F0FDF4;color:var(--green);padding:1px 5px;border-radius:4px;font-weight:700;flex-shrink:0" title="ฉันจ่าย">👤 ฉัน</span>`;
-                const settledBadge = e.settled ? `<span style="font-size:12px;background:#F3F4F6;color:var(--gray);padding:1px 5px;border-radius:4px;font-weight:700;flex-shrink:0" title="ตัดบัญชีระหว่างเราแล้ว">✓ ตัด</span>` : '';
+                const settledBadge = e.settled ? `<span class="exp-settled" style="font-size:12px;background:#F3F4F6;color:var(--gray);padding:1px 5px;border-radius:4px;font-weight:700;flex-shrink:0" title="ตัดบัญชีระหว่างเราแล้ว">✓ ตัด</span>` : '';
                 return `
-                <div onclick="event.stopPropagation();editExpense('${e.id}')" style="display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px dashed #C6E6D0;font-size:12px;cursor:pointer;border-radius:4px;${isAcq?'opacity:.7':''}" onmouseover="this.style.background='rgba(0,0,0,.03)'" onmouseout="this.style.background=''">
+                <div class="exp-row" onclick="event.stopPropagation();editExpense('${e.id}')" style="display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px dashed #C6E6D0;font-size:12px;cursor:pointer;border-radius:4px;${isAcq?'opacity:.7':''}" onmouseover="this.style.background='rgba(0,0,0,.03)'" onmouseout="this.style.background=''">
                   <span style="color:var(--gray);min-width:62px;flex-shrink:0">${fmtDate(e.date)}</span>
-                  <span style="flex:1;font-weight:600;color:${e.settled?'var(--gray)':'#1F2937'}">${e.desc}${isAcq?` <span style="font-size:11px;background:#FEF3C7;color:#92400E;padding:1px 4px;border-radius:3px;font-weight:700" title="นับเป็นต้นทุนซื้อ/ค่าธรรมเนียม ไม่รวมในงบรีโนเวท">ต้นทุนซื้อ</span>`:''}</span>
+                  <span class="exp-desc" style="flex:1;font-weight:600;color:${e.settled?'var(--gray)':'#1F2937'}">${e.desc}${isAcq?` <span style="font-size:11px;background:#FEF3C7;color:#92400E;padding:1px 4px;border-radius:3px;font-weight:700" title="นับเป็นต้นทุนซื้อ/ค่าธรรมเนียม ไม่รวมในงบรีโนเวท">ต้นทุนซื้อ</span>`:''}</span>
                   ${payerBadge}
                   ${settledBadge}
                   <span style="font-weight:700;color:${isP?'var(--blue)':'var(--green)'};white-space:nowrap;flex-shrink:0">${fmtPrice(e.amount)}</span>
-                  <button onclick="event.stopPropagation();toggleExpenseReno('${e.id}')" style="background:${isAcq?'#FEF3C7':'#F0FDF4'};border:1px solid var(--border);border-radius:4px;cursor:pointer;color:${isAcq?'#92400E':'var(--green)'};font-size:12px;padding:2px 5px;flex-shrink:0;font-weight:700" title="สลับ: นับ/ไม่นับในงบรีโนเวท">${isAcq?'💰ซื้อ':'🛠รีโน'}</button>
-                  <button onclick="event.stopPropagation();toggleExpenseSettled('${e.id}')" style="background:${e.settled?'#E5E7EB':'#F3F4F6'};border:1px solid var(--border);border-radius:4px;cursor:pointer;color:${e.settled?'var(--navy)':'var(--gray)'};font-size:12px;padding:2px 5px;flex-shrink:0;font-weight:700" title="ตัด/ยกเลิกตัดบัญชี">${e.settled?'✓ตัด':'ตัด'}</button>
-                  <button onclick="event.stopPropagation();deleteExpense('${e.id}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:13px;padding:0 2px;flex-shrink:0" title="ลบ">✕</button>
+                  <button class="mini-tap" onclick="event.stopPropagation();toggleExpenseReno('${e.id}')" style="background:${isAcq?'#FEF3C7':'#F0FDF4'};border:1px solid var(--border);border-radius:4px;cursor:pointer;color:${isAcq?'#92400E':'var(--green)'};font-size:12px;padding:2px 5px;flex-shrink:0;font-weight:700" title="สลับ: นับ/ไม่นับในงบรีโนเวท">${isAcq?'💰ซื้อ':'🛠รีโน'}</button>
+                  <button class="mini-tap" onclick="event.stopPropagation();toggleExpenseSettled('${e.id}')" style="background:${e.settled?'#E5E7EB':'#F3F4F6'};border:1px solid var(--border);border-radius:4px;cursor:pointer;color:${e.settled?'var(--navy)':'var(--gray)'};font-size:12px;padding:2px 5px;flex-shrink:0;font-weight:700" title="ตัด/ยกเลิกตัดบัญชี">${e.settled?'✓ตัด':'ตัด'}</button>
+                  <button class="mini-tap" onclick="event.stopPropagation();deleteExpense('${e.id}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:13px;padding:0 2px;flex-shrink:0" title="ลบ">✕</button>
                 </div>`;
               }).join('')}
               </div>
@@ -6027,7 +6036,7 @@ function renderReno() {
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
           <div class="expense-amount" style="color:${isP?'var(--blue)':'var(--navy)'}">${fmtPrice(e.amount)}</div>
           <div style="display:flex;gap:4px;align-items:center;">
-            <button onclick="toggleExpenseSettled('${e.id}')" title="ตัดบัญชีบิลนี้ / ยกเลิก" style="background:${e.settled?'#DCFCE7':'#F3F4F6'};border:1px solid ${e.settled?'#86EFAC':'var(--border)'};border-radius:6px;cursor:pointer;color:${e.settled?'var(--green)':'var(--gray)'};font-size:12px;padding:3px 8px;font-weight:700;white-space:nowrap">${e.settled?'✓ ตัดแล้ว':'ตัดบิล'}</button>
+            <button class="mini-tap" onclick="toggleExpenseSettled('${e.id}')" title="ตัดบัญชีบิลนี้ / ยกเลิก" style="background:${e.settled?'#DCFCE7':'#F3F4F6'};border:1px solid ${e.settled?'#86EFAC':'var(--border)'};border-radius:6px;cursor:pointer;color:${e.settled?'var(--green)':'var(--gray)'};font-size:12px;padding:3px 8px;font-weight:700;white-space:nowrap">${e.settled?'✓ ตัดแล้ว':'ตัดบิล'}</button>
             <button class="icon-btn btn-xs" onclick="editExpense('${e.id}')" title="แก้ไข">✏️</button>
             <button class="icon-btn del btn-xs" onclick="deleteExpense('${e.id}')" title="ลบ">🗑</button>
           </div>
@@ -6614,7 +6623,7 @@ function showSoldDetail(id) {
     <div class="card" style="border:2px solid #86EFAC">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
         <span style="font-size:16px;font-weight:800;color:var(--navy)">🏠 ${p.name} — รายละเอียดย้อนหลัง</span>
-        <button onclick="closeSoldDetail()" style="margin-left:auto;background:none;border:1.5px solid var(--border);border-radius:6px;padding:3px 10px;cursor:pointer;font-size:12px;color:var(--gray)">✕ ปิด</button>
+        <button class="mini-tap" onclick="closeSoldDetail()" style="margin-left:auto;background:none;border:1.5px solid var(--border);border-radius:6px;padding:3px 10px;cursor:pointer;font-size:12px;color:var(--gray)">✕ ปิด</button>
       </div>
 
       <!-- ราคาซื้อ/ขาย + การรับเงินจากการขาย + ค้างสุทธิ — แก้ไขได้จากตรงนี้เลย ไม่ต้องย้อนไปแท็บทรัพย์ -->
