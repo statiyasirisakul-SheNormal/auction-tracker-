@@ -3145,6 +3145,22 @@ const fmtKm  = km  => km < 10 ? km.toFixed(1) : Math.round(km).toString();
 const fmtMin = min => min < 60 ? `${Math.round(min)} นาที` : `${Math.floor(min / 60)} ชม. ${Math.round(min % 60)} นาที`;
 
 // การ์ดทรัพย์สำรวจ — โครงเดียวกับการ์ดหน้าแรก (หัวการ์ดกดกาง/หุบ)
+// ช่องกรอกราคาขายที่คาดหวัง + ค่ารีโนเวท ในการ์ดสำรวจ (ติดไปหน้าแรกตอนกด 📥 เก็บทรัพย์ และไปหน้าคำนวณ)
+function surveyPriceInputs(p) {
+  const field = (label, val, saveFn, ph, color) => `
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span style="font-size:12px;font-weight:700;color:var(--navy);white-space:nowrap;min-width:150px">${label}</span>
+      <span style="display:flex;align-items:center;gap:6px;flex:1;min-width:150px">
+        <input type="text" inputmode="numeric" aria-label="${label.replace(/^\S+\s/, '')}" value="${val ? Number(val).toLocaleString('th-TH') : ''}" placeholder="${ph}"
+          oninput="fmtNumInput(this)" onblur="${saveFn}('${p.id}',this.value)" onclick="event.stopPropagation()"
+          style="flex:1;min-width:0;border:1.5px solid ${color};border-radius:7px;padding:6px 10px;font-size:14px;font-weight:700;color:var(--navy);background:white;outline:none">
+        <span style="font-size:13px;font-weight:700;color:var(--gray)">฿</span></span>
+    </div>`;
+  return `<div style="background:#F9FAFB;border:1px solid var(--border);border-radius:9px;padding:9px 12px;margin-bottom:12px;display:grid;gap:8px">
+    ${field('🎯 ราคาขายที่คาดหวัง', p.targetSell, 'savePropTargetSell', 'เช่น 1,800,000', '#15803D')}
+    ${field('🛠 ค่ารีโนเวท/ซ่อมแซม (ประเมิน)', p.renoBudget, 'savePropRenoBudget', 'เช่น 300,000', '#0EA5E9')}
+  </div>`;
+}
 function surveyCardHtml(x, total, open) {
   const p = x.p, sv = p.survey || {}, idx = x.idx;
   const inRoute = idx !== undefined;
@@ -3228,6 +3244,7 @@ function surveyCardHtml(x, total, open) {
           ${led.owner ? `<div>ผู้ถือกรรมสิทธิ์: ${escapeHtml(led.owner)}</div>` : ''}
           ${led.office ? `<div>🏛 สำนักงานบังคับคดี${escapeHtml(led.office)}${led.phone ? ' · ☎ ' + escapeHtml(led.phone) : ''}</div>` : ''}
         </div>` : ''}
+        ${surveyPriceInputs(p)}
         <div class="section-title" style="margin-bottom:6px">📅 ตารางนัด</div>
         <div class="rounds-grid">${rounds}</div>
         ${sketchCardBlock(p)}
@@ -4612,18 +4629,18 @@ function savePropTargetSell(id, val) {
   const v = parseNumInput(val);
   if (v === (Number(p.targetSell)||0)) return;
   p.targetSell = v;
-  saveS(); renderProps();
+  saveS(); if (!p.pool) renderProps();
   const sel = document.getElementById('calc-prop-sel');
   if (sel && sel.value === id && document.getElementById('tab-calc')?.classList.contains('active')) calcFillFromProp();
   toast('✓ บันทึกราคาขายที่คาดหวังแล้ว');
 }
 function savePropRenoBudget(id, val) {
-  const p = S.props.find(x=>x.id===id); if (!p) return;
+  const p = findAnyProp(id); if (!p) return;
   const v = parseNumInput(val);
   if (v === (Number(p.renoBudget)||0)) return;
   p.renoBudget = v;
   p.calcRepair = v;   // ไหลไปเป็น "ค่าซ่อมแซม" ในหน้าคำนวณ
-  saveS(); renderProps();
+  saveS(); if (p.pool) toast('✓ บันทึกค่ารีโนเวทแล้ว'); else renderProps();
   // ถ้าหน้าคำนวณกำลังเปิดทรัพย์นี้อยู่ อัปเดตให้ทันที
   const sel = document.getElementById('calc-prop-sel');
   if (sel && sel.value === id && document.getElementById('tab-calc')?.classList.contains('active')) calcFillFromProp();
