@@ -1220,7 +1220,15 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
         <label style="font-size:13px;font-weight:700;color:var(--navy)">🚩 จุดเริ่มต้น:</label>
-        <select class="form-select" id="survey-start" aria-label="จุดเริ่มต้นเส้นทาง" style="max-width:340px;flex:1" onchange="surveySetStart(this.value)"></select>
+        <select class="form-select" id="survey-start" aria-label="จุดเริ่มต้นเส้นทาง" style="max-width:340px;flex:1" onchange="surveySetStart(this.value);surveyStartUI()"></select>
+      </div>
+      <div id="survey-custom" style="display:none;background:var(--blue-lt);border:1px solid #BFDBFE;border-radius:10px;padding:10px 12px;margin:-4px 0 12px">
+        <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px">✏️ จุดที่คุณอยู่ / จุดออกเดินทาง</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input class="form-input" id="survey-custom-in" style="flex:1;min-width:220px;margin:0" placeholder="วางพิกัด เช่น 17.4123, 102.7890 หรือลิงก์ Google Maps แบบยาว" aria-label="พิกัดจุดเริ่มต้น" onchange="surveySetCustom(this.value)">
+          <button class="btn btn-ghost btn-sm" onclick="surveyCustomFromGps()">📍 ใช้ตำแหน่งตอนนี้</button>
+        </div>
+        <div id="survey-custom-msg" style="font-size:12px;color:var(--gray);margin-top:6px"></div>
       </div>
       <div id="survey-pick" style="margin-bottom:12px"></div>
       <div id="survey-summary" style="margin-bottom:10px"></div>
@@ -2826,7 +2834,29 @@ function openLandsMaps(deed, id) {
 function surveyCandidates() { return S.pool || []; }
 function surveyActive()     { return surveyCandidates().filter(p => !p.survey?.skip); }
 function surveyOf(p)        { if (!p.survey) p.survey = {}; return p.survey; }
-function surveyStart()      { try { return localStorage.getItem('acktion_survey_start') || 'city'; } catch(e) { return 'city'; } }
+// จุดเริ่มค่าเริ่มต้น = ตำแหน่งปัจจุบัน (ผู้ใช้สั่ง 8 ต.ค.: ไล่จากจุดที่ฉันอยู่)
+function surveyStart()      { try { return localStorage.getItem('acktion_survey_start') || 'gps'; } catch(e) { return 'gps'; } }
+// จุดเริ่มที่กำหนดเอง (พิกัด/ลิงก์) — เก็บในเครื่องนี้
+function surveyCustomStart() { try { const c = JSON.parse(localStorage.getItem('acktion_survey_custom') || 'null'); return c && isFinite(c.lat) && isFinite(c.lng) ? c : null; } catch(e) { return null; } }
+function surveySetCustom(text) {
+  const ll = parseLatLng(text);
+  const msg = document.getElementById('survey-custom-msg');
+  if (!ll) { if (msg) msg.innerHTML = '<span style="color:var(--red)">อ่านพิกัดไม่ได้ — วางเป็น "ละติจูด, ลองจิจูด" หรือลิงก์ Google Maps แบบยาว (ลิงก์สั้น maps.app.goo.gl อ่านไม่ได้)</span>'; return; }
+  try { localStorage.setItem('acktion_survey_custom', JSON.stringify({ lat: ll.lat, lng: ll.lng, text: String(text).slice(0, 300) })); } catch(e) {}
+  surveyStartUI(); toast('✓ ตั้งจุดเริ่มแล้ว — กด 🧭 จัดเรียงเส้นทาง');
+}
+async function surveyCustomFromGps() {
+  try { const g = await getGps(); surveySetCustom(g.lat.toFixed(6) + ', ' + g.lng.toFixed(6)); document.getElementById('survey-custom-in').value = g.lat.toFixed(6) + ', ' + g.lng.toFixed(6); }
+  catch(e) { toast('❌ ' + e.message, 'error'); }
+}
+function surveyStartUI() {
+  const box = document.getElementById('survey-custom'); if (!box) return;
+  const on = surveyStart() === 'custom'; box.style.display = on ? '' : 'none';
+  if (!on) return;
+  const c = surveyCustomStart(), inp = document.getElementById('survey-custom-in'), msg = document.getElementById('survey-custom-msg');
+  if (c && inp && document.activeElement !== inp) inp.value = c.text || (c.lat + ', ' + c.lng);
+  if (msg) msg.innerHTML = c ? `ตั้งไว้ที่ <b>${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}</b> · <a href="https://www.google.com/maps/search/?api=1&query=${c.lat},${c.lng}" target="_blank">ดูบนแผนที่</a>` : 'ยังไม่ได้ตั้งจุด';
+}
 function planBanner(msg) {
   return `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--amber-lt);border:1.5px solid #FCD34D;border-radius:10px;padding:10px 12px;margin-top:8px">
     <span style="font-size:13px;font-weight:700;color:var(--amber);flex:1">🧭 ${msg}</span>
@@ -2940,13 +2970,24 @@ async function surveyPlan() {
   const startSel = surveyStart();
   let origin = null, stops = located;
   toast('⏳ กำลังจัดเส้นทาง...');
-  if (startSel === 'gps') {
+  let mode = startSel;
+  if (mode === 'gps') {
     try { origin = await getGps(); _surveyGps = origin; }
-    catch(e) { toast('❌ ' + e.message + ' — เลือกทรัพย์ที่จะไปจุดแรกแทน', 'error'); return; }
-  } else if (startSel === 'city') {
+    catch(e) {
+      // หาตำแหน่งไม่ได้ → ใช้จุดที่กำหนดเอง ถ้ามี ไม่งั้นเริ่มในเมือง
+      const c = surveyCustomStart();
+      if (c) { origin = { lat: c.lat, lng: c.lng }; _surveyGps = origin; toast('⚠️ หาตำแหน่งปัจจุบันไม่ได้ — ใช้จุดที่กำหนดเองแทน'); }
+      else { mode = 'city'; toast('⚠️ หาตำแหน่งปัจจุบันไม่ได้ (' + e.message + ') — เริ่มจากในเมืองแทน'); }
+    }
+  } else if (mode === 'custom') {
+    const c = surveyCustomStart();
+    if (!c) { toast('⚠️ ยังไม่ได้ตั้งจุดเริ่ม — วางพิกัดหรือกด 📍 ใช้ตำแหน่งตอนนี้ ก่อน', 'error'); surveyStartUI(); return; }
+    origin = { lat: c.lat, lng: c.lng }; _surveyGps = origin;
+  }
+  if (mode === 'city') {
     const first = located[cityCenterIdx(located.map(x => x.ll))];
     stops = [first, ...located.filter(x => x !== first)];
-  } else {
+  } else if (!origin) {
     const first = located.find(x => x.p.id === startSel);
     if (!first) { toast('⚠️ ทรัพย์ที่ตั้งเป็นจุดเริ่มไม่อยู่ในรอบสำรวจแล้ว — เลือกจุดเริ่มใหม่', 'error'); return; }
     stops = [first, ...located.filter(x => x !== first)];
@@ -2954,7 +2995,7 @@ async function surveyPlan() {
   const pts = origin ? [origin, ...stops.map(x => x.ll)] : stops.map(x => x.ll);
   const { cost, source } = await surveyMatrix(pts);
   let order;
-  if (startSel === 'city') {
+  if (mode === 'city') {
     // ในเมืองก่อน: จุดที่อยู่ในรัศมี CITY_KM จากตัวเมืองไปให้ครบก่อน แล้วค่อยไล่ออกนอกเมือง
     const CITY_KM = 8;
     const inner = pts.map((p, i) => i).filter(i => i === 0 || haversineKm(pts[0], pts[i]) <= CITY_KM);
@@ -2977,7 +3018,7 @@ async function surveyPlan() {
   });
   // ทรัพย์ที่ไม่มีพิกัด/ถูกติ๊กออก → ล้างลำดับเก่าทิ้ง จะได้ไม่โผล่ปนลำดับใหม่
   S.pool.forEach(p => { if (p.survey && !ordered.some(x => x.p === p)) { delete p.survey.order; delete p.survey.leg; } });
-  try { localStorage.setItem('acktion_survey_meta', JSON.stringify({ at: Date.now(), source, gps: !!origin })); } catch(e) {}
+  try { localStorage.setItem('acktion_survey_meta', JSON.stringify({ at: Date.now(), source, gps: !!origin, origin: origin || null })); } catch(e) {}
   saveS();
   renderSurvey();
   toast(source === 'road' ? '✓ จัดเส้นทางตามถนนจริงแล้ว' : '✓ จัดเส้นทางแล้ว (ประมาณจากระยะเส้นตรง — ต่อเซิร์ฟเวอร์เส้นทางไม่ได้)', 'success');
@@ -3096,7 +3137,7 @@ function surveyMove(id, dir) {
   if (i < 0 || j < 0 || j >= list.length) return;
   [list[i], list[j]] = [list[j], list[i]];
   let meta = {}; try { meta = JSON.parse(localStorage.getItem('acktion_survey_meta') || '{}'); } catch(e) {}
-  const gpsStart = meta.gps && _surveyGps ? _surveyGps : null;
+  const gpsStart = meta.gps ? (_surveyGps || meta.origin || null) : null;
   list.forEach((x, k) => {
     const sv = surveyOf(x.p); sv.order = k + 1;
     const prev = k === 0 ? gpsStart : list[k - 1].ll;
@@ -3231,6 +3272,7 @@ function surveyCardHtml(x, total, open) {
               : `<span class="badge badge-green">${escapeHtml(led.free)}</span>`) : ''}
           ${led.deposit ? `<span class="badge badge-amber">หลักประกัน ${fmtNum(led.deposit)} ฿</span>` : ''}
           ${p.pdfUrl ? `<button class="btn btn-ghost btn-xs" data-pdfbtn="${p.id}" onclick="surveyTogglePdf('${p.id}')">${_svPdfOpen.has(p.id) ? '📄 ซ่อน PDF' : '📄 ดู PDF ประกาศ'}</button>` : ''}
+          <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openSketch('${p.id}')">📝 บันทึก${hasSketch(p) || p.survey?.note ? ' ✏️' : ''}</button>
           <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openCalcFor('${p.id}')">🧮 คำนวณ</button>
           ${x.ll ? `<a href="${nav}" target="_blank" class="btn btn-primary btn-xs">🚗 นำทาง</a>
           <a href="https://www.google.com/maps/search/?api=1&query=${x.ll.lat},${x.ll.lng}" target="_blank" class="btn btn-ghost btn-xs">📍 Google Map</a>` : ''}
@@ -3910,9 +3952,11 @@ async function renderSurvey() {
   const startEl = document.getElementById('survey-start');
   const startable = [...ordered, ...unplanned];
   startEl.innerHTML = `<option value="city">🏙 เริ่มจากในเมืองก่อน แล้วไล่ออกไปทีละจุดที่ใกล้สุด</option>
-    <option value="gps">📍 เริ่มจากตำแหน่งปัจจุบัน (GPS มือถือ)</option>` +
+    <option value="gps">📍 เริ่มจากตำแหน่งปัจจุบัน (GPS)</option>
+    <option value="custom">✏️ เริ่มจากจุดที่กำหนดเอง (พิกัด/ลิงก์)</option>` +
     startable.map(x => `<option value="${x.p.id}">🏠 เริ่มที่ ${escapeHtml((x.p.code ? x.p.code + ' — ' : '') + x.p.name)}</option>`).join('');
-  startEl.value = ['city', 'gps'].includes(startSel) || startable.some(x => x.p.id === startSel) ? startSel : 'city';
+  startEl.value = ['city', 'gps', 'custom'].includes(startSel) || startable.some(x => x.p.id === startSel) ? startSel : 'gps';
+  surveyStartUI();
 
   const needLL = S.pool.filter(p => p.llApprox || !parseLatLng(p.mapUrl)).length;
   const dolBtn = document.getElementById('survey-dol-btn');
@@ -3994,6 +4038,7 @@ async function renderSurvey() {
       `<div style="width:28px;height:28px;border-radius:50%;background:${bg};color:#fff;border:2px ${approx ? 'dashed' : 'solid'} #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font:800 13px sans-serif">${label(x, i)}</div>`, 28, 28,
       `<b>${label(x, i)}. ${escapeHtml((x.p.code ? x.p.code + ' — ' : '') + x.p.name)}</b><br><span style="font-size:12px">${escapeHtml(x.p.loc || '')}</span>${approx ? '<br><span style="font-size:12px;color:#B45309">≈ พิกัดประมาณ (กลางตำบล) — ยังไม่ใช่ตำแหน่งแปลงจริง</span>' : ''}`, dx, dy);
   });
+  if (!_surveyGps && meta.gps && meta.origin) _surveyGps = meta.origin;   // จำจุดเริ่มข้ามการเปิดแอป
   const gpsOn = !!(_surveyGps && meta.gps);
   if (gpsOn) addMark([_surveyGps.lat, _surveyGps.lng],
     `<div style="width:16px;height:16px;border-radius:50%;background:#EF4444;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>`, 16, 16, '📍 จุดเริ่ม (ตำแหน่งตอนจัดเส้นทาง)');
