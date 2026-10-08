@@ -3193,7 +3193,7 @@ function surveyCardHtml(x, total, open) {
         <div class="prop-info">
           ${p.code ? `<span class="prop-code">${escapeHtml(p.code)}</span>` : ''}
           <div class="prop-name">${escapeHtml(p.name)}</div>
-          <div class="prop-sub">${escapeHtml(p.loc || '')}${base ? (p.loc ? ' · ' : '') + 'ประเมิน ' + fmtNum(base) + ' ฿' : ''}</div>
+          <div class="prop-sub">${escapeHtml(p.loc || '')}${base ? (p.loc ? ' · ' : '') + 'เริ่ม ' + fmtNum(base) + ' ฿' : ''}${Number(p.ledAppraisal) && Number(p.ledAppraisal) !== base ? ' · ประเมิน ' + fmtNum(p.ledAppraisal) + ' ฿' : ''}</div>
           ${chips ? `<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:5px">${chips}</div>` : ''}
         </div>
         <div class="prop-actions" onclick="event.stopPropagation()" style="display:flex;gap:5px;align-items:center">
@@ -3217,6 +3217,7 @@ function surveyCardHtml(x, total, open) {
           ${led.free ? `<span class="badge badge-green">${escapeHtml(led.free)}</span>` : ''}
           ${led.deposit ? `<span class="badge badge-amber">หลักประกัน ${fmtNum(led.deposit)} ฿</span>` : ''}
           ${p.pdfUrl ? `<button class="btn btn-ghost btn-xs" data-pdfbtn="${p.id}" onclick="surveyTogglePdf('${p.id}')">${_svPdfOpen.has(p.id) ? '📄 ซ่อน PDF' : '📄 ดู PDF ประกาศ'}</button>` : ''}
+          <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openCalcFor('${p.id}')">🧮 คำนวณ</button>
           ${x.ll ? `<a href="${nav}" target="_blank" class="btn btn-primary btn-xs">🚗 นำทาง</a>
           <a href="https://www.google.com/maps/search/?api=1&query=${x.ll.lat},${x.ll.lng}" target="_blank" class="btn btn-ghost btn-xs">📍 Google Map</a>` : ''}
         </div>
@@ -4548,7 +4549,19 @@ function renoBudgetBar(p, spent, acqCost) {
   const size   = Number(p.size) || 0;
   const acq    = Number(acqCost) || 0;
   // ช่องกรอกค่ารีโนเวทแบบ inline (กรอกตรงนี้ได้เลย ไม่ต้องเข้าหน้าแก้ไข)
+  const sellIn = Number(p.targetSell) || 0;
   const input = `
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <span style="font-size:12px;font-weight:700;color:var(--navy);white-space:nowrap">🎯 ราคาขายที่คาดหวัง</span>
+      <span style="display:flex;align-items:center;gap:6px;flex:1;min-width:150px">
+      <input type="text" inputmode="numeric" aria-label="ราคาขายที่คาดหวัง"
+        value="${sellIn?sellIn.toLocaleString('th-TH'):''}"
+        placeholder="เช่น 1,800,000"
+        oninput="fmtNumInput(this)"
+        onblur="savePropTargetSell('${p.id}',this.value)"
+        style="flex:1;min-width:0;border:1.5px solid #15803D;border-radius:7px;padding:6px 10px;font-size:14px;font-weight:700;color:var(--navy);background:white;outline:none">
+      <span style="font-size:13px;font-weight:700;color:var(--gray)">฿</span></span>
+    </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:${budget?'8px':'2px'}">
       <span style="font-size:12px;font-weight:700;color:var(--navy);white-space:nowrap">🛠 ค่ารีโนเวท/ซ่อมแซม (ประเมิน)</span>
       <span style="display:flex;align-items:center;gap:6px;flex:1;min-width:150px">
@@ -4592,6 +4605,16 @@ function renoBudgetBar(p, spent, acqCost) {
     </div>`;
 }
 // กรอกค่ารีโนเวทจากการ์ด → เก็บเป็นงบ (renoBudget) และค่าซ่อมแซมในหน้าคำนวณ (calcRepair)
+function savePropTargetSell(id, val) {
+  const p = findAnyProp(id); if (!p) return;
+  const v = parseNumInput(val);
+  if (v === (Number(p.targetSell)||0)) return;
+  p.targetSell = v;
+  saveS(); renderProps();
+  const sel = document.getElementById('calc-prop-sel');
+  if (sel && sel.value === id && document.getElementById('tab-calc')?.classList.contains('active')) calcFillFromProp();
+  toast('✓ บันทึกราคาขายที่คาดหวังแล้ว');
+}
 function savePropRenoBudget(id, val) {
   const p = S.props.find(x=>x.id===id); if (!p) return;
   const v = parseNumInput(val);
@@ -5107,6 +5130,19 @@ function calcBackToProp(fromPop) {
   const id = calcReturnId || document.getElementById('calc-prop-sel')?.value;
   const back = document.getElementById('calc-back'); if (back) back.style.display = 'none';
   calcReturnId = null;
+  const fromPool = id && (S.pool||[]).some(x => x.id === id);
+  if (fromPool) {
+    switchTab('survey');
+    Promise.resolve(renderSurvey()).then(() => {
+      const sv = document.getElementById('sv-' + id); if (!sv) return;
+      sv.classList.add('expanded'); initParcelMaps();
+      setTimeout(() => {
+        const head = document.querySelector('.header')?.getBoundingClientRect().height || 0;
+        window.scrollTo(0, Math.max(0, sv.getBoundingClientRect().top + window.scrollY - head - 10));
+      }, 60);
+    });
+    return;
+  }
   switchTab('props');
   if (!id) return;
   let card = document.getElementById('pp-' + id);
@@ -7074,11 +7110,13 @@ function calcPopulatePropSel() {
   const sel = document.getElementById('calc-prop-sel');
   if (!sel) return;
   const prev = sel.value;
+  const opt = p => {
+    const appr = p.appraisal || p.price;
+    return `<option value="${p.id}">${p.code ? '['+p.code+'] ' : ''}${escapeHtml(p.name||'')}${appr ? ' — เริ่ม ' + fmtPrice(appr) : ''}</option>`;
+  };
   sel.innerHTML = '<option value="">— กรอกเองด้านล่าง —</option>' +
-    S.props.map(p => {
-      const appr = p.appraisal || p.price;
-      return `<option value="${p.id}">${p.code ? '['+p.code+'] ' : ''}${p.name}${appr ? ' — ประเมิณ ' + fmtPrice(appr) : ''}</option>`;
-    }).join('');
+    `<optgroup label="🏠 ทรัพย์ที่ต้องการ">${S.props.map(opt).join('')}</optgroup>` +
+    ((S.pool||[]).length ? `<optgroup label="🧭 รอสำรวจ">${S.pool.map(opt).join('')}</optgroup>` : '');
   if (prev) sel.value = prev;
 }
 
@@ -7087,7 +7125,7 @@ function calcFillFromProp() {
   const hdr = document.getElementById('calc-prop-header');
   if (calcReturnId && id) calcReturnId = id;
   if (!id) { if(hdr) hdr.style.display='none'; calcUpdate(); return; }
-  const p = S.props.find(x => x.id === id);
+  const p = findAnyProp(id);
   if (!p) return;
   // ตั้งทุกช่องใหม่เสมอ (ว่างถ้าทรัพย์นี้ไม่มีค่า) — เดิมข้ามช่องที่ไม่มีค่า ทำให้ค้างตัวเลขของทรัพย์ก่อนหน้า
   setNumInput('calc-appraisal', p.appraisal || p.price || 0);
@@ -7319,7 +7357,7 @@ function calcRefreshCustomRow() {
 function calcSaveToProperty() {
   const selPropId = document.getElementById('calc-prop-sel').value;
   if (!selPropId) { toast('เลือกทรัพย์ก่อน','error'); return; }
-  const p = S.props.find(x=>x.id===selPropId); if (!p) return;
+  const p = findAnyProp(selPropId); if (!p) return;
   p.appraisal    = parseNumInput(document.getElementById('calc-appraisal').value);
   p.ledAppraisal = parseNumInput(document.getElementById('calc-led-appr')?.value) || p.ledAppraisal || 0;
   delete p.landAppraisal;
@@ -7331,7 +7369,8 @@ function calcSaveToProperty() {
   p.calcMarket    = parseNumInput(document.getElementById('calc-market')?.value);
   p.calcCustomBid = parseNumInput(document.getElementById('calc-custom-bid')?.value);
   if (p.calcCustomBid) p.actualBuy = p.calcCustomBid;
-  saveS(); renderProps(); toast('✓ บันทึกข้อมูลการคำนวณกลับทรัพย์แล้ว');
+  saveS(); renderProps(); if (p.pool && typeof renderSurvey === 'function') renderSurvey();
+  toast('✓ บันทึกข้อมูลการคำนวณกลับทรัพย์แล้ว');
 }
 
 // ═══════════════════════════════════════════════
