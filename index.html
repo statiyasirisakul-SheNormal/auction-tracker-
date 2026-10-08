@@ -1082,6 +1082,7 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
         <div id="calc-prop-header" style="display:none;background:linear-gradient(135deg,var(--navy),var(--blue));color:white;padding:14px 20px">
           <div style="font-size:16px;font-weight:800" id="calc-header-name"></div>
           <div style="font-size:12px;opacity:.8;margin-top:3px" id="calc-header-sub"></div>
+          <button id="calc-back" class="btn btn-sm" style="display:none;margin-top:10px;background:rgba(255,255,255,.16);color:#fff;border:1.5px solid rgba(255,255,255,.45)" onclick="calcBackToProp()">← กลับไปที่ทรัพย์นี้</button>
         </div>
 
         <div style="padding:18px 20px">
@@ -4929,7 +4930,7 @@ function renderProps() {
             ${p.mapUrl?`<a href="${p.mapUrl.startsWith('http')?p.mapUrl:'https://maps.google.com/?q='+encodeURIComponent(p.mapUrl)}" target="_blank" class="btn btn-ghost btn-xs">📍 แผนที่</a>`:''}
             <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openSketch('${p.id}')">📝 บันทึก${hasSketch(p) ? ' ✏️' : ''}</button>
             ${pdfButton(p)}
-            <button class="btn btn-ghost btn-xs" onclick="switchTab('calc');setTimeout(()=>{const s=document.getElementById('calc-prop-sel');if(s){s.value='${p.id}';calcFillFromProp();}},100)">🧮 คำนวณ</button>
+            <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openCalcFor('${p.id}')">🧮 คำนวณ</button>
             <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();printPropReport('${p.id}')">🖨 พิมพ์ / PDF</button>
           </div>
           ${parcelBlockHtml(p)}
@@ -5075,6 +5076,40 @@ function renderProps() {
   });
   updateBadges();
 }
+
+// ── หน้าคำนวณ ↔ การ์ดทรัพย์: จำว่ามาจากทรัพย์ไหน แล้วกดกลับไปที่การ์ดเดิม (กางไว้ + เลื่อนไปตรงนั้น) ──
+let calcReturnId = null;
+function openCalcFor(id) {
+  calcReturnId = id;
+  switchTab('calc');
+  const sel = document.getElementById('calc-prop-sel');
+  if (sel) { sel.value = id; calcFillFromProp(); }
+  const back = document.getElementById('calc-back'); if (back) back.style.display = '';
+  try { history.pushState({ calcFrom: id }, ''); } catch (e) {}
+  window.scrollTo(0, 0);
+}
+function calcBackToProp(fromPop) {
+  // กดปุ่มกลับเอง → ถอยประวัติ 1 ขั้น (popstate จะเรียกฟังก์ชันนี้ซ้ำด้วย fromPop) จะได้ไม่เหลือประวัติค้าง
+  if (!fromPop && calcReturnId && history.state && history.state.calcFrom) { history.back(); return; }
+  const id = calcReturnId || document.getElementById('calc-prop-sel')?.value;
+  const back = document.getElementById('calc-back'); if (back) back.style.display = 'none';
+  calcReturnId = null;
+  switchTab('props');
+  if (!id) return;
+  let card = document.getElementById('pp-' + id);
+  if (!card) { propFilter.q = ''; const q = document.getElementById('prop-search'); if (q) q.value = ''; setPropFilter({ f:'all' }); card = document.getElementById('pp-' + id); }
+  if (!card) return;
+  if (!card.classList.contains('expanded')) toggleProp(id);
+  // เลื่อนให้หัวการ์ดอยู่ใต้แถบหัวแอป (ไม่ใช้ smooth — บนมือถือบางทีหยุดกลางทาง)
+  setTimeout(() => {
+    const head = document.querySelector('.header')?.getBoundingClientRect().height || 0;
+    window.scrollTo(0, Math.max(0, card.getBoundingClientRect().top + window.scrollY - head - 10));
+  }, 60);
+}
+// ปุ่มย้อนกลับของเบราว์เซอร์/มือถือ ตอนอยู่หน้าคำนวณที่เปิดจากการ์ด → กลับไปการ์ดเดิม
+window.addEventListener('popstate', () => {
+  if (document.getElementById('tab-calc')?.classList.contains('active') && calcReturnId) calcBackToProp(true);
+});
 
 function toggleProp(id) { document.getElementById('pp-'+id).classList.toggle('expanded'); initParcelMaps(); }
 
@@ -7035,6 +7070,7 @@ function calcPopulatePropSel() {
 function calcFillFromProp() {
   const id = document.getElementById('calc-prop-sel').value;
   const hdr = document.getElementById('calc-prop-header');
+  if (calcReturnId && id) calcReturnId = id;
   if (!id) { if(hdr) hdr.style.display='none'; calcUpdate(); return; }
   const p = S.props.find(x => x.id === id);
   if (!p) return;
