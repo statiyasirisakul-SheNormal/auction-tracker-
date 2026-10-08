@@ -26,7 +26,7 @@
   --amber:   #B45309; --amber-lt:#FFFBEB;
   --purple:  #6B21A8; --purple-lt:#F5F3FF;
   --tg:      #2CA5E0; --tg-lt:    #E8F4FB;
-  --gray:    #6B7280; --border: #E5E7EB;
+  --gray:    #5A6577; --border: #E5E7EB;
   --bg:      #F1F5F9; --white:  #FFFFFF;
   --shadow:  0 1px 4px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.04);
 }
@@ -62,7 +62,7 @@ body { font-family:'Sarabun','Segoe UI',sans-serif; background:var(--bg); color:
 .tab-badge {
   min-width:20px; height:20px; padding:0 6px;
   background:var(--blue-lt); color:var(--blue);
-  border-radius:20px; font-size:11px; font-weight:700;
+  border-radius:20px; font-size:12px; font-weight:700;
   display:inline-flex; align-items:center; justify-content:center;
 }
 .tab-btn.active .tab-badge { background:var(--blue); color:white; }
@@ -97,7 +97,7 @@ body { font-family:'Sarabun','Segoe UI',sans-serif; background:var(--bg); color:
 .btn-ghost   { background:#F3F4F6; color:#374151; border:1px solid var(--border); }
 .btn-ghost:hover    { background:var(--border); }
 .btn-sm      { padding:6px 12px; font-size:12px; }
-.btn-xs      { padding:4px 9px; font-size:11px; border-radius:6px; }
+.btn-xs      { padding:4px 9px; font-size:12px; border-radius:6px; }
 .icon-btn {
   width:32px; height:32px; border-radius:7px; border:1px solid var(--border);
   background:#F9FAFB; cursor:pointer; font-size:14px;
@@ -135,7 +135,7 @@ body { font-family:'Sarabun','Segoe UI',sans-serif; background:var(--bg); color:
   background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,.14); padding:10px; display:none;
   -webkit-user-select:none; user-select:none; }
 #sketch-overlay.sk-mobile:not(.sk-hide-props) #sk-props { display:block; }
-#sk-props .skp-h { font-size:11px; color:#4b5563; margin:8px 0 5px; }
+#sk-props .skp-h { font-size:12px; color:#4b5563; margin:8px 0 5px; }
 #sk-props .skp-h:first-child { margin-top:0; }
 #sk-props .skp-row { display:flex; gap:5px; flex-wrap:wrap; }
 #sk-props .skp-row button { width:26px; height:26px; border-radius:6px; border:1px solid #e5e7eb; padding:0; cursor:pointer;
@@ -162,7 +162,7 @@ body { font-family:'Sarabun','Segoe UI',sans-serif; background:var(--bg); color:
 .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; }
 .modal-wide    { max-width:680px; }
 
-.badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+.badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:700; }
 .badge-blue   { background:var(--blue-lt);   color:var(--blue); }
 .badge-green  { background:var(--green-lt);  color:var(--green); }
 .badge-red    { background:var(--red-lt);    color:var(--red); }
@@ -181,15 +181,15 @@ body { font-family:'Sarabun','Segoe UI',sans-serif; background:var(--bg); color:
 .doc-body { display:none; padding:16px; border-top:1.5px solid var(--border); }
 .doc-item.expanded .doc-body { display:block; }
 .doc-item.expanded .chevron { transform:rotate(180deg); }
-.chevron { transition:transform .2s; font-size:11px; color:var(--gray); }
+.chevron { transition:transform .2s; font-size:12px; color:var(--gray); }
 
 /* ── IMG ── */
 .img-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px; margin-bottom:12px; }
 .img-thumb { position:relative; border-radius:9px; overflow:hidden; border:1.5px solid var(--border); aspect-ratio:1; background:#F9FAFB; cursor:pointer; }
 .img-thumb img { width:100%; height:100%; object-fit:cover; }
-.img-thumb .img-del { position:absolute; top:4px; right:4px; background:rgba(185,28,28,.88); color:white; border:none; border-radius:50%; width:22px; height:22px; cursor:pointer; font-size:11px; display:none; align-items:center; justify-content:center; }
+.img-thumb .img-del { position:absolute; top:4px; right:4px; background:rgba(185,28,28,.88); color:white; border:none; border-radius:50%; width:22px; height:22px; cursor:pointer; font-size:12px; display:none; align-items:center; justify-content:center; }
 .img-thumb:hover .img-del { display:flex; }
-.img-thumb .img-label { position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,.55); color:white; font-size:10px; padding:3px 6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.img-thumb .img-label { position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,.55); color:white; font-size:12px; padding:3px 6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .upload-zone { border:2px dashed #CBD5E1; border-radius:10px; padding:18px 16px; text-align:center; cursor:pointer; transition:all .2s; color:var(--gray); font-size:13px; }
 .upload-zone:hover { border-color:var(--blue); color:var(--blue); background:var(--blue-lt); }
 input[type="file"] { display:none; }
@@ -248,11 +248,11 @@ input[type="file"] { display:none; }
   font-size:9.5px; font-weight:800; border-top:1px solid #FCA5A5;
   border-radius:0 0 7px 7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 /* หมายเหตุทั่วไป (ที่ไม่ใช่งดขาย) — โชว์เป็นตัวเล็กใต้วันที่ */
-.round-note { font-size:9px; color:#6B7280; margin-top:3px; line-height:1.3;
+.round-note { font-size:11px; color:#6B7280; margin-top:3px; line-height:1.3;
   display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; word-break:break-word; }
-.round-num   { font-size:10px; font-weight:700; color:var(--gray); letter-spacing:.5px; margin-bottom:4px; }
+.round-num   { font-size:12px; font-weight:700; color:var(--gray); letter-spacing:.5px; margin-bottom:4px; }
 .round-price { font-size:13px; font-weight:800; color:var(--navy); line-height:1.2; }
-.round-disc  { font-size:10px; margin-top:4px; padding:2px 6px; border-radius:4px; display:inline-block; font-weight:700; }
+.round-disc  { font-size:12px; margin-top:4px; padding:2px 6px; border-radius:4px; display:inline-block; font-weight:700; }
 .disc-0  { background:#E5E7EB; color:#374151; }
 .disc-10 { background:#FEF9C3; color:#854D0E; }
 .disc-20 { background:#FED7AA; color:#9A3412; }
@@ -262,15 +262,15 @@ input[type="file"] { display:none; }
 /* ── PIPELINE STEPPER (item 7) ── */
 .stage-stepper { display:flex; align-items:stretch; gap:0; flex-wrap:wrap; }
 .stage-step { display:flex; flex-direction:column; align-items:center; gap:4px; background:none; border:none; cursor:pointer; padding:2px 4px; flex:1; min-width:52px; }
-.stage-dot { width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; background:#E5E7EB; color:#9CA3AF; border:2px solid transparent; transition:all .2s; }
-.stage-lbl { font-size:10px; font-weight:700; color:#9CA3AF; text-align:center; line-height:1.15; }
+.stage-dot { width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; background:#E5E7EB; color:var(--gray); border:2px solid transparent; transition:all .2s; }
+.stage-lbl { font-size:12px; font-weight:700; color:var(--gray); text-align:center; line-height:1.15; }
 .stage-step.done  .stage-dot { background:var(--green); color:#fff; }
 .stage-step.done  .stage-lbl { color:var(--green); }
 .stage-step.active .stage-dot { background:var(--navy); color:#fff; border-color:#FCD34D; box-shadow:0 0 0 3px #FCD34D55; transform:scale(1.12); }
 .stage-step.active .stage-lbl { color:var(--navy); font-weight:800; }
 .stage-step:hover .stage-dot { transform:scale(1.08); }
-.stage-arrow { align-self:flex-start; margin-top:5px; color:#D1D5DB; font-size:16px; font-weight:800; }
-@media (max-width:640px){ .stage-lbl{font-size:9px;} .stage-arrow{display:none;} .stage-step{min-width:44px;} }
+.stage-arrow { align-self:flex-start; margin-top:5px; color:var(--gray); font-size:16px; font-weight:800; }
+@media (max-width:640px){ .stage-lbl{font-size:11px;} .stage-arrow{display:none;} .stage-step{min-width:44px;} }
 
 /* ── toggle switch (เปิด/ปิดแจ้งเตือนรายทรัพย์) ── */
 .switch { position:relative; display:inline-block; width:44px; height:24px; flex-shrink:0; }
@@ -299,18 +299,18 @@ input[type="file"] { display:none; }
 .notif-log { margin-top:12px; max-height:140px; overflow-y:auto; }
 .notif-log-item { font-size:12px; color:var(--gray); padding:4px 0; border-bottom:1px solid var(--border); display:flex; gap:8px; }
 .notif-log-item:last-child { border:none; }
-.notif-time { color:#9CA3AF; font-size:11px; white-space:nowrap; }
+.notif-time { color:var(--gray); font-size:12px; white-space:nowrap; }
 
 /* ── RENO ── */
 .reno-summary-bar { background:linear-gradient(135deg,var(--navy) 0%,var(--blue) 100%); color:white; border-radius:12px; padding:18px 22px; display:flex; gap:28px; flex-wrap:wrap; margin-bottom:20px; align-items:center; }
 .reno-stat-num   { font-size:22px; font-weight:800; }
-.reno-stat-label { font-size:11px; opacity:.8; margin-top:2px; }
+.reno-stat-label { font-size:12px; opacity:.8; margin-top:2px; }
 .category-chips  { display:flex; gap:7px; flex-wrap:wrap; margin-bottom:16px; }
 .chip { padding:5px 13px; border-radius:20px; font-size:12px; font-weight:700; border:1.5px solid var(--border); cursor:pointer; transition:all .18s; background:white; color:#374151; }
 .chip.active { background:var(--navy); color:white; border-color:var(--navy); }
 .expense-row { border:1.5px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:10px; display:grid; grid-template-columns:auto 1fr auto; align-items:start; gap:12px; }
 .expense-row:hover { border-color:#A7C7E7; }
-.expense-date   { font-size:11px; color:var(--gray); font-weight:600; min-width:70px; padding-top:2px; }
+.expense-date   { font-size:12px; color:var(--gray); font-weight:600; min-width:70px; padding-top:2px; }
 .expense-title  { font-weight:700; font-size:14px; }
 .expense-sub    { font-size:12px; color:var(--gray); margin-top:2px; }
 .expense-amount { font-size:16px; font-weight:800; color:var(--navy); text-align:right; white-space:nowrap; }
@@ -326,11 +326,11 @@ input[type="file"] { display:none; }
 .house-pick-card.sold   { background:#F9FAFB; border-style:dashed; }
 .house-pick-card.sold.active { border-color:var(--green); background:#F0FDF4; }
 .house-pick-img { width:100%; height:120px; object-fit:cover; border-radius:9px; margin-bottom:10px; display:block; background:#F3F4F6; }
-.house-pick-noimg { display:flex; align-items:center; justify-content:center; font-size:38px; color:#CBD5E1; }
+.house-pick-noimg { display:flex; align-items:center; justify-content:center; font-size:38px; color:var(--gray); }
 .house-pick-name { font-weight:800; font-size:14px; color:var(--navy); margin-bottom:2px; }
-.house-pick-code { font-size:11px; color:var(--gray); font-weight:700; }
+.house-pick-code { font-size:12px; color:var(--gray); font-weight:700; }
 .house-pick-total { font-size:18px; font-weight:800; color:var(--green); margin-top:8px; }
-.house-pick-meta { font-size:11px; color:var(--gray); margin-top:2px; }
+.house-pick-meta { font-size:12px; color:var(--gray); margin-top:2px; }
 .house-pick-add { margin-top:10px; width:100%; }
 .reno-sold-head { font-size:13px; font-weight:800; color:var(--gray); margin:22px 0 10px; display:flex; align-items:center; gap:8px; }
 
@@ -352,7 +352,7 @@ input[type="file"] { display:none; }
 /* ── MISC ── */
 .section-title { font-size:12px; font-weight:700; color:var(--gray); letter-spacing:.8px; text-transform:uppercase; margin:16px 0 10px; display:flex; align-items:center; gap:8px; }
 .section-title::after { content:''; flex:1; height:1px; background:var(--border); }
-.empty { text-align:center; padding:48px 20px; color:#9CA3AF; }
+.empty { text-align:center; padding:48px 20px; color:var(--gray); }
 .empty-icon { font-size:46px; margin-bottom:12px; }
 .empty p { font-size:14px; }
 .lightbox { position:fixed; inset:0; background:rgba(0,0,0,.92); display:none; align-items:center; justify-content:center; z-index:2000; }
@@ -381,7 +381,7 @@ input, select, textarea { font-size: 16px !important; }
   .header p  { display: none; }
 
   .tabs { padding: 0 2px; top: 56px; }
-  .tab-btn { padding: 10px 3px; font-size: 11px; gap: 3px; }
+  .tab-btn { padding: 10px 3px; font-size:12px; gap: 3px; }
   .tab-btn .t-full { display: none; }
   .tab-btn .t-short { display: inline; }
   .tabs .tab-badge { display: none; }
@@ -431,7 +431,7 @@ input, select, textarea { font-size: 16px !important; }
   .prop-num     { grid-area: num; width:32px; height:32px; font-size:12px; align-self:start; margin-top:2px; flex-shrink:0; }
   .prop-info    { grid-area: info; min-width:0; }
   .prop-name    { white-space:normal !important; font-size:14px; line-height:1.3; }
-  .prop-sub     { font-size:11px; white-space:normal; line-height:1.4; }
+  .prop-sub     { font-size:12px; white-space:normal; line-height:1.4; }
   .prop-badges  { grid-area: badges; display:flex; flex-wrap:wrap; gap:4px; }
   .prop-actions { grid-area: actions; display:flex; gap:4px; align-items:center; align-self:start; }
   .prop-header > .chevron { display:none; }
@@ -444,7 +444,7 @@ input, select, textarea { font-size: 16px !important; }
   .card { padding: 14px; }
   .btn  { padding: 8px 12px; min-height: 38px; font-size:13px; }
   .btn-sm { padding: 6px 11px; font-size:12px; }
-  .btn-xs { padding: 5px 9px; font-size:11px; }
+  .btn-xs { padding: 5px 9px; font-size:12px; }
 
   /* Summary table scroll */
   .summary-table { font-size: 12px; }
@@ -491,7 +491,7 @@ input, select, textarea { font-size: 16px !important; }
 @media (max-width: 420px) {
   .rounds-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .round-tile  { padding: 8px 6px; }
-  .round-price { font-size: 11px; }
+  .round-price { font-size:12px; }
 }
 
 /* ── PRINT / PDF REPORT (item 10) ── */
@@ -509,7 +509,7 @@ input, select, textarea { font-size: 16px !important; }
 .rpt .tot { font-weight:800; background:#F0FDF4; }
 .rpt .neg { color:#DC2626; } .rpt .pos { color:#16A34A; }
 .rpt-imgs img { height:120px; border:1px solid #E5E7EB; border-radius:6px; margin-right:8px; }
-.rpt-foot { margin-top:22px; font-size:11px; color:#9CA3AF; border-top:1px solid #E5E7EB; padding-top:8px; }
+.rpt-foot { margin-top:22px; font-size:12px; color:var(--gray); border-top:1px solid #E5E7EB; padding-top:8px; }
 @media print {
   @page { margin:14mm; }
   body > *:not(#print-area) { display:none !important; }
@@ -551,7 +551,7 @@ input, select, textarea { font-size: 16px !important; }
   --green:#15803D; --green-lt:#ECFDF3;
   --red:#B91C1C; --red-lt:#FEF2F2;
   --amber:#B45309; --amber-lt:#FFF7E6;
-  --gray:#64748B; --border:#E6EAF0; --bg:#F4F6FA;
+  --gray:#5A6577; --border:#E6EAF0; --bg:#F4F6FA;
   --ink:#0F172A; --ink-2:#334155;
   --shadow:0 1px 2px rgba(16,24,40,.04),0 6px 18px rgba(16,24,40,.06);
   --shadow-lg:0 12px 40px rgba(16,24,40,.16);
@@ -577,7 +577,7 @@ img, svg, video, canvas { max-width:100%; }
 .header h1 { font-size:17px; font-weight:700; letter-spacing:-.1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .hdr-sub-inline { font-weight:500; opacity:.75; }
 .header p { font-size:12px; opacity:.72; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.hdr-ver { font-size:10px; opacity:.7; margin-left:4px; }
+.hdr-ver { font-size:12px; opacity:.7; margin-left:4px; }
 .hdr-btn {
   position:relative; width:40px; height:40px; border-radius:12px; flex-shrink:0; cursor:pointer;
   background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2); color:#fff; font-size:17px;
@@ -601,7 +601,7 @@ img, svg, video, canvas { max-width:100%; }
 .tab-btn.active { background:var(--navy); color:#fff; border-bottom-color:transparent; }
 .tab-btn:hover:not(.active) { background:#EEF2F7; color:var(--ink); }
 .tab-ic { font-size:16px; line-height:1; }
-.tab-badge { background:#E8EEF8; color:var(--navy); font-size:11px; height:19px; min-width:19px; }
+.tab-badge { background:#E8EEF8; color:var(--navy); font-size:12px; height:19px; min-width:19px; }
 .tab-btn.active .tab-badge { background:rgba(255,255,255,.22); color:#fff; }
 
 .content { padding:20px 24px 40px; }
@@ -617,8 +617,8 @@ img, svg, video, canvas { max-width:100%; }
 .pn-text { flex:1; min-width:0; font-size:12.5px; color:var(--ink-2); line-height:1.6; }
 .pn-text b { color:var(--navy); }
 .pn-text > b:first-child { display:block; font-size:14px; }
-.pn-x { background:none; border:none; color:#94A3B8; font-size:15px; cursor:pointer; align-self:flex-start; padding:2px 4px; }
-.ios-share { display:inline-block; padding:0 6px; border:1px solid #93C5FD; border-radius:6px; color:var(--blue); font-size:11px; font-weight:700; }
+.pn-x { background:none; border:none; color:var(--gray); font-size:15px; cursor:pointer; align-self:flex-start; padding:2px 4px; }
+.ios-share { display:inline-block; padding:0 6px; border:1px solid #93C5FD; border-radius:6px; color:var(--blue); font-size:12px; font-weight:700; }
 
 /* ── การ์ด / ปุ่ม / ฟอร์ม ── */
 .card { border-radius:18px; border:1px solid var(--border); box-shadow:var(--shadow); padding:20px; }
@@ -663,7 +663,7 @@ img, svg, video, canvas { max-width:100%; }
 .prop-card.expanded .prop-header { border-bottom:1px solid var(--border); }
 .prop-media { position:relative; flex-shrink:0; }
 .prop-thumb, .prop-thumb-empty { width:64px; height:64px; border-radius:14px; border:none; box-shadow:inset 0 0 0 1px rgba(15,23,42,.06); background:#EEF2F7; }
-.prop-thumb-empty { opacity:1; font-size:22px; color:#94A3B8; }
+.prop-thumb-empty { opacity:1; font-size:22px; color:var(--gray); }
 .prop-num {
   position:absolute; top:-6px; left:-6px; width:24px; height:24px; font-size:11.5px; font-weight:700;
   border:2px solid #fff; box-shadow:0 2px 6px rgba(15,23,42,.18); background:var(--navy);
@@ -783,7 +783,7 @@ img, svg, video, canvas { max-width:100%; }
 .fl-item:active { transform:translateY(calc(var(--i) * 58px - 4px)) scale(.97); }
 .fl-item.active { background:#EEF4FF; color:var(--blue); box-shadow:0 0 0 2px var(--blue), 0 6px 20px rgba(37,99,235,.2); }
 .fl-item.active .fl-icw { background:var(--blue); color:#fff; }
-.fl-item.active .fl-label::after { content:'กำลังเปิด'; margin-left:8px; font-size:11px; font-weight:700; color:var(--blue); background:#fff; padding:2px 8px; border-radius:999px; vertical-align:2px; }
+.fl-item.active .fl-label::after { content:'กำลังเปิด'; margin-left:8px; font-size:12px; font-weight:700; color:var(--blue); background:#fff; padding:2px 8px; border-radius:999px; vertical-align:2px; }
 .fl-badge {
   min-width:22px; height:22px; padding:0 7px; border-radius:999px;
   background:#EF4444; color:#fff; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center;
@@ -796,7 +796,7 @@ img, svg, video, canvas { max-width:100%; }
 .receipt-sub { font-size:12.5px; color:#475569; margin-top:2px; line-height:1.5; }
 .receipt-actions { display:flex; gap:8px; margin-top:12px; }
 .receipt-actions .btn { flex:1; min-height:46px; font-size:15px !important; }
-.receipt-drop-hint { font-size:11.5px; color:#94A3B8; margin-top:8px; text-align:center; }
+.receipt-drop-hint { font-size:11.5px; color:var(--gray); margin-top:8px; text-align:center; }
 @media (hover:none) { .receipt-drop-hint { display:none; } }
 .ai-status { margin-top:10px; font-size:13px; line-height:1.6; border-radius:12px; padding:10px 12px; background:#fff; border:1px solid var(--border); color:var(--ink-2); }
 .ai-status.busy { border-color:#C7D2FE; color:#4338CA; }
@@ -855,7 +855,7 @@ img, svg, video, canvas { max-width:100%; }
   }
   .prop-media { grid-area:media; }
   .prop-thumb, .prop-thumb-empty { width:56px; height:56px; border-radius:13px; grid-area:auto; margin:0; }
-  .prop-num { grid-area:auto; width:22px; height:22px; font-size:11px; margin:0; top:-5px; left:-5px; }
+  .prop-num { grid-area:auto; width:22px; height:22px; font-size:12px; margin:0; top:-5px; left:-5px; }
   .prop-info { grid-area:info; }
   .prop-name { font-size:15px; }
   .prop-sub { font-size:12px; }
@@ -881,9 +881,21 @@ img, svg, video, canvas { max-width:100%; }
   .header p { display:none; }
 }
 @media (max-width:360px) {
-  .tab-btn { font-size:9.5px; }
+  .tab-btn { font-size:11px; }
   .tab-btn .tab-ic { font-size:19px; }
   .header h1 .hdr-sub-inline { display:none; }
+}
+/* ── Accessibility (WCAG 2.1 AA) ── */
+.form-input, .form-select, .form-textarea { border-color:#8A94A6; }          /* ขอบช่องกรอก ≥3:1 (1.4.11) */
+.form-input:focus, .form-select:focus, .form-textarea:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(37,99,235,.35); }
+:focus-visible { outline:3px solid var(--blue); outline-offset:2px; }          /* เห็นว่าอยู่ตรงไหน (2.4.7) */
+input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textarea[style*="outline:none"]:focus {
+  border-color:var(--blue) !important; box-shadow:0 0 0 3px rgba(37,99,235,.35) !important; }
+.modal:focus { outline:none; }
+@media (pointer:coarse) {                                                      /* เป้ากดบนจอสัมผัส */
+  .btn-sm { min-height:44px; }
+  .btn-xs { min-height:40px; }
+  .img-thumb .img-del { width:32px; height:32px; }
 }
 @media print { .tabs, .push-nudge, .sheet-overlay { display:none !important; } body { padding:0 !important; } }
 </style>
@@ -1015,7 +1027,7 @@ img, svg, video, canvas { max-width:100%; }
       </div>
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
         <span style="font-size:13px;font-weight:700;color:var(--gray);white-space:nowrap;">เลือกทรัพย์:</span>
-        <select class="form-select" id="summary-prop-sel" style="flex:1;max-width:320px;" onchange="renderSummary()">
+        <select class="form-select" id="summary-prop-sel" aria-label="เลือกทรัพย์" style="flex:1;max-width:320px;" onchange="renderSummary()">
           <option value="">— ภาพรวมทั้งหมด —</option>
         </select>
       </div>
@@ -1030,7 +1042,7 @@ img, svg, video, canvas { max-width:100%; }
       <!-- เลือกทรัพย์ -->
       <div style="background:white;border-radius:14px;padding:14px 18px;margin-bottom:14px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <span style="font-size:13px;font-weight:700;color:var(--navy);white-space:nowrap">🏠 เลือกทรัพย์</span>
-        <select class="form-input" id="calc-prop-sel" onchange="calcFillFromProp()" style="margin:0;flex:1;min-width:200px">
+        <select class="form-input" id="calc-prop-sel" aria-label="เลือกทรัพย์มาคำนวณ" onchange="calcFillFromProp()" style="margin:0;flex:1;min-width:200px">
           <option value="">— กรอกเองด้านล่าง —</option>
         </select>
         <button class="btn btn-ghost btn-sm" onclick="calcClearAll()">ล้างข้อมูล</button>
@@ -1052,19 +1064,19 @@ img, svg, video, canvas { max-width:100%; }
             <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:10px">💰 ข้อมูลราคา</div>
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px">
               <div>
-                <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:4px">ราคาขายที่คาดหวัง *</div>
+                <div style="font-size:12px;font-weight:700;color:var(--gray);margin-bottom:4px">ราคาขายที่คาดหวัง *</div>
                 <input class="form-input" type="text" inputmode="numeric" id="calc-sell" placeholder="2,650,000" oninput="fmtNumInput(this);calcUpdate()" style="padding:8px 10px">
               </div>
               <div>
-                <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:4px">ราคาประเมิณที่ดิน *</div>
+                <div style="font-size:12px;font-weight:700;color:var(--gray);margin-bottom:4px">ราคาประเมิณที่ดิน *</div>
                 <input class="form-input" type="text" inputmode="numeric" id="calc-appraisal" placeholder="2,285,947" oninput="fmtNumInput(this);calcUpdate()" style="padding:8px 10px">
               </div>
               <div>
-                <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:4px">ราคาขายตลาด (อ้างอิง)</div>
+                <div style="font-size:12px;font-weight:700;color:var(--gray);margin-bottom:4px">ราคาขายตลาด (อ้างอิง)</div>
                 <input class="form-input" type="text" inputmode="numeric" id="calc-market" placeholder="ไม่บังคับ" oninput="fmtNumInput(this);calcUpdate()" style="padding:8px 10px">
               </div>
               <div>
-                <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:4px">ราคาติดจำนอง (ถ้ามี)</div>
+                <div style="font-size:12px;font-weight:700;color:var(--amber);margin-bottom:4px">ราคาติดจำนอง (ถ้ามี)</div>
                 <input class="form-input" type="text" inputmode="numeric" id="calc-mortgage" placeholder="ไม่บังคับ" oninput="fmtNumInput(this);calcUpdate()" style="padding:8px 10px;border-color:var(--amber)">
               </div>
             </div>
@@ -1180,7 +1192,7 @@ img, svg, video, canvas { max-width:100%; }
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
         <label style="font-size:13px;font-weight:700;color:var(--navy)">🚩 จุดเริ่มต้น:</label>
-        <select class="form-select" id="survey-start" style="max-width:340px;flex:1" onchange="surveySetStart(this.value)"></select>
+        <select class="form-select" id="survey-start" aria-label="จุดเริ่มต้นเส้นทาง" style="max-width:340px;flex:1" onchange="surveySetStart(this.value)"></select>
       </div>
       <div id="survey-pick" style="margin-bottom:12px"></div>
       <div id="survey-summary" style="margin-bottom:10px"></div>
@@ -1198,7 +1210,7 @@ img, svg, video, canvas { max-width:100%; }
   <div class="modal">
     <h3>📁 เพิ่มประเภทเอกสาร</h3>
     <div class="form-group">
-      <label class="form-label">ชื่อประเภทเอกสาร * <span style="font-size:11px;color:var(--gray);font-weight:400">(เลือกจากลิสต์ หรือพิมพ์เอง)</span></label>
+      <label class="form-label">ชื่อประเภทเอกสาร * <span style="font-size:12px;color:var(--gray);font-weight:400">(เลือกจากลิสต์ หรือพิมพ์เอง)</span></label>
       <select class="form-select" id="doctype-quick" onchange="doctypePick(this)" style="margin-bottom:6px"></select>
       <input class="form-input" id="doctype-name" placeholder="หรือพิมพ์ชื่อเอกสารเอง" autocomplete="off" />
     </div>
@@ -1308,7 +1320,7 @@ img, svg, video, canvas { max-width:100%; }
         <label class="form-label">รูปทรัพย์</label>
         <div id="img-prop-preview" style="display:none;margin-bottom:6px;position:relative">
           <img id="img-prop-thumb" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)">
-          <button onclick="clearPropImg('prop')" style="position:absolute;top:4px;right:4px;background:rgba(185,28,28,.85);color:white;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:11px">✕</button>
+          <button onclick="clearPropImg('prop')" style="position:absolute;top:4px;right:4px;background:rgba(185,28,28,.85);color:white;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:12px">✕</button>
         </div>
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;border:2px dashed var(--border);border-radius:9px;padding:10px 14px;font-size:13px;color:var(--gray);transition:all .2s" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
           <span>📁 เลือกรูป</span>
@@ -1320,7 +1332,7 @@ img, svg, video, canvas { max-width:100%; }
         <label class="form-label">รูปรายละเอียด</label>
         <div id="img-detail-preview" style="display:none;margin-bottom:6px;position:relative">
           <img id="img-detail-thumb" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)">
-          <button onclick="clearPropImg('detail')" style="position:absolute;top:4px;right:4px;background:rgba(185,28,28,.85);color:white;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:11px">✕</button>
+          <button onclick="clearPropImg('detail')" style="position:absolute;top:4px;right:4px;background:rgba(185,28,28,.85);color:white;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:12px">✕</button>
         </div>
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;border:2px dashed var(--border);border-radius:9px;padding:10px 14px;font-size:13px;color:var(--gray);transition:all .2s" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
           <span>📁 เลือกรูป</span>
@@ -1333,7 +1345,7 @@ img, svg, video, canvas { max-width:100%; }
     <!-- ── Map ── -->
     <div class="section-title" style="margin-top:8px;margin-bottom:8px">📍 แผนที่</div>
     <div class="form-group">
-      <label class="form-label">① Google Maps URL หรือพิกัด (lat, lng) <span style="font-size:11px;color:var(--gray);font-weight:400">— ใช้จัดเส้นทางสำรวจ</span></label>
+      <label class="form-label">① Google Maps URL หรือพิกัด (lat, lng) <span style="font-size:12px;color:var(--gray);font-weight:400">— ใช้จัดเส้นทางสำรวจ</span></label>
       <div style="display:flex;gap:8px">
         <input class="form-input" id="prop-map" placeholder="https://maps.google.com/... หรือ 17.399840, 102.816920" style="flex:1" />
         <button class="btn btn-ghost btn-sm" onclick="openPropMap()" style="white-space:nowrap">เปิดแผนที่</button>
@@ -1344,7 +1356,7 @@ img, svg, video, canvas { max-width:100%; }
         <label class="form-label">② รูปแผนที่กรมที่ดิน</label>
         <div id="img-land-preview" style="display:none;margin-bottom:6px;position:relative">
           <img id="img-land-thumb" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)">
-          <button onclick="clearPropImg('land')" style="position:absolute;top:4px;right:4px;background:rgba(185,28,28,.85);color:white;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:11px">✕</button>
+          <button onclick="clearPropImg('land')" style="position:absolute;top:4px;right:4px;background:rgba(185,28,28,.85);color:white;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:12px">✕</button>
         </div>
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;border:2px dashed var(--border);border-radius:9px;padding:10px 14px;font-size:13px;color:var(--gray);transition:all .2s" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
           <span>📁 เลือกรูป</span>
@@ -1353,7 +1365,7 @@ img, svg, video, canvas { max-width:100%; }
         <button class="btn btn-ghost btn-xs" style="margin-top:6px;width:100%" onclick="openImgPick('land')">🗂️ เลือกจากรูปที่เคยอัปโหลด</button>
       </div>
       <div class="form-group">
-        <label class="form-label">ลิงก์ LandsMaps / กรมที่ดิน <span style="font-size:11px;color:var(--gray);font-weight:400">(ถ้ามี)</span></label>
+        <label class="form-label">ลิงก์ LandsMaps / กรมที่ดิน <span style="font-size:12px;color:var(--gray);font-weight:400">(ถ้ามี)</span></label>
         <input class="form-input" id="prop-land-url" placeholder="https://landsmaps.dol.go.th/..." />
       </div>
     </div>
@@ -1404,7 +1416,7 @@ img, svg, video, canvas { max-width:100%; }
 <div id="sketch-overlay" style="display:none;position:fixed;inset:0;z-index:600;background:#fff;flex-direction:column">
   <div id="sk-head" style="background:var(--navy);color:#fff;padding:7px 10px;padding-top:calc(7px + env(safe-area-inset-top, 0px));display:flex;align-items:center;gap:6px;flex-wrap:nowrap">
     <div id="sk-title" style="font-weight:800;font-size:14px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📝 บันทึกรายละเอียด</div>
-    <span id="sk-saved" style="font-size:11px;opacity:.8;white-space:nowrap"></span>
+    <span id="sk-saved" style="font-size:12px;opacity:.8;white-space:nowrap"></span>
     <button class="btn btn-xs sk-hbtn" id="sk-props-btn" onclick="skToggleProps()" title="แสดง/ซ่อนแถบสีและขนาดเส้น">🎨<span class="sk-lbl"> แถบเครื่องมือ</span></button>
     <button class="btn btn-xs sk-hbtn" onclick="skToggleText()" title="พิมพ์บันทึก">📝<span class="sk-lbl"> ข้อความ</span></button>
     <button class="btn btn-xs sk-hbtn" id="sk-ins-prop" onclick="skInsertImage('prop')" title="แทรกรูปทรัพย์">🖼<span class="sk-lbl"> แทรกรูปทรัพย์</span></button>
@@ -1424,7 +1436,7 @@ img, svg, video, canvas { max-width:100%; }
       <div class="skp-h">ขนาดเส้น</div>
       <div class="skp-row wide" data-k="width"></div>
       <div class="skp-h">ความทึบ <span id="skp-op-v"></span></div>
-      <input type="range" min="0" max="100" step="10" id="skp-op" oninput="skSetProp('opacity', +this.value)">
+      <input type="range" min="0" max="100" step="10" id="skp-op" aria-label="ความทึบ" oninput="skSetProp('opacity', +this.value)">
       <div class="skp-h">ชั้น (เลือกชิ้นก่อน)</div>
       <div class="skp-row wide">
         <button onclick="skLayer('back')" title="ไปล่างสุด">⤓</button><button onclick="skLayer('down')" title="ลงหนึ่งชั้น">↓</button>
@@ -1515,7 +1527,7 @@ img, svg, video, canvas { max-width:100%; }
       </div>
     </div>
     <div class="form-group">
-      <label class="form-label">รายการ * <span style="font-size:11px;color:var(--gray);font-weight:400">(เลือกจากลิสต์ หรือพิมพ์เอง)</span></label>
+      <label class="form-label">รายการ * <span style="font-size:12px;color:var(--gray);font-weight:400">(เลือกจากลิสต์ หรือพิมพ์เอง)</span></label>
       <select class="form-select" id="reno-desc-quick" onchange="renoDescPick(this)" style="margin-bottom:6px"></select>
       <input class="form-input" id="reno-desc" placeholder="หรือพิมพ์รายการเอง เช่น ค่าทาสีห้องนอน" autocomplete="off" />
     </div>
@@ -1544,7 +1556,7 @@ img, svg, video, canvas { max-width:100%; }
           <span>🤝 หุ้นส่วนจ่าย</span>
         </label>
       </div>
-      <div style="font-size:11px;color:var(--gray);margin-top:6px;line-height:1.5">
+      <div style="font-size:12px;color:var(--gray);margin-top:6px;line-height:1.5">
         💡 ทุกรายการจะหาร 2 ระหว่างเรา 2 คนเสมอ — ฟิลด์นี้แค่บอกว่าใครออกเงินไปก่อน เพื่อคำนวณยอดที่ต้องคืนระหว่างกัน
       </div>
     </div>
@@ -1584,7 +1596,7 @@ img, svg, video, canvas { max-width:100%; }
       <div class="form-group">
         <label class="form-label">จำนวนเงินที่โอนคืน (บาท) *</label>
         <input class="form-input" type="text" inputmode="decimal" id="settle-amount" placeholder="0.00" oninput="fmtMoneyInput(this)" />
-        <div style="font-size:11px;color:var(--gray);margin-top:5px">💡 ใส่ยอดเท่าไหร่ก็ได้ — โอนคืนบางส่วนได้ ระบบจะหักออกจากยอดค้างให้</div>
+        <div style="font-size:12px;color:var(--gray);margin-top:5px">💡 ใส่ยอดเท่าไหร่ก็ได้ — โอนคืนบางส่วนได้ ระบบจะหักออกจากยอดค้างให้</div>
       </div>
       <div class="form-group">
         <label class="form-label">วันที่ *</label>
@@ -1641,7 +1653,7 @@ img, svg, video, canvas { max-width:100%; }
         <button class="btn btn-ghost btn-sm" onclick="changePin()">🔑 เปลี่ยน PIN</button>
         <button class="btn btn-danger btn-sm" onclick="doLogout()">🚪 ให้เครื่องนี้ลืม PIN</button>
       </div>
-      <div style="font-size:11px;color:var(--gray);margin-top:8px;line-height:1.6">เปลี่ยน PIN = เครื่องใหม่ต้องใช้ PIN ใหม่ (เครื่องที่จำไว้แล้วยังเข้าได้ตามเดิม) · ลืม PIN มีผลเฉพาะเครื่องนี้ ข้อมูลบน Cloud ไม่หาย</div>
+      <div style="font-size:12px;color:var(--gray);margin-top:8px;line-height:1.6">เปลี่ยน PIN = เครื่องใหม่ต้องใช้ PIN ใหม่ (เครื่องที่จำไว้แล้วยังเข้าได้ตามเดิม) · ลืม PIN มีผลเฉพาะเครื่องนี้ ข้อมูลบน Cloud ไม่หาย</div>
     </div>
 
     <!-- Google Maps -->
@@ -1652,7 +1664,7 @@ img, svg, video, canvas { max-width:100%; }
         <input class="form-input" id="gmaps-key-input" placeholder="วาง Google Maps API key (AIza...)" autocomplete="off" style="flex:1;min-width:200px;font-size:13px">
         <button class="btn btn-primary btn-sm" onclick="saveGmapsKey()">💾 บันทึก key</button>
       </div>
-      <div style="font-size:11px;color:var(--gray);margin-top:6px;line-height:1.6">
+      <div style="font-size:12px;color:var(--gray);margin-top:6px;line-height:1.6">
         key ต้องเปิด Maps JavaScript API + Geocoding API และจำกัดโดเมนเป็นเว็บนี้ · บันทึกช่องว่าง = ลบ key กลับไปใช้ OpenStreetMap
       </div>
     </div>
@@ -1681,7 +1693,7 @@ img, svg, video, canvas { max-width:100%; }
         <button class="btn btn-amber btn-sm" onclick="confirmClearImages()">🗑️ ลบรูปภาพทั้งหมด</button>
         <button class="btn btn-danger btn-sm" onclick="confirmClearProps()">🏠 ลบทรัพย์ทั้งหมด</button>
       </div>
-      <div style="font-size:11px;color:var(--gray);margin-top:6px">ลบรูปภาพ = ลบเฉพาะรูป ข้อมูลยังอยู่ · ลบทรัพย์ = ลบข้อมูลทรัพย์และค่าใช้จ่ายที่เกี่ยวข้องทั้งหมด</div>
+      <div style="font-size:12px;color:var(--gray);margin-top:6px">ลบรูปภาพ = ลบเฉพาะรูป ข้อมูลยังอยู่ · ลบทรัพย์ = ลบข้อมูลทรัพย์และค่าใช้จ่ายที่เกี่ยวข้องทั้งหมด</div>
     </div>
 
     <div class="modal-actions">
@@ -1707,9 +1719,9 @@ img, svg, video, canvas { max-width:100%; }
 
 <div class="lightbox" id="lightbox" onclick="this.classList.remove('open')">
   <button class="lightbox-close" onclick="event.stopPropagation();document.getElementById('lightbox').classList.remove('open')">✕</button>
-  <img id="lightbox-img" src="" />
+  <img id="lightbox-img" src="" alt="ภาพขยาย" />
 </div>
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <!-- Print/PDF report target (item 10) -->
 <div id="print-area"></div>
@@ -2366,14 +2378,14 @@ function settleBoxHtml(propId) {
     const heldOverCapital = Math.max(0, rRecv - rPaid);       // ถือเงินเกินทุนตัวเองไปแล้วเท่าไหร่ (นับเป็นกำไรที่ได้แล้วบางส่วน)
     const profitShort = Math.max(0, net - heldOverCapital);   // คืนกำไร — ส่วนแบ่งกำไรที่ยังไม่ได้รับ
     breakdownHtml = `
-      <div style="margin-top:6px;padding-top:6px;border-top:1px dashed #E5E7EB;font-size:11px;color:#374151;line-height:2">
+      <div style="margin-top:6px;padding-top:6px;border-top:1px dashed #E5E7EB;font-size:12px;color:#374151;line-height:2">
         📦 แยกยอดที่ต้องโอนให้${who}:
         ${capitalShort>=0.5 ? `<div>• คืนทุน (${who}จ่ายไปแล้วแต่ยังไม่ได้คืน): <b>${fmtPrice(Math.round(capitalShort))}</b></div>` : ''}
         ${profitShort>=0.5  ? `<div>• คืนกำไร (ส่วนแบ่งกำไรของ${who}ที่ยังไม่ได้รับ): <b>${fmtPrice(Math.round(profitShort))}</b></div>` : ''}
         ${Math.abs(paidBack)>=0.5 ? `<div>• หักยอดที่โอนคืนกันไปแล้วก่อนหน้านี้: <b>${fmtNum(Math.abs(paidBack))} ฿</b></div>` : ''}
       </div>`;
   } else if (Math.abs(netOwe) >= 0.5) {
-    breakdownHtml = `<div style="margin-top:4px;font-size:10px;color:var(--gray)">· ค่าใช้จ่ายที่จ่ายไม่เท่ากัน ${rawBal>=0?'+':''}${fmtNum(Math.round(rawBal))} − โอนคืนแล้ว ${fmtNum(Math.abs(paidBack))} ฿ <span style="opacity:.8">(ยังไม่ขาย จึงยังไม่มีเงินขายมาคิดรวม)</span></div>`;
+    breakdownHtml = `<div style="margin-top:4px;font-size:12px;color:var(--gray)">· ค่าใช้จ่ายที่จ่ายไม่เท่ากัน ${rawBal>=0?'+':''}${fmtNum(Math.round(rawBal))} − โอนคืนแล้ว ${fmtNum(Math.abs(paidBack))} ฿ <span style="opacity:.8">(ยังไม่ขาย จึงยังไม่มีเงินขายมาคิดรวม)</span></div>`;
   }
 
   return `
@@ -2389,7 +2401,7 @@ function settleBoxHtml(propId) {
       ${settles.length ? `
       <div style="margin-top:6px;border-top:1px dashed #E5E7EB;padding-top:5px">
         ${settles.map(s=>`
-          <div style="display:flex;align-items:center;gap:6px;font-size:11px;padding:2px 0">
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px;padding:2px 0">
             <span style="color:var(--gray);min-width:66px">${fmtDate(s.date)}</span>
             <span style="flex:1">${s.from==='partner'?'🤝 หุ้นส่วนโอนคืน':'👤 ฉันโอนคืน'}${s.pay?` <span style="color:var(--gray)">(${s.pay})</span>`:''}${s.note?` <span style="color:var(--gray)">· ${s.note}</span>`:''}</span>
             <b style="color:${s.from==='partner'?'var(--blue)':'var(--green)'}">${fmtPrice(s.amount)}</b>
@@ -2487,11 +2499,11 @@ function switchTab(t) {
   // docs tab no longer exists as a real tab — redirect to props
   if (t === 'docs' || t === 'map') t = 'props';   // แท็บที่เลิกใช้แล้ว (เผื่อจำ lastTab เก่าไว้)
   try { localStorage.setItem('acktion_lasttab', t); } catch(e) {}
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.removeAttribute('aria-current'); });
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   const tabOrder = ['props','reno','summary','calc','pnl','sold','survey'];
   const idx = tabOrder.indexOf(t);
-  if (idx >= 0) document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+  if (idx >= 0) { const tb = document.querySelectorAll('.tab-btn')[idx]; tb.classList.add('active'); tb.setAttribute('aria-current','page'); }
   document.getElementById('tab-'+t).classList.add('active');
   if (window._fluidReady) syncFluidNav();
   if (t === 'summary') renderSummary();
@@ -2575,8 +2587,8 @@ function parcelBlockHtml(p) {
       <span class="badge ${exact ? 'badge-green' : 'badge-amber'}">${src}</span>
       ${parcelPending(p) ? `<span class="badge badge-amber">⏳ รอ${!parcelExact(p) ? 'พิกัด/' : ''}ภาพแปลง</span>` : ''}
     </div>
-    ${parcelPending(p) ? `<div style="font-size:11px;color:var(--amber);margin:-4px 0 8px">บอก Claude ในแชทว่า <b>"ทำต่อ"</b> — จะค้นโฉนดใน LandsMaps แล้วใส่พิกัด + ภาพแผนที่แปลงให้</div>` : ''}
-    ${hasImg ? `<img src="${p.imgLand}" style="width:100%;max-height:320px;object-fit:contain;border-radius:8px;background:#fff;border:1px solid var(--border);cursor:zoom-in;margin-bottom:8px" onclick="showLightbox('${p.imgLand}')" title="ภาพแผนที่แปลงจาก LandsMaps">`
+    ${parcelPending(p) ? `<div style="font-size:12px;color:var(--amber);margin:-4px 0 8px">บอก Claude ในแชทว่า <b>"ทำต่อ"</b> — จะค้นโฉนดใน LandsMaps แล้วใส่พิกัด + ภาพแผนที่แปลงให้</div>` : ''}
+    ${hasImg ? `<img src="${p.imgLand}" style="width:100%;max-height:320px;object-fit:contain;border-radius:8px;background:#fff;border:1px solid var(--border);cursor:zoom-in;margin-bottom:8px" onclick="showLightbox('${p.imgLand}')" title="ภาพแผนที่แปลงจาก LandsMaps" alt="ภาพแผนที่แปลง ${escapeHtml(p.code||p.name||'')}">`
       : exact ? `<div class="parcel-map" data-pmap="${p.id}" data-ll="${ll.lat},${ll.lng}"><div style="padding:90px 0;text-align:center;font-size:12px;color:var(--gray)">⏳ กำลังโหลดภาพดาวเทียม...</div></div>` : ''}
     ${!exact && p.pool ? `<div style="background:var(--amber-lt);border:1px solid #FCD34D;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:12px">
         <div style="font-weight:700;color:var(--amber);margin-bottom:6px">ยังไม่มีพิกัดแปลงจริง — วางพิกัดจาก LandsMaps ที่นี่ (หรือบอก Claude ให้หาให้):</div>
@@ -3013,13 +3025,13 @@ function surveyCardHtml(x, total, open) {
       <div class="round-num">นัดที่ ${ri + 1}</div>
       <div class="round-price">${base ? fmtNum(Math.floor(Math.round(base * (1 - r.disc) * 100) / 100)) + ' ฿' : '—'}</div>
       <div class="round-disc ${r.cls}">${r.discLabel}</div>
-      ${rObj.date ? `<div style="font-size:9px;color:var(--gray);margin-top:3px">${fmtDate(rObj.date)}</div>` : ''}
+      ${rObj.date ? `<div style="font-size:11px;color:var(--gray);margin-top:3px">${fmtDate(rObj.date)}</div>` : ''}
       ${halted ? `<div class="round-halt-bar">⛔ ${escapeHtml(rObj.note)}</div>` : ''}
     </div>`;
   }).join('');
   const nav = x.ll ? `https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=${x.ll.lat},${x.ll.lng}` : '';
   return `
-    ${legTxt ? `<div style="font-size:11px;color:var(--gray);padding:0 0 6px 17px;margin:-6px 0 0 17px;border-left:2px dashed #CBD5E1">⬇ ${legTxt}</div>` : ''}
+    ${legTxt ? `<div style="font-size:12px;color:var(--gray);padding:0 0 6px 17px;margin:-6px 0 0 17px;border-left:2px dashed #CBD5E1">⬇ ${legTxt}</div>` : ''}
     <div class="prop-card ${sv.done ? 'won' : ''} ${open ? 'expanded' : ''}" id="sv-${p.id}" style="${sv.skip ? 'opacity:.55' : ''}">
       <div class="prop-header sv" onclick="document.getElementById('sv-${p.id}').classList.toggle('expanded');initParcelMaps()">
         <div class="prop-media">${thumb}<span class="prop-num" style="background:${numBg}">${num}</span></div>
@@ -3092,7 +3104,7 @@ function renderDolLL() {
         <div class="dol-num" style="background:${done ? 'var(--green)' : '#D97706'}">${p.survey?.order || '•'}</div>
         <div style="flex:1;min-width:150px">
           <div style="font-weight:700;font-size:13px">${p.code ? `<span class="badge badge-blue" style="margin-right:4px">${escapeHtml(p.code)}</span>` : ''}โฉนด <b style="font-size:15px">${escapeHtml(p.deed || '—')}</b></div>
-          <div style="font-size:11px;color:var(--gray)">จ.${escapeHtml(led.changwat || '—')} · อ.${escapeHtml(led.amphoe || '—')} · ต.${escapeHtml(led.tambon || '—')}</div>
+          <div style="font-size:12px;color:var(--gray)">จ.${escapeHtml(led.changwat || '—')} · อ.${escapeHtml(led.amphoe || '—')} · ต.${escapeHtml(led.tambon || '—')}</div>
         </div>
         <div style="display:flex;gap:5px">
           ${p.deed ? `<button class="btn btn-ghost btn-xs" onclick="copyText('${escapeHtml(p.deed)}','เลขโฉนด')">📋 โฉนด</button>` : ''}
@@ -3755,7 +3767,7 @@ async function renderSurvey() {
         <span class="badge badge-blue">🏠 ${ordered.length} จุด</span>
         <span class="badge badge-green">✓ ไปแล้ว ${doneN}</span>
         <span class="badge badge-gray">🚗 ${anyEst ? '≈ ' : ''}${fmtKm(totKm)} กม. · ${fmtMin(totMin)}</span>
-        ${meta.source === 'straight' || anyEst ? '<span style="font-size:11px;color:var(--gray)">(บางช่วงประมาณจากเส้นตรง)</span>' : ''}
+        ${meta.source === 'straight' || anyEst ? '<span style="font-size:12px;color:var(--gray)">(บางช่วงประมาณจากเส้นตรง)</span>' : ''}
         <span style="flex:1"></span>
         ${links.map((u, i) => `<a class="btn btn-success btn-sm" href="${u}" target="_blank">🚗 นำทางจุดที่เหลือ${links.length > 1 ? ` ช่วง ${i + 1}` : ''} ↗</a>`).join('')}
       </div>
@@ -3803,7 +3815,7 @@ async function renderSurvey() {
     const bg = done ? '#16A34A' : approx ? '#D97706' : '#1F3A5F';
     addMark([x.ll.lat, x.ll.lng],
       `<div style="width:28px;height:28px;border-radius:50%;background:${bg};color:#fff;border:2px ${approx ? 'dashed' : 'solid'} #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font:800 13px sans-serif">${label(x, i)}</div>`, 28, 28,
-      `<b>${label(x, i)}. ${escapeHtml((x.p.code ? x.p.code + ' — ' : '') + x.p.name)}</b><br><span style="font-size:12px">${escapeHtml(x.p.loc || '')}</span>${approx ? '<br><span style="font-size:11px;color:#B45309">≈ พิกัดประมาณ (กลางตำบล) — ยังไม่ใช่ตำแหน่งแปลงจริง</span>' : ''}`, dx, dy);
+      `<b>${label(x, i)}. ${escapeHtml((x.p.code ? x.p.code + ' — ' : '') + x.p.name)}</b><br><span style="font-size:12px">${escapeHtml(x.p.loc || '')}</span>${approx ? '<br><span style="font-size:12px;color:#B45309">≈ พิกัดประมาณ (กลางตำบล) — ยังไม่ใช่ตำแหน่งแปลงจริง</span>' : ''}`, dx, dy);
   });
   const gpsOn = !!(_surveyGps && meta.gps);
   if (gpsOn) addMark([_surveyGps.lat, _surveyGps.lng],
@@ -4058,7 +4070,7 @@ function renderDocTypes() {
   el.innerHTML = S.docTypes.map(dt => `
     <div style="display:flex;align-items:center;gap:6px;background:#F3F4F6;border-radius:20px;padding:5px 12px 5px 10px;">
       <span style="font-size:13px;font-weight:600;">📄 ${dt.name}</span>
-      <button class="icon-btn del" style="width:22px;height:22px;font-size:11px;" onclick="deleteDocType('${dt.id}')">✕</button>
+      <button class="icon-btn del" style="width:22px;height:22px;font-size:12px;" onclick="deleteDocType('${dt.id}')">✕</button>
     </div>`).join('');
 }
 
@@ -4167,7 +4179,7 @@ function renderDocs() {
           </div>
           <div style="text-align:right;">
             <div style="font-size:13px;font-weight:700;">${done}/${total} เอกสาร</div>
-            <div style="font-size:11px;opacity:.8;">${pct}% เสร็จแล้ว</div>
+            <div style="font-size:12px;opacity:.8;">${pct}% เสร็จแล้ว</div>
           </div>
         </div>
         <div class="won-prop-body">
@@ -4263,7 +4275,7 @@ function printPropReport(id) {
     <td>${fmtDate(e.date)}</td><td>${e.desc||''}</td>
     <td>${e.payer==='partner'?'🤝 หุ้นส่วน':'👤 ฉัน'}${e.settled?' · ✓ตัด':''}</td>
     <td class="num">${money(e.amount)}</td></tr>`).join('')
-    : `<tr><td colspan="4" style="text-align:center;color:#9CA3AF">— ยังไม่มีรายการ —</td></tr>`;
+    : `<tr><td colspan="4" style="text-align:center;color:var(--gray)">— ยังไม่มีรายการ —</td></tr>`;
 
   const docRows = (p.docs||[]).map(d=>{
     const dt = S.docTypes.find(t=>t.id===d.typeId);
@@ -4389,7 +4401,7 @@ function renoBudgetBar(p, spent, acqCost) {
         style="flex:1;min-width:120px;border:1.5px solid #0EA5E9;border-radius:7px;padding:6px 10px;font-size:14px;font-weight:700;color:var(--navy);background:white;outline:none">
       <span style="font-size:12px;color:var(--gray)">฿</span>
     </div>
-    <div style="font-size:11px;color:var(--gray);margin-bottom:${budget?'10px':'0'}">
+    <div style="font-size:12px;color:var(--gray);margin-bottom:${budget?'10px':'0'}">
       → ใช้เป็น “ค่าซ่อมแซม” ในหน้าคำนวณอัตโนมัติ${size?` · พื้นที่ ${size} ตร.ว.${budget?` ≈ ${fmtNum(Math.round(budget/size))} ฿/ตร.ว.`:''}`:''}
     </div>`;
 
@@ -4412,12 +4424,12 @@ function renoBudgetBar(p, spent, acqCost) {
       <div style="height:8px;background:#E5E7EB;border-radius:20px;overflow:hidden">
         <div style="height:100%;width:${barPct}%;background:${barColor};border-radius:20px;transition:width .3s"></div>
       </div>
-      <div style="font-size:11px;margin-top:6px;font-weight:700;color:${isOver?'var(--red)':'var(--gray)'}">
+      <div style="font-size:12px;margin-top:6px;font-weight:700;color:${isOver?'var(--red)':'var(--gray)'}">
         รีโนเวทจริง ${fmtPrice(spent)} · ${isOver
           ? `⚠️ เกินงบ ${fmtPrice(over)}`
           : `เหลืองบ ${fmtPrice(remain)}`}
       </div>
-      ${acq>0?`<div style="font-size:10px;margin-top:4px;color:var(--gray)">💰 แยกต้นทุนซื้อ/ค่าธรรมเนียมออก ${fmtPrice(acq)} (ไม่นับในงบรีโนเวท)</div>`:''}`:''}
+      ${acq>0?`<div style="font-size:12px;margin-top:4px;color:var(--gray)">💰 แยกต้นทุนซื้อ/ค่าธรรมเนียมออก ${fmtPrice(acq)} (ไม่นับในงบรีโนเวท)</div>`:''}`:''}
     </div>`;
 }
 // กรอกค่ารีโนเวทจากการ์ด → เก็บเป็นงบ (renoBudget) และค่าซ่อมแซมในหน้าคำนวณ (calcRepair)
@@ -4442,15 +4454,15 @@ function renderSaleReceipts(p) {
   const pending  = Math.max(0, sell - received);
   const suggestRem = Math.max(0, sell - dep);
   const recRadio = (field, cur) => `
-    <label style="display:inline-flex;align-items:center;gap:3px;font-size:11px;cursor:pointer;font-weight:600"><input type="radio" name="${field}-${p.id}" ${cur!=='partner'?'checked':''} onchange="setPropSaleReceiver('${p.id}','${field}','me')">👤 ฉัน</label>
-    <label style="display:inline-flex;align-items:center;gap:3px;font-size:11px;cursor:pointer;font-weight:600"><input type="radio" name="${field}-${p.id}" ${cur==='partner'?'checked':''} onchange="setPropSaleReceiver('${p.id}','${field}','partner')">🤝 หุ้นส่วน</label>`;
+    <label style="display:inline-flex;align-items:center;gap:3px;font-size:12px;cursor:pointer;font-weight:600"><input type="radio" name="${field}-${p.id}" ${cur!=='partner'?'checked':''} onchange="setPropSaleReceiver('${p.id}','${field}','me')">👤 ฉัน</label>
+    <label style="display:inline-flex;align-items:center;gap:3px;font-size:12px;cursor:pointer;font-weight:600"><input type="radio" name="${field}-${p.id}" ${cur==='partner'?'checked':''} onchange="setPropSaleReceiver('${p.id}','${field}','partner')">🤝 หุ้นส่วน</label>`;
   const inputRow = (icon,label,field,recField,val,ph,recCur) => `
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <span style="font-size:12px;font-weight:700;color:var(--navy);min-width:110px">${icon} ${label}</span>
       <input type="text" inputmode="numeric" value="${val>0?val.toLocaleString('th-TH'):''}" placeholder="${ph}"
         oninput="fmtNumInput(this)" onblur="savePropSaleField('${p.id}','${field}',this.value)"
         style="flex:1;min-width:100px;border:1.5px solid #A7F3D0;border-radius:7px;padding:5px 9px;font-size:13px;font-weight:700;color:var(--navy);background:white;outline:none">
-      <span style="display:flex;gap:8px;align-items:center;white-space:nowrap"><span style="font-size:11px;color:var(--gray)">ผู้รับ:</span>${recRadio(recField,recCur)}</span>
+      <span style="display:flex;gap:8px;align-items:center;white-space:nowrap"><span style="font-size:12px;color:var(--gray)">ผู้รับ:</span>${recRadio(recField,recCur)}</span>
     </div>`;
   const net = netBalanceForProps([p.id]);
   return `
@@ -4461,7 +4473,7 @@ function renderSaleReceipts(p) {
       </div>
       ${inputRow('🧾','มัดจำที่ได้รับ','saleDeposit','saleDepositReceiver',dep,'เช่น 100,000',p.saleDepositReceiver)}
       ${inputRow('⏳','ยอดคงเหลือ','saleRemaining','saleRemainingReceiver',rem, suggestRem>0?('≈ '+suggestRem.toLocaleString('th-TH')):'ยอดที่รับเพิ่ม',p.saleRemainingReceiver)}
-      <div style="font-size:11px;color:var(--gray);display:flex;gap:14px;flex-wrap:wrap">
+      <div style="font-size:12px;color:var(--gray);display:flex;gap:14px;flex-wrap:wrap">
         <span>📥 รับมาแล้ว <b style="color:var(--green)">${fmtNum(received)}</b> ฿</span>
         ${sell>0?`<span>⏳ รอรับอีก <b style="color:${pending>0?'var(--amber)':'var(--gray)'}">${fmtNum(pending)}</b> ฿</span>`:''}
       </div>
@@ -4607,11 +4619,11 @@ function renderProps() {
       const icon = rSt==='joined'?'✓': rSt==='skipped'?'—': isTarget?'🎯':'';
       const price = base ? fmtNum(Math.floor(base*(1-r.disc)))+' ฿' : '—';
       const dL = rDate ? Math.round((new Date(rDate).setHours(0,0,0,0)-today.getTime())/86400000) : null;
-      const dateLabel = rDate ? `<div style="font-size:9px;color:var(--gray);margin-top:3px">${fmtDate(rDate)}${dL===0?' 🔴':dL>0&&dL<=3?' ⚠️':''}</div>` : '';
+      const dateLabel = rDate ? `<div style="font-size:11px;color:var(--gray);margin-top:3px">${fmtDate(rDate)}${dL===0?' 🔴':dL>0&&dL<=3?' ⚠️':''}</div>` : '';
       const calKey = `cal-${p.id}-${ri}-${rDate}`;
       const calSaved = !!localStorage.getItem(calKey);
       const lineCtrl = '';
-      const calBtn = rDate ? `<div onclick="event.stopPropagation()" style="margin-top:3px;text-align:center"><button onclick="addRoundToCalendar('${p.id}',${ri})" style="font-size:10px;background:${calSaved?'#F0FDF4':'#EFF6FF'};color:${calSaved?'#15803D':'#1D4ED8'};border:1px solid ${calSaved?'#86EFAC':'#BFDBFE'};border-radius:4px;padding:2px 6px;cursor:pointer;font-weight:700">${calSaved?'✓ บันทึกแล้ว':'📅 ปฏิทิน'}</button></div>` : '';
+      const calBtn = rDate ? `<div onclick="event.stopPropagation()" style="margin-top:3px;text-align:center"><button onclick="addRoundToCalendar('${p.id}',${ri})" style="font-size:12px;background:${calSaved?'#F0FDF4':'#EFF6FF'};color:${calSaved?'#15803D':'#1D4ED8'};border:1px solid ${calSaved?'#86EFAC':'#BFDBFE'};border-radius:4px;padding:2px 6px;cursor:pointer;font-weight:700">${calSaved?'✓ บันทึกแล้ว':'📅 ปฏิทิน'}</button></div>` : '';
       // หมายเหตุจากหน้าแก้ไข → โชว์บนไทล์ด้วย ไม่ใช่ซ่อนไว้ใน tooltip อย่างเดียว
       const noteHtml = rNote
         ? (halted ? '' : `<div class="round-note">📝 ${escapeHtml(rNote)}</div>`)
@@ -4741,18 +4753,18 @@ function renderProps() {
                 const isP = e.payer === 'partner';
                 const isAcq = isAcquisitionCost(e);
                 const payerBadge = isP
-                  ? `<span style="font-size:10px;background:var(--blue-lt);color:var(--blue);padding:1px 5px;border-radius:4px;font-weight:700;flex-shrink:0" title="หุ้นส่วนจ่าย">🤝 หุ้นส่วน</span>`
-                  : `<span style="font-size:10px;background:#F0FDF4;color:var(--green);padding:1px 5px;border-radius:4px;font-weight:700;flex-shrink:0" title="ฉันจ่าย">👤 ฉัน</span>`;
-                const settledBadge = e.settled ? `<span style="font-size:10px;background:#F3F4F6;color:var(--gray);padding:1px 5px;border-radius:4px;font-weight:700;flex-shrink:0" title="ตัดบัญชีระหว่างเราแล้ว">✓ ตัด</span>` : '';
+                  ? `<span style="font-size:12px;background:var(--blue-lt);color:var(--blue);padding:1px 5px;border-radius:4px;font-weight:700;flex-shrink:0" title="หุ้นส่วนจ่าย">🤝 หุ้นส่วน</span>`
+                  : `<span style="font-size:12px;background:#F0FDF4;color:var(--green);padding:1px 5px;border-radius:4px;font-weight:700;flex-shrink:0" title="ฉันจ่าย">👤 ฉัน</span>`;
+                const settledBadge = e.settled ? `<span style="font-size:12px;background:#F3F4F6;color:var(--gray);padding:1px 5px;border-radius:4px;font-weight:700;flex-shrink:0" title="ตัดบัญชีระหว่างเราแล้ว">✓ ตัด</span>` : '';
                 return `
                 <div onclick="event.stopPropagation();editExpense('${e.id}')" style="display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px dashed #C6E6D0;font-size:12px;cursor:pointer;border-radius:4px;${isAcq?'opacity:.7':''}" onmouseover="this.style.background='rgba(0,0,0,.03)'" onmouseout="this.style.background=''">
                   <span style="color:var(--gray);min-width:62px;flex-shrink:0">${fmtDate(e.date)}</span>
-                  <span style="flex:1;font-weight:600;color:${e.settled?'var(--gray)':'#1F2937'}">${e.desc}${isAcq?` <span style="font-size:9px;background:#FEF3C7;color:#92400E;padding:1px 4px;border-radius:3px;font-weight:700" title="นับเป็นต้นทุนซื้อ/ค่าธรรมเนียม ไม่รวมในงบรีโนเวท">ต้นทุนซื้อ</span>`:''}</span>
+                  <span style="flex:1;font-weight:600;color:${e.settled?'var(--gray)':'#1F2937'}">${e.desc}${isAcq?` <span style="font-size:11px;background:#FEF3C7;color:#92400E;padding:1px 4px;border-radius:3px;font-weight:700" title="นับเป็นต้นทุนซื้อ/ค่าธรรมเนียม ไม่รวมในงบรีโนเวท">ต้นทุนซื้อ</span>`:''}</span>
                   ${payerBadge}
                   ${settledBadge}
                   <span style="font-weight:700;color:${isP?'var(--blue)':'var(--green)'};white-space:nowrap;flex-shrink:0">${fmtPrice(e.amount)}</span>
-                  <button onclick="event.stopPropagation();toggleExpenseReno('${e.id}')" style="background:${isAcq?'#FEF3C7':'#F0FDF4'};border:1px solid var(--border);border-radius:4px;cursor:pointer;color:${isAcq?'#92400E':'var(--green)'};font-size:10px;padding:2px 5px;flex-shrink:0;font-weight:700" title="สลับ: นับ/ไม่นับในงบรีโนเวท">${isAcq?'💰ซื้อ':'🛠รีโน'}</button>
-                  <button onclick="event.stopPropagation();toggleExpenseSettled('${e.id}')" style="background:${e.settled?'#E5E7EB':'#F3F4F6'};border:1px solid var(--border);border-radius:4px;cursor:pointer;color:${e.settled?'var(--navy)':'var(--gray)'};font-size:10px;padding:2px 5px;flex-shrink:0;font-weight:700" title="ตัด/ยกเลิกตัดบัญชี">${e.settled?'✓ตัด':'ตัด'}</button>
+                  <button onclick="event.stopPropagation();toggleExpenseReno('${e.id}')" style="background:${isAcq?'#FEF3C7':'#F0FDF4'};border:1px solid var(--border);border-radius:4px;cursor:pointer;color:${isAcq?'#92400E':'var(--green)'};font-size:12px;padding:2px 5px;flex-shrink:0;font-weight:700" title="สลับ: นับ/ไม่นับในงบรีโนเวท">${isAcq?'💰ซื้อ':'🛠รีโน'}</button>
+                  <button onclick="event.stopPropagation();toggleExpenseSettled('${e.id}')" style="background:${e.settled?'#E5E7EB':'#F3F4F6'};border:1px solid var(--border);border-radius:4px;cursor:pointer;color:${e.settled?'var(--navy)':'var(--gray)'};font-size:12px;padding:2px 5px;flex-shrink:0;font-weight:700" title="ตัด/ยกเลิกตัดบัญชี">${e.settled?'✓ตัด':'ตัด'}</button>
                   <button onclick="event.stopPropagation();deleteExpense('${e.id}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:13px;padding:0 2px;flex-shrink:0" title="ลบ">✕</button>
                 </div>`;
               }).join('')}
@@ -4760,19 +4772,19 @@ function renderProps() {
               <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:8px 0 4px;text-align:center;border-top:1px solid #C6E6D0;margin-top:2px;">
                 <div>
                   <div style="font-size:12px;font-weight:800;color:#1F2937">${fmtPrice(renoStats.total)}</div>
-                  <div style="font-size:10px;color:var(--gray)">รวมทั้งหมด</div>
+                  <div style="font-size:12px;color:var(--gray)">รวมทั้งหมด</div>
                 </div>
                 <div>
                   <div style="font-size:12px;font-weight:800;color:var(--green)">${fmtPrice(renoStats.myPaid)}</div>
-                  <div style="font-size:10px;color:var(--gray)">👤 ฉันจ่าย</div>
+                  <div style="font-size:12px;color:var(--gray)">👤 ฉันจ่าย</div>
                 </div>
                 <div>
                   <div style="font-size:12px;font-weight:800;color:var(--blue)">${fmtPrice(renoStats.partnerPaid)}</div>
-                  <div style="font-size:10px;color:var(--gray)">🤝 หุ้นส่วนจ่าย</div>
+                  <div style="font-size:12px;color:var(--gray)">🤝 หุ้นส่วนจ่าย</div>
                 </div>
                 <div title="+ = หุ้นส่วนต้องคืนฉัน, − = ฉันต้องคืนหุ้นส่วน">
                   <div style="font-size:12px;font-weight:800;color:${renoStats.balance>=0?'var(--green)':'var(--red)'}">${renoStats.balance>=0?'+':''}${fmtPrice(renoStats.balance)}</div>
-                  <div style="font-size:10px;color:var(--gray)">🔄 ค้างชำระ</div>
+                  <div style="font-size:12px;color:var(--gray)">🔄 ค้างชำระ</div>
                 </div>
               </div>
             </div>` : `<div style="font-size:12px;color:var(--gray)">ยังไม่มีรายการ</div>`}
@@ -4798,7 +4810,7 @@ function renderProps() {
                   onblur="savePropActualBuy('${p.id}',this.value)"
                   style="flex:1;min-width:140px;border:1.5px solid var(--navy);border-radius:7px;padding:6px 10px;font-size:14px;font-weight:700;color:var(--navy);background:white;outline:none">
               </div>
-              <div style="font-size:11px;color:#B45309;margin-top:-4px">⚠️ ราคานี้ไม่ถูกหักออกจาก "กำไรรวม" อัตโนมัติ — ต้องไปบันทึกเป็นรายการค่าใช้จ่ายในแท็บ "ค่าใช้จ่าย" ด้วยตัวเอง ไม่งั้นกำไรที่แสดงจะสูงเกินจริง</div>
+              <div style="font-size:12px;color:#B45309;margin-top:-4px">⚠️ ราคานี้ไม่ถูกหักออกจาก "กำไรรวม" อัตโนมัติ — ต้องไปบันทึกเป็นรายการค่าใช้จ่ายในแท็บ "ค่าใช้จ่าย" ด้วยตัวเอง ไม่งั้นกำไรที่แสดงจะสูงเกินจริง</div>
               <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                 <span style="font-size:13px;font-weight:700;color:var(--green);white-space:nowrap;min-width:160px">💵 ราคาที่ขายได้จริง</span>
                 <input type="text" inputmode="numeric"
@@ -5046,7 +5058,7 @@ function renderPropRoundsTable(rounds, targetRound) {
     const r = getR(i);
     return `<tr style="border-bottom:1px solid var(--border)">
       <td style="padding:7px 8px;white-space:nowrap;font-weight:700;color:var(--navy);font-size:13px">
-        นัดที่ ${i+1}<br><span style="font-size:10px;color:var(--gray);font-weight:400">${ROUND_DISC_LABELS[i]}</span>
+        นัดที่ ${i+1}<br><span style="font-size:12px;color:var(--gray);font-weight:400">${ROUND_DISC_LABELS[i]}</span>
       </td>
       <td style="padding:7px 8px">
         <input type="text" inputmode="numeric" class="form-input" id="round-date-${i}"
@@ -5124,7 +5136,7 @@ async function openImgPick(type) {
     return `<div style="border:1.5px solid ${isUsed?'var(--border)':'#FCD34D'};border-radius:9px;overflow:hidden;cursor:pointer;background:#FAFAFA"
                  onclick="applyPickedImg('${url}')" title="${isUsed?'ใช้อยู่กับทรัพย์บางรายการ':'ยังไม่ถูกใช้ที่ไหน'}">
       <img src="${url}" loading="lazy" style="width:100%;height:88px;object-fit:cover;display:block">
-      <div style="font-size:10px;padding:3px 5px;color:var(--gray);display:flex;justify-content:space-between;gap:4px">
+      <div style="font-size:12px;padding:3px 5px;color:var(--gray);display:flex;justify-content:space-between;gap:4px">
         <span>${isUsed ? '' : '🔸 ไม่ได้ใช้'}</span><span>${kb}</span>
       </div>
     </div>`;
@@ -5477,9 +5489,9 @@ function propDocsHtml(p) {
           <div class="check-circle ${d.done?'checked':''}" onclick="event.stopPropagation();toggleDocDone('${p.id}','${d.typeId}')" style="flex-shrink:0">${d.done?'✓':''}</div>
           <div style="flex:1;font-weight:700;font-size:13px;${d.done?'color:var(--green)':''}">${dt.name}</div>
           ${d.done?'<span class="badge badge-green">✓ เสร็จ</span>':'<span class="badge badge-gray">ยังไม่เสร็จ</span>'}
-          <span style="font-size:11px;color:var(--gray)">${d.images.length} ไฟล์</span>
+          <span style="font-size:12px;color:var(--gray)">${d.images.length} ไฟล์</span>
           <button onclick="event.stopPropagation();deleteDocFromProp('${p.id}','${d.typeId}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:15px;padding:0 2px;line-height:1;flex-shrink:0" title="ลบ">✕</button>
-          <span class="chevron" style="font-size:11px;color:var(--gray)">▼</span>
+          <span class="chevron" style="font-size:12px;color:var(--gray)">▼</span>
         </div>
         <div class="doc-body" style="padding:12px 14px;background:#FAFAFA;border-top:1px solid var(--border)">
           <div class="img-grid" id="dimg_${p.id}_${d.typeId}">
@@ -5812,7 +5824,7 @@ function renderReno() {
     <div class="reno-summary-bar">
       <div class="reno-stat">
         <div class="reno-stat-num">${fmtNum(st.total)}</div>
-        <div class="reno-stat-label">${selectedProp?'ยอดทรัพย์นี้ (฿)':'รวมทั้งหมด (฿)'}<br><span style="font-size:9px;opacity:.75">${scopeLabel}</span></div>
+        <div class="reno-stat-label">${selectedProp?'ยอดทรัพย์นี้ (฿)':'รวมทั้งหมด (฿)'}<br><span style="font-size:11px;opacity:.75">${scopeLabel}</span></div>
       </div>
       <div class="reno-stat">
         <div class="reno-stat-num">${fmtNum(st.myPaid)}</div>
@@ -5824,7 +5836,7 @@ function renderReno() {
       </div>
       <div class="reno-stat" title="+ = หุ้นส่วนต้องคืนฉัน, − = ฉันต้องคืนหุ้นส่วน (หลังหักยอดโอนคืนแล้ว)">
         <div class="reno-stat-num">${netBal>=0?'+':''}${fmtNum(netBal)}</div>
-        <div class="reno-stat-label">🔄 ค้างชำระสุทธิ (฿)<br><span style="font-size:9px;opacity:.75">หลังหักยอดโอนคืน</span></div>
+        <div class="reno-stat-label">🔄 ค้างชำระสุทธิ (฿)<br><span style="font-size:11px;opacity:.75">หลังหักยอดโอนคืน</span></div>
       </div>
       <div class="reno-stat">
         <div class="reno-stat-num">${scopedExp.length}</div>
@@ -5844,7 +5856,7 @@ function renderReno() {
         ${img
           ? `<img class="house-pick-img" src="${img}" alt="">`
           : `<div class="house-pick-img house-pick-noimg">🏠</div>`}
-        <div class="house-pick-name">🏠 ${p.name||'(ไม่มีชื่อ)'} ${sold?'<span class="badge badge-green" style="font-size:9px">ขายแล้ว</span>':''}</div>
+        <div class="house-pick-name">🏠 ${p.name||'(ไม่มีชื่อ)'} ${sold?'<span class="badge badge-green" style="font-size:11px">ขายแล้ว</span>':''}</div>
         ${p.code?`<div class="house-pick-code">${p.code}</div>`:''}
         <div class="house-pick-total">${fmtNum(tot)} ฿</div>
         <div class="house-pick-meta">${items.length} รายการค่าใช้จ่าย</div>
@@ -5917,17 +5929,17 @@ function renderReno() {
     html += items.map(e=>{
       const isP = e.payer === 'partner';
       const payerBadge = isP
-        ? `<span class="badge" style="font-size:10px;background:var(--blue-lt);color:var(--blue);font-weight:700">🤝 หุ้นส่วนจ่าย</span>`
-        : `<span class="badge" style="font-size:10px;background:#F0FDF4;color:var(--green);font-weight:700">👤 ฉันจ่าย</span>`;
+        ? `<span class="badge" style="font-size:12px;background:var(--blue-lt);color:var(--blue);font-weight:700">🤝 หุ้นส่วนจ่าย</span>`
+        : `<span class="badge" style="font-size:12px;background:#F0FDF4;color:var(--green);font-weight:700">👤 ฉันจ่าย</span>`;
       return `
       <div class="expense-row${e.settled?' reimbursed-row':''}">
         <div class="expense-date">${fmtDate(e.date)}</div>
         <div style="flex:1;min-width:0">
           <div class="expense-title" style="${e.settled?'color:var(--gray)':''}">${e.desc}</div>
           <div class="expense-sub">
-            <span class="badge badge-gray" style="font-size:10px;">${e.cat||'อื่นๆ'}</span>
+            <span class="badge badge-gray" style="font-size:12px;">${e.cat||'อื่นๆ'}</span>
             ${payerBadge}
-            ${e.settled?`<span class="badge" style="font-size:10px;background:#F3F4F6;color:var(--gray);font-weight:700;">✓ ตัดบัญชีแล้ว</span>`:''}
+            ${e.settled?`<span class="badge" style="font-size:12px;background:#F3F4F6;color:var(--gray);font-weight:700;">✓ ตัดบัญชีแล้ว</span>`:''}
             ${e.vendor?' · '+e.vendor:''}${e.pay?' · '+e.pay:''}
           </div>
           ${e.images&&e.images.length?`
@@ -5938,7 +5950,7 @@ function renderReno() {
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
           <div class="expense-amount" style="color:${isP?'var(--blue)':'var(--navy)'}">${fmtPrice(e.amount)}</div>
           <div style="display:flex;gap:4px;align-items:center;">
-            <button onclick="toggleExpenseSettled('${e.id}')" title="ตัดบัญชีบิลนี้ / ยกเลิก" style="background:${e.settled?'#DCFCE7':'#F3F4F6'};border:1px solid ${e.settled?'#86EFAC':'var(--border)'};border-radius:6px;cursor:pointer;color:${e.settled?'var(--green)':'var(--gray)'};font-size:11px;padding:3px 8px;font-weight:700;white-space:nowrap">${e.settled?'✓ ตัดแล้ว':'ตัดบิล'}</button>
+            <button onclick="toggleExpenseSettled('${e.id}')" title="ตัดบัญชีบิลนี้ / ยกเลิก" style="background:${e.settled?'#DCFCE7':'#F3F4F6'};border:1px solid ${e.settled?'#86EFAC':'var(--border)'};border-radius:6px;cursor:pointer;color:${e.settled?'var(--green)':'var(--gray)'};font-size:12px;padding:3px 8px;font-weight:700;white-space:nowrap">${e.settled?'✓ ตัดแล้ว':'ตัดบิล'}</button>
             <button class="icon-btn btn-xs" onclick="editExpense('${e.id}')" title="แก้ไข">✏️</button>
             <button class="icon-btn del btn-xs" onclick="deleteExpense('${e.id}')" title="ลบ">🗑</button>
           </div>
@@ -6021,7 +6033,7 @@ function dashDonut(segs) {
   return `<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
     <svg viewBox="0 0 140 140" style="width:130px;height:130px;flex-shrink:0">${arcs}
       <text x="70" y="66" text-anchor="middle" style="font-size:24px;font-weight:800;fill:var(--navy)">${total}</text>
-      <text x="70" y="86" text-anchor="middle" style="font-size:11px;fill:var(--gray)">ทรัพย์</text>
+      <text x="70" y="86" text-anchor="middle" style="font-size:12px;fill:var(--gray)">ทรัพย์</text>
     </svg>
     <div style="flex:1;min-width:150px;display:flex;flex-direction:column;gap:7px">${legend}</div>
   </div>`;
@@ -6049,7 +6061,7 @@ function renderDashboard() {
                                  .filter(r=>r.value>0).sort((a,b)=>b.value-a.value);
   const totalLocked = lockedRows.reduce((s,r)=>s+r.value,0);
 
-  const kpi = (num,label,color,sub)=>`<div class="stat-card"><div class="stat-num" style="color:${color};font-size:${String(num).length>9?'19px':'24px'}">${num}</div><div class="stat-label">${label}</div>${sub?`<div style="font-size:10px;color:var(--gray);margin-top:2px">${sub}</div>`:''}</div>`;
+  const kpi = (num,label,color,sub)=>`<div class="stat-card"><div class="stat-num" style="color:${color};font-size:${String(num).length>9?'19px':'24px'}">${num}</div><div class="stat-label">${label}</div>${sub?`<div style="font-size:12px;color:var(--gray);margin-top:2px">${sub}</div>`:''}</div>`;
 
   // pipeline donut
   const donutSegs = STAGES.map(s=>({ label:s.icon+' '+s.label, value:S.props.filter(p=>stageInfo(p.status||'watching').key===s.key).length, color:stageColor(s.key) }))
@@ -6144,7 +6156,7 @@ function renderSummary() {
         <thead><tr><th>ทรัพย์</th><th class="num">ราคาที่ขายได้</th><th class="num">ค่าใช้จ่ายรวม</th><th class="num">กำไรรวม</th><th class="num">กำไรส่วนตัว (÷2)</th></tr></thead>
         <tbody>
           ${profitProps.map(({p,allExp,gross,net})=>`<tr>
-            <td style="font-weight:700">${p.code?`<span style="font-size:11px;background:var(--blue-lt);color:var(--blue);padding:1px 6px;border-radius:4px;margin-right:4px">${p.code}</span>`:''}${p.name}</td>
+            <td style="font-weight:700">${p.code?`<span style="font-size:12px;background:var(--blue-lt);color:var(--blue);padding:1px 6px;border-radius:4px;margin-right:4px">${p.code}</span>`:''}${p.name}</td>
             <td class="num" style="color:var(--green);font-weight:800">${fmtNum(Number(p.actualSell))}</td>
             <td class="num" style="color:var(--red)">${fmtNum(allExp)}</td>
             <td class="num" style="font-weight:800;color:${gross>=0?'var(--green)':'var(--red)'}">${gross>=0?'+':''}${fmtNum(gross)}</td>
@@ -6176,7 +6188,7 @@ function renderSummary() {
             const sb=_si.badge, sl=_si.icon+' '+_si.label;
             return `<tr>
               <td style="font-weight:700;color:var(--blue)">${i+1}</td>
-              <td style="font-weight:700">${p.code?`<span style="font-size:11px;background:var(--blue-lt);color:var(--blue);padding:1px 6px;border-radius:4px;margin-right:4px">${p.code}</span>`:''}${p.name}</td>
+              <td style="font-weight:700">${p.code?`<span style="font-size:12px;background:var(--blue-lt);color:var(--blue);padding:1px 6px;border-radius:4px;margin-right:4px">${p.code}</span>`:''}${p.name}</td>
               <td style="color:var(--gray);font-size:12px">${p.loc||'—'}</td>
               <td class="num">${base?fmtNum(base):'—'}</td>
               <td class="num" style="color:var(--navy);font-weight:800">${bidPrice?fmtNum(bidPrice):'—'}</td>
@@ -6283,16 +6295,16 @@ function renderSummaryProp(pid) {
             return `<tr>
             <td style="font-size:12px;color:var(--gray);white-space:nowrap">${fmtDate(e.date)}</td>
             <td style="font-weight:600;${e.settled?'color:var(--gray)':''}">${e.desc}</td>
-            <td><span class="badge badge-gray" style="font-size:10px">${e.cat||'อื่นๆ'}</span></td>
+            <td><span class="badge badge-gray" style="font-size:12px">${e.cat||'อื่นๆ'}</span></td>
             <td class="num" style="color:${isP?'var(--blue)':'var(--navy)'};font-weight:700">${fmtNum(e.amount)}</td>
-            <td>${isP?`<span class="badge" style="background:var(--blue-lt);color:var(--blue);font-size:10px">🤝 หุ้นส่วน</span>`:`<span class="badge" style="background:#F0FDF4;color:var(--green);font-size:10px">👤 ฉัน</span>`}</td>
-            <td>${e.settled?`<span class="badge" style="background:#F3F4F6;color:var(--gray);font-size:10px">✓ ตัดแล้ว</span>`:'<span class="badge badge-amber" style="font-size:10px">ค้าง</span>'}</td>
+            <td>${isP?`<span class="badge" style="background:var(--blue-lt);color:var(--blue);font-size:12px">🤝 หุ้นส่วน</span>`:`<span class="badge" style="background:#F0FDF4;color:var(--green);font-size:12px">👤 ฉัน</span>`}</td>
+            <td>${e.settled?`<span class="badge" style="background:#F3F4F6;color:var(--gray);font-size:12px">✓ ตัดแล้ว</span>`:'<span class="badge badge-amber" style="font-size:12px">ค้าง</span>'}</td>
           </tr>`;
           }).join('')}
           <tr style="background:var(--navy)">
             <td colspan="3" style="color:white;font-weight:800">รวม</td>
             <td class="num" style="color:white;font-weight:800">${fmtNum(expAll)}</td>
-            <td colspan="2" style="color:#93C5FD;font-size:11px">ฉัน ${fmtNum(ps.myPaid)} · หุ้นส่วน ${fmtNum(ps.partnerPaid)} · ค้างชำระ <span style="color:${ps.balance>=0?'#86EFAC':'#FCA5A5'};font-weight:700">${ps.balance>=0?'+':''}${fmtNum(ps.balance)}</span></td>
+            <td colspan="2" style="color:#93C5FD;font-size:12px">ฉัน ${fmtNum(ps.myPaid)} · หุ้นส่วน ${fmtNum(ps.partnerPaid)} · ค้างชำระ <span style="color:${ps.balance>=0?'#86EFAC':'#FCA5A5'};font-weight:700">${ps.balance>=0?'+':''}${fmtNum(ps.balance)}</span></td>
           </tr>
         </tbody>
       </table></div>
@@ -6391,11 +6403,11 @@ function pnlFilterList() {
         <div onclick="window._pnlSelectedId='${r.p.id}';window._pnlSearch='${((r.p.code?r.p.code+' ':'')+r.p.name).replace(/'/g,"\\'")}';document.getElementById('pnl-search').value=window._pnlSearch;pnlFilterList()"
           style="padding:11px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid #F3F4F6"
           onmouseover="this.style.background='#EFF6FF'" onmouseout="this.style.background='white'">
-          ${r.p.code?`<span style="font-size:11px;background:var(--blue-lt);color:var(--blue);padding:1px 6px;border-radius:4px;font-weight:700;flex-shrink:0">${r.p.code}</span>`:''}
+          ${r.p.code?`<span style="font-size:12px;background:var(--blue-lt);color:var(--blue);padding:1px 6px;border-radius:4px;font-weight:700;flex-shrink:0">${r.p.code}</span>`:''}
           <span style="font-size:14px;color:var(--navy);font-weight:600;flex:1">${r.p.name}</span>
           ${r.gross!==null
             ? `<span style="font-size:12px;font-weight:800;color:${r.isP?'var(--green)':'var(--red)'}">${r.isP?'+':''}${fmtNum(Math.round(r.net))} ฿</span>`
-            : `<span style="font-size:11px;color:var(--gray)">รอกรอกราคา</span>`}
+            : `<span style="font-size:12px;color:var(--gray)">รอกรอกราคา</span>`}
         </div>
       `).join('')}
     </div>` :
@@ -6409,34 +6421,34 @@ function pnlDetailHTML({ p, costs, sold, gross, net, isP }) {
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px">
       <button onclick="window._pnlSelectedId='';window._pnlSearch='';document.getElementById('pnl-search').value='';pnlFilterList()"
         style="background:none;border:1.5px solid var(--border);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:12px;color:var(--gray)">← กลับ</button>
-      ${p.code?`<span style="font-size:11px;background:var(--blue-lt);color:var(--blue);padding:1px 7px;border-radius:5px;font-weight:700">${p.code}</span>`:''}
+      ${p.code?`<span style="font-size:12px;background:var(--blue-lt);color:var(--blue);padding:1px 7px;border-radius:5px;font-weight:700">${p.code}</span>`:''}
       <span style="font-size:16px;font-weight:800;color:var(--navy)">${p.name}</span>
-      ${!sold?`<span style="font-size:11px;background:#FEF3C7;color:#92400E;padding:1px 8px;border-radius:5px;font-weight:700">⏳ รอกรอกราคาขาย</span>`:''}
+      ${!sold?`<span style="font-size:12px;background:#FEF3C7;color:#92400E;padding:1px 8px;border-radius:5px;font-weight:700">⏳ รอกรอกราคาขาย</span>`:''}
     </div>
     <div class="pnl-stat-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;text-align:center;margin-bottom:14px">
       <div style="background:#F8FAFC;border-radius:8px;padding:10px 6px">
         <div style="font-size:14px;font-weight:800;color:var(--navy)">${costs.buy ? fmtNum(costs.buy) : '—'}</div>
-        <div style="font-size:10px;color:var(--gray)">ราคาซื้อ (฿)</div>
+        <div style="font-size:12px;color:var(--gray)">ราคาซื้อ (฿)</div>
       </div>
       <div style="background:#F8FAFC;border-radius:8px;padding:10px 6px">
         <div style="font-size:14px;font-weight:800;color:var(--navy)">${fmtNum(Math.round(costs.fees))}</div>
-        <div style="font-size:10px;color:var(--gray)">ค่าธรรมเนียม (ประมาณการ)</div>
+        <div style="font-size:12px;color:var(--gray)">ค่าธรรมเนียม (ประมาณการ)</div>
       </div>
       <div style="background:#FEF2F2;border-radius:8px;padding:10px 6px">
         <div style="font-size:14px;font-weight:700;color:var(--red)">${fmtNum(Math.round(costs.expTotal))}</div>
-        <div style="font-size:10px;color:var(--gray)">ค่าใช้จ่ายจริง (฿)</div>
+        <div style="font-size:12px;color:var(--gray)">ค่าใช้จ่ายจริง (฿)</div>
       </div>
       <div style="background:#F0FDF4;border-radius:8px;padding:10px 6px">
         <div style="font-size:14px;font-weight:800;color:var(--green)">${sold ? fmtNum(sold) : '—'}</div>
-        <div style="font-size:10px;color:var(--gray)">ราคาขาย (฿)</div>
+        <div style="font-size:12px;color:var(--gray)">ราคาขาย (฿)</div>
       </div>
       <div style="background:${gross!==null?(isP?'#F0FDF4':'#FEF2F2'):'#F8FAFC'};border-radius:8px;padding:10px 6px">
         <div style="font-size:14px;font-weight:800;color:${gross!==null?(isP?'var(--green)':'var(--red)'):'var(--gray)'}">${gross!==null?(isP?'+':'')+fmtNum(Math.round(gross)):'—'}</div>
-        <div style="font-size:10px;color:var(--gray)">กำไรรวม (฿)</div>
+        <div style="font-size:12px;color:var(--gray)">กำไรรวม (฿)</div>
       </div>
       <div style="background:${net!==null?(isP?'#F0FDF4':'#FEF2F2'):'white'};border-radius:8px;padding:10px 6px;border:2px solid ${net!==null?(isP?'#86EFAC':'#FCA5A5'):'var(--border)'}">
         <div style="font-size:16px;font-weight:800;color:${net!==null?(isP?'var(--green)':'var(--red)'):'var(--gray)'}">${net!==null?(isP?'+':'')+fmtNum(Math.round(net)):'—'}</div>
-        <div style="font-size:10px;color:var(--gray);font-weight:700">กำไรส่วนตัว (÷2)</div>
+        <div style="font-size:12px;color:var(--gray);font-weight:700">กำไรส่วนตัว (÷2)</div>
       </div>
     </div>
     ${sold ? `
@@ -6488,7 +6500,7 @@ function soldCardHTML({ p, sold, costs, net, isP }) {
     <div class="house-pick-card sold" style="cursor:default">
       ${img ? `<img class="house-pick-img" src="${img}" alt="" onclick="showLightbox('${img}')">`
             : `<div class="house-pick-img house-pick-noimg">🏠</div>`}
-      <div class="house-pick-name">🏠 ${p.name||'(ไม่มีชื่อ)'} <span class="badge badge-green" style="font-size:9px">ขายแล้ว</span></div>
+      <div class="house-pick-name">🏠 ${p.name||'(ไม่มีชื่อ)'} <span class="badge badge-green" style="font-size:11px">ขายแล้ว</span></div>
       ${p.code?`<div class="house-pick-code">${p.code}</div>`:''}
       <div style="margin-top:8px;font-size:12px;color:var(--gray);line-height:1.8">
         💵 ราคาขาย <b style="color:var(--navy)">${fmtNum(sold)}</b><br>
@@ -6544,8 +6556,8 @@ function showSoldDetail(id) {
         <tbody>
           ${items.map(e=>`<tr style="border-bottom:1px solid #F3F4F6">
             <td style="padding:7px 8px;white-space:nowrap;color:var(--gray)">${fmtDate(e.date)}</td>
-            <td style="padding:7px 8px">${e.desc} ${e.cat?`<span style="font-size:10px;color:var(--gray)">· ${e.cat}</span>`:''}</td>
-            <td style="padding:7px 8px;white-space:nowrap">${e.payer==='partner'?'🤝 หุ้นส่วน':'👤 ฉัน'}${e.settled?' <span style="color:var(--gray);font-size:10px">✓ตัด</span>':''}</td>
+            <td style="padding:7px 8px">${e.desc} ${e.cat?`<span style="font-size:12px;color:var(--gray)">· ${e.cat}</span>`:''}</td>
+            <td style="padding:7px 8px;white-space:nowrap">${e.payer==='partner'?'🤝 หุ้นส่วน':'👤 ฉัน'}${e.settled?' <span style="color:var(--gray);font-size:12px">✓ตัด</span>':''}</td>
             <td style="padding:7px 8px;text-align:right;font-weight:700">${fmtNum(e.amount)}</td>
           </tr>`).join('')}
           <tr style="background:var(--navy);color:white"><td colspan="3" style="padding:7px 8px;font-weight:800">รวมค่าใช้จ่าย</td><td style="padding:7px 8px;text-align:right;font-weight:800">${fmtNum(ps.total)}</td></tr>
@@ -6662,6 +6674,7 @@ function openModal(id)  {
   if (id === 'modal-doctype') populateDoctypeOptions();
   if (id === 'modal-settings') renderGmapsKeyStatus();
   document.getElementById(id).classList.add('open');
+  a11yModalOpened(id);
 }
 // หัวข้อเอกสารยอดนิยม (dropdown) — เอกสารประมูลกรมบังคับคดี
 const DOCTYPE_PRESETS = [
@@ -6716,7 +6729,7 @@ function renoDescPick(sel) {
   inp.value = sel.value;
   sel.value = '';
 }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); a11yModalClosed(); }
 
 document.querySelectorAll('.modal-overlay').forEach(el => {
   el.addEventListener('click', function(e) { if(e.target===this) { this.classList.remove('open'); clearRenoForm(); }});
@@ -7339,6 +7352,78 @@ if ('serviceWorker' in navigator) {
       .catch((e) => console.log('[PWA] SW register skipped:', e.message));
   });
 }
+</script>
+<script>
+// ═══ Accessibility layer (WCAG 2.1 AA) ═══
+// ใส่ชื่อ/บทบาท/การกดด้วยคีย์บอร์ด ให้ส่วนที่ render แบบไดนามิกโดยอัตโนมัติ
+(function(){
+  const CLICKABLE = '.prop-header,.doc-header,.round-tile,.house-pick-card,.upload-zone';
+  const SYMBOL_NAMES = { '✕':'ลบ', '×':'ปิด', '↑':'ขึ้นหนึ่งชั้น', '↓':'ลงหนึ่งชั้น', '⤒':'ขึ้นบนสุด', '⤓':'ไปล่างสุด' };
+  const txt = el => (el?.textContent || '').replace(/\s+/g,' ').trim();
+  function fix(root) {
+    if (!root || !root.querySelectorAll) return;
+    root.querySelectorAll(CLICKABLE).forEach(el => {
+      if (!el.hasAttribute('tabindex')) { el.tabIndex = 0; el.setAttribute('role','button'); }
+    });
+    root.querySelectorAll('input:not([type=hidden]):not([type=file]),select,textarea').forEach(el => {
+      if (el.hasAttribute('aria-label') || el.hasAttribute('aria-labelledby') || el.labels?.length) return;
+      const lbl = el.closest('.form-group')?.querySelector('.form-label');
+      const name = (lbl && txt(lbl).replace(/\s*\*.*$/,'')) || el.placeholder || el.title;
+      if (name) el.setAttribute('aria-label', name);
+    });
+    root.querySelectorAll('button:not([aria-label])').forEach(b => {
+      const t = txt(b);
+      if (t.length > 2) return;
+      const name = b.title || SYMBOL_NAMES[t] || '';
+      if (name) b.setAttribute('aria-label', name);
+    });
+    document.querySelectorAll('.tab-btn.active:not([aria-current])').forEach(b => b.setAttribute('aria-current','page'));
+    root.querySelectorAll('img:not([alt])').forEach(i => i.setAttribute('alt', i.title || ''));
+    root.querySelectorAll('.modal-overlay').forEach(m => {
+      const d = m.querySelector('.modal'); if (!d || d.hasAttribute('role')) return;
+      d.setAttribute('role','dialog'); d.setAttribute('aria-modal','true'); d.tabIndex = -1;
+      const h = d.querySelector('h1,h2,h3,.modal-title');
+      if (h) { if (!h.id) h.id = m.id + '-title'; d.setAttribute('aria-labelledby', h.id); }
+    });
+  }
+  document.addEventListener('keydown', e => {
+    const el = e.target;
+    // Enter/Space บนส่วนที่กดได้ = คลิก (2.1.1)
+    if ((e.key === 'Enter' || e.key === ' ') && el.matches?.('[role=button][tabindex]') && !/^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(el.tagName)) {
+      e.preventDefault(); el.click();
+    }
+    // กัน Tab หลุดออกนอกหน้าต่างที่เปิดอยู่ (2.4.3)
+    if (e.key === 'Tab') {
+      const m = [...document.querySelectorAll('.modal-overlay.open .modal')].pop(); if (!m) return;
+      const f = [...m.querySelectorAll('a[href],button,input,select,textarea,[tabindex]:not([tabindex="-1"])')].filter(x => !x.disabled && x.offsetParent);
+      if (!f.length) return;
+      const a = document.activeElement;
+      if (!m.contains(a)) { e.preventDefault(); f[0].focus(); }
+      else if (e.shiftKey && (a === f[0] || a === m)) { e.preventDefault(); f[f.length-1].focus(); }
+      else if (!e.shiftKey && a === f[f.length-1]) { e.preventDefault(); f[0].focus(); }
+    }
+    if (e.key === 'Escape') setTimeout(() => window.a11yModalClosed(), 0);
+  });
+  let lastFocus = null;
+  window.a11yModalOpened = id => {
+    const ov = document.getElementById(id); if (!ov) return;
+    if (!lastFocus) lastFocus = document.activeElement;
+    fix(ov);
+    // focus ตัวหน้าต่าง ไม่ใช่ช่องกรอก — กันคีย์บอร์ดมือถือเด้งขึ้นเอง
+    setTimeout(() => ov.querySelector('.modal')?.focus({ preventScroll:true }), 30);
+  };
+  window.a11yModalClosed = () => {
+    if (document.querySelector('.modal-overlay.open')) return;
+    if (lastFocus && document.contains(lastFocus) && lastFocus.focus) lastFocus.focus({ preventScroll:true });
+    lastFocus = null;
+  };
+  let queued = false;
+  new MutationObserver(() => {
+    if (queued) return; queued = true;
+    requestAnimationFrame(() => { queued = false; fix(document.body); });
+  }).observe(document.body, { childList:true, subtree:true });
+  fix(document.body);
+})();
 </script>
 </body>
 </html>
