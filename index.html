@@ -245,7 +245,7 @@ input[type="file"] { display:none; }
 .round-tile.halted  { border-color:#FCA5A5; background:#FEF2F2; }
 .round-tile.halted .round-price { color:#B91C1C; text-decoration:line-through; text-decoration-thickness:1.5px; opacity:.75; }
 .round-halt-bar { margin:5px -8px -10px; padding:3px 4px; background:#FEE2E2; color:#B91C1C;
-  font-size:9.5px; font-weight:800; border-top:1px solid #FCA5A5;
+  font-size:11px; font-weight:800; border-top:1px solid #FCA5A5;
   border-radius:0 0 7px 7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 /* หมายเหตุทั่วไป (ที่ไม่ใช่งดขาย) — โชว์เป็นตัวเล็กใต้วันที่ */
 .round-note { font-size:11px; color:#6B7280; margin-top:3px; line-height:1.3;
@@ -890,7 +890,7 @@ img, svg, video, canvas { max-width:100%; }
 .prop-search { margin:0; }
 .prop-filters { display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; padding-bottom:2px; }
 .prop-filters::-webkit-scrollbar { display:none; }
-.pf-chip { flex-shrink:0; border:1.5px solid var(--border); background:#fff; color:var(--navy); border-radius:999px; padding:7px 13px; font:700 13px/1.2 inherit; font-family:inherit; cursor:pointer; min-height:38px; white-space:nowrap; }
+.pf-chip { flex-shrink:0; border:1.5px solid var(--border); background:#fff; color:var(--navy); border-radius:999px; padding:7px 13px; font:700 13px/1.2 inherit; font-family:inherit; cursor:pointer; min-height:40px; white-space:nowrap; }
 .pf-chip.on { background:var(--navy); border-color:var(--navy); color:#fff; }
 .pf-n { display:inline-block; min-width:18px; padding:0 5px; border-radius:9px; background:rgba(15,23,42,.08); font-size:12px; text-align:center; }
 .pf-chip.on .pf-n { background:rgba(255,255,255,.22); }
@@ -2363,9 +2363,9 @@ function saleSettlementNarrative(propId) {
   return `
     <div style="font-size:12px;color:#374151;line-height:2;margin-bottom:10px;background:#F8FAFC;border:1px solid #E5E7EB;border-radius:8px;padding:9px 11px">
       💵 ขายบ้านได้ <b>${fmtPrice(sold)}</b> <span style="color:var(--gray)">(กำไรรวม ${gross>=0?'+':''}${fmtPrice(Math.round(gross))})</span><br>
-      👤 ฉันควรได้รับสุทธิรวม <b style="color:var(--green)">${fmtPrice(Math.round(myEnt))}</b> <span style="color:var(--gray);font-size:10.5px">(ทุนที่จ่ายไป ${fmtNum(ps.myPaid)} + กำไรส่วนตัว ${fmtNum(Math.round(net))})</span><br>
-      🤝 หุ้นส่วนควรได้รับสุทธิรวม <b style="color:var(--blue)">${fmtPrice(Math.round(partnerEnt))}</b> <span style="color:var(--gray);font-size:10.5px">(ทุนที่จ่ายไป ${fmtNum(ps.partnerPaid)} + กำไรส่วนตัว ${fmtNum(Math.round(net))})</span>
-      ${(myRecv>0||partnerRecv>0) ? `<br><span style="color:var(--gray);font-size:10.5px">📥 ตอนนี้ถือเงินจากผู้ซื้อไว้แล้ว — ฉัน ${fmtNum(myRecv)} ฿ / หุ้นส่วน ${fmtNum(partnerRecv)} ฿</span>` : ''}
+      👤 ฉันควรได้รับสุทธิรวม <b style="color:var(--green)">${fmtPrice(Math.round(myEnt))}</b> <span style="color:var(--gray);font-size:12px">(ทุนที่จ่ายไป ${fmtNum(ps.myPaid)} + กำไรส่วนตัว ${fmtNum(Math.round(net))})</span><br>
+      🤝 หุ้นส่วนควรได้รับสุทธิรวม <b style="color:var(--blue)">${fmtPrice(Math.round(partnerEnt))}</b> <span style="color:var(--gray);font-size:12px">(ทุนที่จ่ายไป ${fmtNum(ps.partnerPaid)} + กำไรส่วนตัว ${fmtNum(Math.round(net))})</span>
+      ${(myRecv>0||partnerRecv>0) ? `<br><span style="color:var(--gray);font-size:12px">📥 ตอนนี้ถือเงินจากผู้ซื้อไว้แล้ว — ฉัน ${fmtNum(myRecv)} ฿ / หุ้นส่วน ${fmtNum(partnerRecv)} ฿</span>` : ''}
     </div>`;
 }
 
@@ -4488,7 +4488,7 @@ function renderSaleReceipts(p) {
   return `
     <div style="border-top:1px dashed #86EFAC;margin-top:8px;padding-top:10px;display:flex;flex-direction:column;gap:9px">
       <div style="font-size:12px;font-weight:800;color:var(--green)">💰 การรับเงินจากการขาย</div>
-      <div style="font-size:10.5px;color:var(--gray);line-height:1.6;background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:6px 8px">
+      <div style="font-size:12px;color:var(--gray);line-height:1.6;background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:6px 8px">
         ⚠️ กรอกเฉพาะเงินที่ <b>เข้ากระเป๋า/บัญชีของฉันหรือหุ้นส่วนจริงๆ</b> เท่านั้น — ถ้ายอดคงเหลือถูกตัดตรงไปโปะแบงก์/ปิดวงเงินที่ยืมมาซื้อ/ค่านายหน้า โดยไม่เคยเข้ามือใครเลย <b>ห้ามกรอกตรงนี้</b> ให้ไปบันทึกเป็นรายการค่าใช้จ่ายแทน (หารครึ่งอัตโนมัติอยู่แล้ว) ไม่งั้นยอดค้างสุทธิด้านล่างจะผิดได้มาก
       </div>
       ${inputRow('🧾','มัดจำที่ได้รับ','saleDeposit','saleDepositReceiver',dep,'เช่น 100,000',p.saleDepositReceiver)}
