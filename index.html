@@ -1082,7 +1082,7 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
         <div id="calc-prop-header" style="display:none;background:linear-gradient(135deg,var(--navy),var(--blue));color:white;padding:14px 20px">
           <div style="font-size:16px;font-weight:800" id="calc-header-name"></div>
           <div style="font-size:12px;opacity:.8;margin-top:3px" id="calc-header-sub"></div>
-          <button id="calc-back" class="btn btn-sm" style="display:none;margin-top:10px;background:rgba(255,255,255,.16);color:#fff;border:1.5px solid rgba(255,255,255,.45)" onclick="calcBackToProp()">← กลับไปที่ทรัพย์นี้</button>
+          <button id="calc-back" class="btn btn-sm" style="display:none;margin-top:10px;background:rgba(255,255,255,.16);color:#fff;border:1.5px solid rgba(255,255,255,.45)" onclick="calcSaveAndBack()">💾 บันทึก + กลับไปที่ทรัพย์</button>
         </div>
 
         <div style="padding:18px 20px">
@@ -5087,6 +5087,11 @@ function openCalcFor(id) {
   const back = document.getElementById('calc-back'); if (back) back.style.display = '';
   try { history.pushState({ calcFrom: id }, ''); } catch (e) {}
   window.scrollTo(0, 0);
+}
+// บันทึกค่าในหน้าคำนวณกลับเข้าทรัพย์ แล้วกลับไปการ์ดเดิม
+function calcSaveAndBack() {
+  if (document.getElementById('calc-prop-sel')?.value) calcSaveToProperty();
+  calcBackToProp();
 }
 function calcBackToProp(fromPop) {
   // กดปุ่มกลับเอง → ถอยประวัติ 1 ขั้น (popstate จะเรียกฟังก์ชันนี้ซ้ำด้วย fromPop) จะได้ไม่เหลือประวัติค้าง
