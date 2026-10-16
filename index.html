@@ -1470,7 +1470,7 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
   <div class="modal">
     <h3>🧭 เพิ่มทรัพย์สำรวจ</h3>
     <div style="font-size:var(--fs-md);color:var(--gray);margin-bottom:12px;line-height:1.6">
-      แนบไฟล์ PDF ประกาศกรมบังคับคดี (1 ไฟล์ = 1 ทรัพย์ เลือกหลายไฟล์พร้อมกันได้)<br>
+      แนบไฟล์ PDF ประกาศกรมบังคับคดี (1 ไฟล์ = 1 ทรัพย์ เลือกหลายไฟล์พร้อมกันได้)<br>ถ้าเป็นทรัพย์ที่มีในแอปอยู่แล้ว (ลำดับหรือโฉนดตรงกัน) ระบบจะแนบประกาศเข้าการ์ดเดิมให้ ไม่สร้างซ้ำ<br>
       ระบบอ่านให้อัตโนมัติ: ลำดับ, คดี, โฉนด, เนื้อที่, ที่อยู่, ราคาประเมิน, วันนัด 6 รอบ, รูปทรัพย์ และหาพิกัดโดยประมาณจากตำบล
     </div>
     <label class="upload-zone" style="display:block;cursor:pointer;margin-bottom:10px">
@@ -3061,7 +3061,9 @@ async function savePoolPdfs() {
   if (!files.length) { toast('เลือกไฟล์ PDF ก่อน', 'error'); return; }
   const btn = document.getElementById('pool-pdf-save');
   btn.disabled = true;
-  let ok = 0;
+  let ok = 0, attached = 0;
+  const digits = v => String(v || '').split(/[^\d]+/).filter(Boolean)[0] || '';
+  const norm = v => String(v || '').replace(/\s+/g, '');
   for (const [i, f] of files.entries()) {
     btn.textContent = `⏳ อ่าน PDF ${i + 1}/${files.length}...`;
     const item = { id: uid(), pool: true, pdfName: f.name, code: '', name: f.name.replace(/\.pdf$/i, ''),
@@ -3070,12 +3072,25 @@ async function savePoolPdfs() {
     try {
       const d = await readLedPdf(f);
       const photo = d.photo; delete d.photo;
+      // ทรัพย์นี้มีในแอปแล้ว (ลำดับเดียวกัน หรือโฉนดเดียวกัน) → ผูกใบประกาศเข้าการ์ดเดิม ไม่สร้างซ้ำ ไม่ย้ายตำแหน่ง
+      const ex = S.props.concat(S.pool).find(p => (d.code && norm(p.code) === norm(d.code)) || (d.deed && digits(p.deed) === digits(d.deed)));
+      if (ex) {
+        if (ex.pdfUrl) { toast(`⚠️ ${ex.code || d.code} มีประกาศ PDF อยู่แล้ว — ข้าม`, 'error'); continue; }
+        btn.textContent = `⏳ แนบเข้า ${ex.code || d.code} (${i + 1}/${files.length})...`;
+        const url = await uploadBlobToStorage(f, 'ประกาศ.pdf');
+        if (!url) { toast(`❌ อัปโหลด PDF ของ ${ex.code || d.code} ไม่สำเร็จ`, 'error'); continue; }
+        ex.pdfUrl = url; ex.pdfName = f.name;
+        ex.led = { ...(d.led || {}), ...(ex.led || {}) };
+        if (d.led?.free) { ex.led.free = d.led.free; ex.led.mortgage = d.led.mortgage; ex.led.mortgagee = d.led.mortgagee; }
+        if (!Number(ex.ledAppraisal) && d.ledAppraisal) ex.ledAppraisal = d.ledAppraisal;
+        if (!Number(ex.appraisal) && d.appraisal) { ex.appraisal = d.appraisal; ex.price = d.appraisal; }
+        if (!ex.case && d.case) ex.case = d.case;
+        if (!isImageSrc(ex.imgProp) && photo) ex.imgProp = (await uploadToStorage(photo, 'photo.jpg')) || photo;
+        attached++;
+        continue;
+      }
       Object.assign(item, d);
       if (photo) item.imgProp = (await uploadToStorage(photo, 'photo.jpg')) || photo;
-      // ทรัพย์ลำดับเดียวกันที่เพิ่มไปแล้ว → ข้าม กันซ้ำ
-      if (item.code && S.pool.concat(S.props).some(p => p.code === item.code && p.deed === item.deed)) {
-        toast(`⚠️ ${item.code} มีอยู่แล้ว — ข้าม`, 'error'); continue;
-      }
       btn.textContent = `⏳ หาพิกัด ${i + 1}/${files.length}...`;
       const g = await geocodeItem(item);
       if (g) { item.mapUrl = g.ll; item.llLevel = g.level; if (g.approx) item.llApprox = true; }
@@ -3091,7 +3106,9 @@ async function savePoolPdfs() {
     if (i < files.length - 1) await new Promise(r => setTimeout(r, 1100));
   }
   btn.disabled = false; btn.textContent = '📤 อัปโหลด';
-  if (!ok) return;
+  if (attached) { saveS(); renderProps(); renderSurvey(); }
+  if (!ok) { if (attached) { closeModal('modal-pool-pdf'); toast(`✓ แนบประกาศ PDF เข้าทรัพย์ที่มีอยู่แล้ว ${attached} ทรัพย์`, 'success'); } return; }
+  if (attached) toast(`✓ แนบประกาศ PDF เข้าทรัพย์เดิม ${attached} ทรัพย์`, 'success');
   saveS(); closeModal('modal-pool-pdf'); renderSurvey(); updateBadges();
   const bad = S.pool.slice(-ok).filter(p => p.pdfError).length;
   toast(bad ? `⚠️ เพิ่ม ${ok} ทรัพย์ อ่านไม่ได้ ${bad} ไฟล์ — กด ✏️ กรอกเอง` : `✓ เพิ่ม ${ok} ทรัพย์แล้ว — กด "🧭 จัดเรียงเส้นทาง"`, bad ? 'error' : 'success');
