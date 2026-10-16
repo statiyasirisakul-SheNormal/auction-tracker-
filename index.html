@@ -20,73 +20,46 @@
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  --navy:    #1F3A5F; --blue:   #2E6FAD; --blue-lt: #EBF4FF;
-  --green:   #1E6B45; --green-lt:#E8F5EE;
-  --red:     #B91C1C; --red-lt:  #FEF2F2;
-  --amber:   #B45309; --amber-lt:#FFFBEB;
   --purple:  #6B21A8; --purple-lt:#F5F3FF;
-  --tg:      #2CA5E0; --tg-lt:    #E8F4FB;
-  --gray:    #5A6577; --border: #E5E7EB;
-  --bg:      #F1F5F9; --white:  #FFFFFF;
-  --shadow:  0 1px 4px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.04);
+  --tg:      #2CA5E0; --tg-lt:    #E8F4FB; --white:  #FFFFFF;
 }
-body { font-family:'Sarabun','Segoe UI',sans-serif; background:var(--bg); color:#1F2937; min-height:100vh; font-size:15px; }
+body { min-height:100vh; font-size:15px; }
 
 .header {
-  background:linear-gradient(135deg,#1F3A5F 0%,#2E6FAD 100%);
-  color:white; padding:0 28px; height:64px;
-  display:flex; align-items:center; gap:14px;
-  box-shadow:0 2px 12px rgba(0,0,0,.25);
-  position:sticky; top:0; z-index:100;
+  color:white;
+  display:flex; align-items:center; z-index:100;
 }
-.header h1 { font-size:19px; font-weight:800; }
-.header p  { font-size:12px; opacity:.75; margin-top:1px; }
 
-.tabs {
-  background:white; border-bottom:2px solid var(--border);
-  display:flex; flex-wrap:nowrap; padding:0 8px;
-  box-shadow:0 1px 4px rgba(0,0,0,.05);
-  position:sticky; top:64px; z-index:90;
+.tabs { flex-wrap:nowrap;
 }
 .tabs::-webkit-scrollbar { height:0; }
-.tab-btn {
-  flex:1 1 0; min-width:0; justify-content:center; overflow:hidden;
-  padding:14px 10px; border:none; background:none; cursor:pointer;
-  font-family:inherit; font-size:14px; font-weight:600; color:var(--gray);
+.tab-btn { min-width:0; justify-content:center; background:none; cursor:pointer;
+  font-family:inherit;
   white-space:nowrap; border-bottom:3px solid transparent; margin-bottom:-2px;
-  transition:all .2s; display:flex; align-items:center; gap:6px;
+  transition:all .2s; display:flex; align-items:center;
 }
-.t-short { display:none; }
-.tab-btn.active { color:var(--navy); border-bottom-color:var(--blue); }
-.tab-btn:hover:not(.active) { color:#374151; background:#F9FAFB; }
-.tab-badge {
-  min-width:20px; height:20px; padding:0 6px;
-  background:var(--blue-lt); color:var(--blue);
-  border-radius:20px; font-size:12px; font-weight:700;
+.tab-badge { padding:0 6px;
+  border-radius:20px; font-weight:700;
   display:inline-flex; align-items:center; justify-content:center;
 }
-.tab-btn.active .tab-badge { background:var(--blue); color:white; }
 
-.content { padding:24px 28px; max-width:1280px; margin:0 auto; }
-@media(max-width:640px){ .content { padding:14px; } }
+.content { max-width:1280px; margin:0 auto; }
+@media(max-width:640px){ .content { } }
 .tab-panel { display:none; }
 .tab-panel.active { display:block; animation:fadeIn .15s ease; }
 @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
 
 .card {
-  background:white; border-radius:14px; padding:22px;
-  margin-bottom:20px; box-shadow:var(--shadow); border:1px solid var(--border);
+  background:white;
+  margin-bottom:20px;
 }
 .card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; gap:10px; flex-wrap:wrap; }
-.card-title  { font-size:16px; font-weight:700; color:var(--navy); display:flex; align-items:center; gap:8px; }
+.card-title  { display:flex; align-items:center; gap:8px; }
 
-.btn {
-  padding:9px 18px; border-radius:8px; border:none; cursor:pointer;
-  font-family:inherit; font-size:13px; font-weight:700;
-  transition:all .18s; display:inline-flex; align-items:center; gap:7px;
+.btn { border:none; cursor:pointer;
+  font-family:inherit; font-size:13px; display:inline-flex; align-items:center; gap:7px;
 }
-.btn-primary { background:var(--navy); color:white; }
-.btn-primary:hover  { background:#162d4c; }
+.btn-primary { color:white; }
 .btn-success { background:var(--green); color:white; }
 .btn-success:hover  { background:#155235; }
 .btn-danger  { background:var(--red); color:white; }
@@ -94,26 +67,20 @@ body { font-family:'Sarabun','Segoe UI',sans-serif; background:var(--bg); color:
 .btn-tg      { background:var(--tg); color:white; }
 .btn-tg:hover       { background:#1a8fbf; }
 .btn-amber   { background:#D97706; color:white; }
-.btn-ghost   { background:#F3F4F6; color:#374151; border:1px solid var(--border); }
-.btn-ghost:hover    { background:var(--border); }
-.btn-sm      { padding:6px 12px; font-size:12px; }
-.btn-xs      { padding:4px 9px; font-size:12px; border-radius:6px; }
-.icon-btn {
-  width:32px; height:32px; border-radius:7px; border:1px solid var(--border);
-  background:#F9FAFB; cursor:pointer; font-size:14px;
+.btn-sm      { font-size:12px; }
+.btn-xs      { font-size:12px; }
+.icon-btn { cursor:pointer;
   display:inline-flex; align-items:center; justify-content:center;
   transition:all .18s; flex-shrink:0;
 }
-.icon-btn:hover { background:var(--border); }
-.icon-btn.del:hover { background:var(--red-lt); border-color:#FECACA; color:var(--red); }
+.icon-btn.del:hover { background:var(--red-lt); border-color:var(--red-200); color:var(--red); }
 
 .form-group    { margin-bottom:14px; }
-.form-label    { font-size:12px; font-weight:700; color:#4B5563; margin-bottom:5px; display:block; }
+.form-label    { font-size:12px; margin-bottom:5px; display:block; }
 .form-input, .form-select, .form-textarea {
-  width:100%; padding:10px 13px; border:1.5px solid var(--border); border-radius:9px;
-  font-family:inherit; font-size:14px; color:#1F2937; outline:none; transition:border-color .2s; background:white;
+  width:100%;
+  font-family:inherit; font-size:14px; color:var(--gray-800); outline:none; transition:border-color .2s; background:white;
 }
-.form-input:focus, .form-select:focus, .form-textarea:focus { border-color:var(--blue); }
 .form-textarea { resize:vertical; min-height:70px; }
 .form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
 @media(max-width:480px){ .form-row { grid-template-columns:1fr; } }
@@ -126,57 +93,52 @@ body { font-family:'Sarabun','Segoe UI',sans-serif; background:var(--bg); color:
 }
 /* ปุ่ม +/− ของ Leaflet ตั้ง z-index 1000 มาเอง → ลอยทับหน้าต่าง popup ต้องกดให้ต่ำกว่า modal */
 .leaflet-top, .leaflet-bottom { z-index:450 !important; }
-.sk-hbtn { background:rgba(255,255,255,.15) !important; color:#fff !important; white-space:nowrap; flex-shrink:0; min-height:32px !important; }
+.sk-hbtn { background:rgba(255,255,255,.15) !important; color:var(--white) !important; white-space:nowrap; flex-shrink:0; min-height:32px !important; }
 @media (max-width:600px) { .sk-lbl { display:none; } #sk-saved { display:none; } }
 .sk-hbtn.on { background:rgba(255,255,255,.38) !important; }
 /* แถบตั้งค่าเส้นด้านซ้าย: ไอแพด = แถบของ Excalidraw เอง (กดซ่อนได้) · มือถือ = #sk-props ของเราแทน (Excalidraw โหมดมือถือไม่มีแถบซ้าย) */
 #sketch-overlay.sk-hide-props .excalidraw .App-menu__left { display:none !important; }
 #sk-props { position:absolute; top:64px; left:8px; z-index:5; width:172px; max-height:calc(100% - 150px); overflow-y:auto;
-  background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,.14); padding:10px; display:none;
+  background:var(--white); border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,.14); padding:10px; display:none;
   -webkit-user-select:none; user-select:none; }
 #sketch-overlay.sk-mobile:not(.sk-hide-props) #sk-props { display:block; }
 #sk-props .skp-h { font-size:12px; color:#4b5563; margin:8px 0 5px; }
 #sk-props .skp-h:first-child { margin-top:0; }
 #sk-props .skp-row { display:flex; gap:5px; flex-wrap:wrap; }
-#sk-props .skp-row button { width:26px; height:26px; border-radius:6px; border:1px solid #e5e7eb; padding:0; cursor:pointer;
-  display:flex; align-items:center; justify-content:center; font-size:13px; background:#f3f4f6; color:#1e1e1e; touch-action:manipulation; }
+#sk-props .skp-row button { width:26px; height:26px; border-radius:6px; border:1px solid var(--gray-200); padding:0; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; font-size:13px; background:var(--gray-100); color:#1e1e1e; touch-action:manipulation; }
 #sk-props .skp-row button.on { outline:2px solid #6965db; outline-offset:1px; }
 #sk-props .skp-row.wide button { width:34px; height:30px; }
 #sk-props .skp-tr { background-image:linear-gradient(45deg,#ddd 25%,transparent 25%,transparent 75%,#ddd 75%),linear-gradient(45deg,#ddd 25%,#fff 25%,#fff 75%,#ddd 75%) !important;
   background-size:8px 8px !important; background-position:0 0,4px 4px !important; }
 #sk-props input[type=range] { width:100%; accent-color:#6965db; font-size:12px !important; }
 /* ตำแหน่งแปลงที่ดินในการ์ด */
-.parcel-box { border:1.5px solid #BFDBFE; border-radius:10px; padding:10px; margin-bottom:12px; background:#F8FBFF; }
-.parcel-map { height:230px; border-radius:8px; overflow:hidden; background:#E2E8F0; margin-bottom:8px; position:relative; isolation:isolate; }
+.parcel-box { border:1.5px solid var(--blue-200); border-radius:10px; padding:10px; margin-bottom:12px; background:#F8FBFF; }
+.parcel-map { height:230px; border-radius:8px; overflow:hidden; background:var(--slate-200); margin-bottom:8px; position:relative; isolation:isolate; }
 /* แผนที่ทุกกล่อง: ขังปุ่ม +/− ไว้ในกล่อง ไม่ให้ลอยทับหัวเว็บตอนเลื่อน */
 #map-canvas, #survey-canvas { isolation:isolate; }
-.dol-num { width:30px; height:30px; border-radius:50%; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px; }
+.dol-num { width:30px; height:30px; border-radius:50%; color:var(--white); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px; }
 .modal-overlay.open { display:flex; }
 .modal {
-  background:white; border-radius:16px; padding:26px;
+  background:white; padding:26px;
   width:100%; max-width:520px;
   box-shadow:0 24px 64px rgba(0,0,0,.3);
   max-height:90vh; overflow-y:auto;
 }
-.modal h3      { font-size:18px; font-weight:800; margin-bottom:18px; color:var(--navy); }
+.modal h3      { font-size:18px; margin-bottom:18px; color:var(--navy); }
 .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; }
 .modal-wide    { max-width:680px; }
 
-.badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:700; }
-.badge-blue   { background:var(--blue-lt);   color:var(--blue); }
-.badge-green  { background:var(--green-lt);  color:var(--green); }
-.badge-red    { background:var(--red-lt);    color:var(--red); }
-.badge-amber  { background:var(--amber-lt);  color:var(--amber); }
-.badge-gray   { background:#F3F4F6;          color:var(--gray); }
+.badge { display:inline-flex; align-items:center; gap:4px; }
 .badge-tg     { background:var(--tg-lt);     color:var(--tg); }
 
 /* ── DOC ITEMS ── */
 .doc-item { border:1.5px solid var(--border); border-radius:12px; margin-bottom:10px; overflow:hidden; transition:border-color .2s; }
-.doc-item.done { border-color:#86EFAC; background:#F0FDF4; }
-.doc-header { padding:13px 16px; display:flex; align-items:center; gap:12px; cursor:pointer; user-select:none; background:#FAFAFA; transition:background .15s; }
-.doc-item.done .doc-header { background:#F0FDF4; }
-.doc-header:hover { background:#F3F4F6; }
-.check-circle { width:24px; height:24px; border-radius:50%; border:2px solid #D1D5DB; background:white; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all .2s; flex-shrink:0; font-size:13px; }
+.doc-item.done { border-color:var(--green-300); background:var(--green-50); }
+.doc-header { padding:13px 16px; display:flex; align-items:center; gap:12px; cursor:pointer; user-select:none; background:var(--neutral-50); transition:background .15s; }
+.doc-item.done .doc-header { background:var(--green-50); }
+.doc-header:hover { background:var(--gray-100); }
+.check-circle { width:24px; height:24px; border-radius:50%; border:2px solid var(--gray-300); background:white; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all .2s; flex-shrink:0; font-size:13px; }
 .check-circle.checked { background:var(--green); border-color:var(--green); color:white; }
 .doc-body { display:none; padding:16px; border-top:1.5px solid var(--border); }
 .doc-item.expanded .doc-body { display:block; }
@@ -185,12 +147,12 @@ body { font-family:'Sarabun','Segoe UI',sans-serif; background:var(--bg); color:
 
 /* ── IMG ── */
 .img-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px; margin-bottom:12px; }
-.img-thumb { position:relative; border-radius:9px; overflow:hidden; border:1.5px solid var(--border); aspect-ratio:1; background:#F9FAFB; cursor:pointer; }
+.img-thumb { position:relative; border-radius:9px; overflow:hidden; border:1.5px solid var(--border); aspect-ratio:1; background:var(--gray-50); cursor:pointer; }
 .img-thumb img { width:100%; height:100%; object-fit:cover; }
 .img-thumb .img-del { position:absolute; top:4px; right:4px; background:rgba(185,28,28,.88); color:white; border:none; border-radius:50%; width:22px; height:22px; cursor:pointer; font-size:12px; display:none; align-items:center; justify-content:center; }
 .img-thumb:hover .img-del { display:flex; }
 .img-thumb .img-label { position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,.55); color:white; font-size:12px; padding:3px 6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.upload-zone { border:2px dashed #CBD5E1; border-radius:10px; padding:18px 16px; text-align:center; cursor:pointer; transition:all .2s; color:var(--gray); font-size:13px; }
+.upload-zone { border:2px dashed var(--slate-300); border-radius:10px; padding:18px 16px; text-align:center; cursor:pointer; transition:all .2s; color:var(--gray); font-size:13px; }
 .upload-zone:hover { border-color:var(--blue); color:var(--blue); background:var(--blue-lt); }
 input[type="file"] { display:none; }
 
@@ -203,49 +165,41 @@ input[type="file"] { display:none; }
   flex-wrap:wrap; gap:10px;
 }
 .won-prop-header h3 { font-size:16px; font-weight:800; }
-.won-prop-body { border:1.5px solid #86EFAC; border-top:none; border-radius:0 0 12px 12px; padding:18px; }
+.won-prop-body { border:1.5px solid var(--green-300); border-top:none; border-radius:0 0 12px 12px; padding:18px; }
 .doc-progress { margin-bottom:16px; }
 .doc-progress-bar-wrap { background:#D1FAE5; border-radius:4px; height:8px; overflow:hidden; margin-top:6px; }
 .doc-progress-bar { height:100%; border-radius:4px; background:var(--green); transition:width .4s ease; }
 
 /* ── PROPERTY CARDS ── */
-.prop-card { border:1.5px solid var(--border); border-radius:13px; margin-bottom:14px; overflow:hidden; transition:border-color .2s; }
-.prop-card.won, .prop-card.renovating, .prop-card.listed, .prop-card.sold { border-color:#86EFAC; }
-.prop-card.lost { border-color:#FECACA; }
-.prop-card.bidding { border-color:#FCD34D; }
-.prop-header { padding:15px 18px; background:#FAFAFA; display:flex; align-items:center; gap:13px; cursor:pointer; transition:background .15s; }
-.prop-card.won .prop-header, .prop-card.renovating .prop-header, .prop-card.listed .prop-header, .prop-card.sold .prop-header { background:#F0FDF4; }
-.prop-card.lost .prop-header { background:#FFF5F5; }
-.prop-header:hover { filter:brightness(.97); }
-.prop-num { width:34px; height:34px; background:var(--navy); color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; flex-shrink:0; }
+.prop-card { overflow:hidden; transition:border-color .2s; }
+.prop-header { display:flex; cursor:pointer; transition:background .15s; }
+.prop-num { color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 /* รูปย่อในหัวการ์ด — เห็นว่าเป็นทรัพย์หลังไหนโดยไม่ต้องกางการ์ด */
 .prop-thumb { width:46px; height:46px; border-radius:9px; object-fit:cover; flex-shrink:0;
-  border:1.5px solid var(--border); background:#F3F4F6; cursor:zoom-in; transition:.15s; }
-.prop-thumb:hover { transform:scale(1.06); border-color:#93C5FD; }
+  border:1.5px solid var(--border); background:var(--gray-100); cursor:zoom-in; transition:.15s; }
+.prop-thumb:hover { transform:scale(1.06); border-color:var(--blue-300); }
 /* ทรัพย์ที่ยังไม่มีรูป — ช่องว่างจาง ๆ ให้การ์ดเรียงตรงกันทุกใบ */
 .prop-thumb-empty { width:46px; height:46px; border-radius:9px; flex-shrink:0; border:1.5px dashed var(--border);
-  background:#FAFAFA; display:flex; align-items:center; justify-content:center; font-size:17px; opacity:.4; }
-@media (max-width:520px){ .prop-thumb, .prop-thumb-empty { width:38px; height:38px; } }
-.prop-info { flex:1; min-width:0; }
-.prop-name { font-weight:700; font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.prop-sub  { font-size:12px; color:var(--gray); margin-top:2px; }
-.prop-body { display:none; padding:18px; border-top:1.5px solid var(--border); }
+  background:var(--neutral-50); display:flex; align-items:center; justify-content:center; }
+@media (max-width:520px){ .prop-thumb, .prop-thumb-empty { } }
+.prop-name { text-overflow:ellipsis; }
+.prop-body { display:none; }
 .prop-card.expanded .prop-body { display:block; }
 .prop-card.expanded .chevron { transform:rotate(180deg); }
 
 /* ── ROUNDS ── */
 .rounds-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin-bottom:18px; }
 @media(max-width:700px){ .rounds-grid { grid-template-columns:repeat(3,1fr); } }
-@media(max-width:420px){ .rounds-grid { grid-template-columns:repeat(2,1fr); } }
-.round-tile { border:2px solid var(--border); border-radius:10px; padding:10px 8px; text-align:center; cursor:pointer; user-select:none; transition:all .2s; }
+@media(max-width:420px){ .rounds-grid { } }
+.round-tile { border:2px solid var(--border); padding:10px 8px; text-align:center; cursor:pointer; user-select:none; transition:all .2s; }
 .round-tile.target  { border-color:#F59E0B; background:var(--amber-lt); box-shadow:0 0 0 2px #FCD34D55; }
 .round-tile.joined  { border-color:var(--blue); background:var(--blue-lt); }
-.round-tile.skipped { opacity:.6; background:#F9FAFB; }
+.round-tile.skipped { opacity:.6; background:var(--gray-50); }
 /* งดขาย / งดบังคับคดี — แถบแดงบาง ๆ ให้สะดุดตาแต่ไม่กลบราคา */
-.round-tile.halted  { border-color:#FCA5A5; background:#FEF2F2; }
-.round-tile.halted .round-price { color:#B91C1C; text-decoration:line-through; text-decoration-thickness:1.5px; opacity:.75; }
-.round-halt-bar { margin:5px -8px -10px; padding:3px 4px; background:#FEE2E2; color:#B91C1C;
-  font-size:11px; font-weight:800; border-top:1px solid #FCA5A5;
+.round-tile.halted  { border-color:var(--red-300); background:var(--red-lt); }
+.round-tile.halted .round-price { color:var(--red); text-decoration:line-through; text-decoration-thickness:1.5px; opacity:.75; }
+.round-halt-bar { margin:5px -8px -10px; padding:3px 4px; background:#FEE2E2; color:var(--red);
+  font-size:11px; font-weight:800; border-top:1px solid var(--red-300);
   border-radius:0 0 7px 7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 /* หมายเหตุทั่วไป (ที่ไม่ใช่งดขาย) — โชว์เป็นตัวเล็กใต้วันที่ */
 .round-note { font-size:11px; color:#6B7280; margin-top:3px; line-height:1.3;
@@ -253,20 +207,20 @@ input[type="file"] { display:none; }
 .round-num   { font-size:12px; font-weight:700; color:var(--gray); letter-spacing:.5px; margin-bottom:4px; }
 .round-price { font-size:13px; font-weight:800; color:var(--navy); line-height:1.2; }
 .round-disc  { font-size:12px; margin-top:4px; padding:2px 6px; border-radius:4px; display:inline-block; font-weight:700; }
-.disc-0  { background:#E5E7EB; color:#374151; }
+.disc-0  { background:var(--gray-200); color:var(--gray-700); }
 .disc-10 { background:#FEF9C3; color:#854D0E; }
 .disc-20 { background:#FED7AA; color:#9A3412; }
-.disc-30 { background:#FECACA; color:var(--red); }
+.disc-30 { background:var(--red-200); color:var(--red); }
 .round-status { font-size:15px; margin-top:5px; display:block; }
 
 /* ── PIPELINE STEPPER (item 7) ── */
 .stage-stepper { display:flex; align-items:stretch; gap:0; flex-wrap:wrap; }
 .stage-step { display:flex; flex-direction:column; align-items:center; gap:4px; background:none; border:none; cursor:pointer; padding:2px 4px; flex:1; min-width:52px; }
-.stage-dot { width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; background:#E5E7EB; color:var(--gray); border:2px solid transparent; transition:all .2s; }
+.stage-dot { width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; background:var(--gray-200); color:var(--gray); border:2px solid transparent; transition:all .2s; }
 .stage-lbl { font-size:12px; font-weight:700; color:var(--gray); text-align:center; line-height:1.15; }
-.stage-step.done  .stage-dot { background:var(--green); color:#fff; }
+.stage-step.done  .stage-dot { background:var(--green); color:var(--white); }
 .stage-step.done  .stage-lbl { color:var(--green); }
-.stage-step.active .stage-dot { background:var(--navy); color:#fff; border-color:#FCD34D; box-shadow:0 0 0 3px #FCD34D55; transform:scale(1.12); }
+.stage-step.active .stage-dot { background:var(--navy); color:var(--white); border-color:var(--amber-300); box-shadow:0 0 0 3px #FCD34D55; transform:scale(1.12); }
 .stage-step.active .stage-lbl { color:var(--navy); font-weight:800; }
 .stage-step:hover .stage-dot { transform:scale(1.08); }
 .stage-arrow { align-self:flex-start; margin-top:5px; color:var(--gray); font-size:16px; font-weight:800; }
@@ -275,9 +229,8 @@ input[type="file"] { display:none; }
 /* ── toggle switch (เปิด/ปิดแจ้งเตือนรายทรัพย์) ── */
 .switch { position:relative; display:inline-block; width:44px; height:24px; flex-shrink:0; }
 .switch input { opacity:0; width:0; height:0; }
-.switch-slider { position:absolute; inset:0; background:#CBD5E1; border-radius:24px; cursor:pointer; transition:.2s; }
-.switch-slider::before { content:''; position:absolute; height:18px; width:18px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s; }
-.switch input:checked + .switch-slider { background:var(--tg,#06C755); }
+.switch-slider { position:absolute; inset:0; background:var(--slate-300); border-radius:24px; cursor:pointer; transition:.2s; }
+.switch-slider::before { content:''; position:absolute; height:18px; width:18px; left:3px; top:3px; background:var(--white); border-radius:50%; transition:.2s; }
 .switch input:checked + .switch-slider::before { transform:translateX(20px); }
 .switch input:disabled + .switch-slider { opacity:.45; cursor:not-allowed; }
 
@@ -288,7 +241,7 @@ input[type="file"] { display:none; }
 }
 .notif-box-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
 .notif-box-title { font-weight:800; font-size:15px; color:var(--tg); }
-.notif-dot { width:10px; height:10px; border-radius:50%; background:#D1D5DB; display:inline-block; margin-left:4px; }
+.notif-dot { width:10px; height:10px; border-radius:50%; background:var(--gray-300); display:inline-block; margin-left:4px; }
 .notif-dot.ok { background:#22C55E; animation:pulse 2s infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
 .notif-method-tabs { display:flex; gap:6px; margin-bottom:14px; }
@@ -306,7 +259,7 @@ input[type="file"] { display:none; }
 .reno-stat-num   { font-size:22px; font-weight:800; }
 .reno-stat-label { font-size:12px; opacity:.8; margin-top:2px; }
 .category-chips  { display:flex; gap:7px; flex-wrap:wrap; margin-bottom:16px; }
-.chip { padding:5px 13px; border-radius:20px; font-size:12px; font-weight:700; border:1.5px solid var(--border); cursor:pointer; transition:all .18s; background:white; color:#374151; }
+.chip { padding:5px 13px; border-radius:20px; font-size:12px; font-weight:700; border:1.5px solid var(--border); cursor:pointer; transition:all .18s; background:white; color:var(--gray-700); }
 .chip.active { background:var(--navy); color:white; border-color:var(--navy); }
 .expense-row { border:1.5px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:10px; display:grid; grid-template-columns:auto 1fr auto; align-items:start; gap:12px; }
 .expense-row:hover { border-color:#A7C7E7; }
@@ -320,12 +273,12 @@ input[type="file"] { display:none; }
 
 /* ── HOUSE PICKER (expense tab) ── */
 .house-pick-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; margin-bottom:8px; }
-.house-pick-card { border:1.5px solid var(--border); border-radius:12px; padding:14px 16px; cursor:pointer; background:#fff; transition:.15s; position:relative; }
+.house-pick-card { border:1.5px solid var(--border); border-radius:12px; padding:14px 16px; cursor:pointer; background:var(--white); transition:.15s; position:relative; }
 .house-pick-card:hover { border-color:#A7C7E7; box-shadow:0 2px 10px rgba(0,0,0,.06); transform:translateY(-1px); }
-.house-pick-card.active { border-color:var(--green); background:#F0FDF4; box-shadow:0 2px 12px rgba(34,197,94,.18); }
-.house-pick-card.sold   { background:#F9FAFB; border-style:dashed; }
-.house-pick-card.sold.active { border-color:var(--green); background:#F0FDF4; }
-.house-pick-img { width:100%; height:120px; object-fit:cover; border-radius:9px; margin-bottom:10px; display:block; background:#F3F4F6; }
+.house-pick-card.active { border-color:var(--green); background:var(--green-50); box-shadow:0 2px 12px rgba(34,197,94,.18); }
+.house-pick-card.sold   { background:var(--gray-50); border-style:dashed; }
+.house-pick-card.sold.active { border-color:var(--green); background:var(--green-50); }
+.house-pick-img { width:100%; height:120px; object-fit:cover; border-radius:9px; margin-bottom:10px; display:block; background:var(--gray-100); }
 .house-pick-noimg { display:flex; align-items:center; justify-content:center; font-size:38px; color:var(--gray); }
 .house-pick-name { font-weight:800; font-size:14px; color:var(--navy); margin-bottom:2px; }
 .house-pick-code { font-size:12px; color:var(--gray); font-weight:700; }
@@ -336,21 +289,21 @@ input[type="file"] { display:none; }
 
 /* ── SUMMARY ── */
 .stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; margin-bottom:22px; }
-.stat-card { background:white; border-radius:13px; padding:20px 18px; text-align:center; border:1.5px solid var(--border); box-shadow:var(--shadow); }
+.stat-card { background:white; padding:20px 18px; text-align:center; box-shadow:var(--shadow); }
 .stat-num   { font-size:32px; font-weight:900; line-height:1; }
 .stat-label { font-size:12px; color:var(--gray); margin-top:6px; font-weight:600; }
-.progress-bar-wrap { background:#E5E7EB; border-radius:4px; height:6px; overflow:hidden; margin-top:8px; }
+.progress-bar-wrap { background:var(--gray-200); border-radius:4px; height:6px; overflow:hidden; margin-top:8px; }
 .progress-bar { height:100%; border-radius:4px; transition:width .4s ease; background:var(--blue); }
 .summary-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
 .summary-table { width:100%; border-collapse:collapse; font-size:13px; min-width:480px; }
 .summary-table th { background:var(--navy); color:white; padding:10px 14px; text-align:left; font-weight:700; font-size:12px; }
 .summary-table td { padding:10px 14px; border-bottom:1px solid var(--border); }
 .summary-table tr:last-child td { border-bottom:none; }
-.summary-table tr:hover td { background:#F9FAFB; }
+.summary-table tr:hover td { background:var(--gray-50); }
 .summary-table .num { text-align:right; font-weight:700; font-variant-numeric:tabular-nums; }
 
 /* ── MISC ── */
-.section-title { font-size:12px; font-weight:700; color:var(--gray); letter-spacing:.8px; text-transform:uppercase; margin:16px 0 10px; display:flex; align-items:center; gap:8px; }
+.section-title { font-size:12px; font-weight:700; color:var(--gray); text-transform:uppercase; margin:16px 0 10px; display:flex; align-items:center; gap:8px; }
 .section-title::after { content:''; flex:1; height:1px; background:var(--border); }
 .empty { text-align:center; padding:48px 20px; color:var(--gray); }
 .empty-icon { font-size:46px; margin-bottom:12px; }
@@ -359,7 +312,7 @@ input[type="file"] { display:none; }
 .lightbox.open { display:flex; }
 .lightbox img { max-width:92vw; max-height:92vh; border-radius:10px; }
 .lightbox-close { position:absolute; top:18px; right:18px; background:white; border:none; border-radius:50%; width:40px; height:40px; cursor:pointer; font-size:20px; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 10px rgba(0,0,0,.3); }
-.toast { position:fixed; bottom:max(28px, calc(env(safe-area-inset-bottom) + 12px)); left:50%; transform:translateX(-50%); background:#1F2937; color:white; padding:11px 22px; border-radius:30px; font-size:14px; font-weight:600; box-shadow:0 8px 24px rgba(0,0,0,.2); z-index:9999; opacity:0; transition:opacity .25s; pointer-events:none; max-width:90vw; text-align:center; }
+.toast { position:fixed; bottom:max(28px, calc(env(safe-area-inset-bottom) + 12px)); left:50%; transform:translateX(-50%); background:var(--gray-800); color:white; padding:11px 22px; font-size:14px; z-index:9999; opacity:0; transition:opacity .25s; pointer-events:none; max-width:90vw; text-align:center; }
 .toast.show { opacity:1; }
 .toast.success { background:var(--green); }
 .toast.error   { background:var(--red); }
@@ -376,22 +329,16 @@ input, select, textarea { font-size: 16px !important; }
 }
 
 @media (max-width: 640px) {
-  .header { padding: 0 14px; height: 56px; }
-  .header h1 { font-size: 15px; }
   .header p  { display: none; }
 
-  .tabs { padding: 0 2px; top: 56px; }
-  .tab-btn { padding: 10px 3px; font-size:12px; gap: 3px; }
   .tab-btn .t-full { display: none; }
   .tab-btn .t-short { display: inline; }
   .tabs .tab-badge { display: none; }
 
-  .content { padding: 10px 10px; }
 
   /* Bottom-sheet modals */
   .modal-overlay { align-items: flex-end; padding: 0; }
   .modal {
-    border-radius: 22px 22px 0 0;
     max-height: 92vh;
     max-width: 100% !important;
     padding: 20px 16px calc(env(safe-area-inset-bottom) + 24px);
@@ -402,7 +349,7 @@ input, select, textarea { font-size: 16px !important; }
     content: '';
     display: block;
     width: 40px; height: 4px;
-    background: #D1D5DB;
+    background: var(--gray-300);
     border-radius: 2px;
     margin: 0 auto 16px;
   }
@@ -423,28 +370,24 @@ input, select, textarea { font-size: 16px !important; }
       "num thumb badges badges";
     column-gap: 9px;
     row-gap: 5px;
-    padding: 12px 12px;
-    align-items: center;
   }
   /* รูปย่อกินสองแถว วางชิดเลขลำดับ — ถ้าไม่กำหนด area จะตกไปแถวใหม่เอง */
   .prop-thumb, .prop-thumb-empty { grid-area: thumb; align-self:start; margin-top:2px; }
-  .prop-num     { grid-area: num; width:32px; height:32px; font-size:12px; align-self:start; margin-top:2px; flex-shrink:0; }
-  .prop-info    { grid-area: info; min-width:0; }
-  .prop-name    { white-space:normal !important; font-size:14px; line-height:1.3; }
-  .prop-sub     { font-size:12px; white-space:normal; line-height:1.4; }
-  .prop-badges  { grid-area: badges; display:flex; flex-wrap:wrap; gap:4px; }
-  .prop-actions { grid-area: actions; display:flex; gap:4px; align-items:center; align-self:start; }
+  .prop-num     { grid-area: num; align-self:start; margin-top:2px; flex-shrink:0; }
+  .prop-info    { grid-area: info; }
+  .prop-name    { white-space:normal !important; }
+  .prop-sub     { white-space:normal; }
+  .prop-badges  { grid-area: badges; }
+  .prop-actions { grid-area: actions; align-self:start; }
   .prop-header > .chevron { display:none; }
-  .prop-body    { padding: 12px; }
 
   /* Prop body images full-width */
   .prop-body img[style*="height:90px"] { height:110px !important; flex:1; min-width:120px; }
 
   /* Card/button sizing */
-  .card { padding: 14px; }
-  .btn  { padding: 8px 12px; min-height: 38px; font-size:13px; }
-  .btn-sm { padding: 6px 11px; font-size:12px; }
-  .btn-xs { padding: 5px 9px; font-size:12px; }
+  .btn  { font-size:13px; }
+  .btn-sm { font-size:12px; }
+  .btn-xs { font-size:12px; }
 
   /* Summary table scroll */
   .summary-table { font-size: 12px; }
@@ -457,7 +400,6 @@ input, select, textarea { font-size: 16px !important; }
   .rounds-grid + div { flex-wrap: wrap; }
 
   /* Prop card margin */
-  .prop-card { margin-bottom: 10px; }
 
   /* Expense row: stack date+title vertically, amount right */
   .expense-row {
@@ -469,8 +411,6 @@ input, select, textarea { font-size: 16px !important; }
   .expense-amount { grid-column: 2; grid-row: 1 / 3; align-self: center; font-size: 15px; }
 
   /* Header: shrink cloud button on mobile */
-  .header { padding: 0 10px; gap: 8px; }
-  .header h1 { font-size: 14px; }
 
   /* Reno summary bar stack */
   .reno-summary-bar { gap: 14px; padding: 14px 16px; }
@@ -496,20 +436,20 @@ input, select, textarea { font-size: 16px !important; }
 
 /* ── PRINT / PDF REPORT (item 10) ── */
 #print-area { display:none; }
-.rpt { font-family:'Sarabun','Prompt',system-ui,sans-serif; color:#1F2937; max-width:760px; margin:0 auto; }
+.rpt { font-family:'Sarabun','Prompt',system-ui,sans-serif; color:var(--gray-800); max-width:760px; margin:0 auto; }
 .rpt h1 { font-size:20px; margin:0 0 2px; color:#12305B; }
 .rpt .rpt-sub { color:#6B7280; font-size:13px; margin-bottom:14px; }
-.rpt .rpt-sec { margin:16px 0 6px; font-size:14px; font-weight:800; color:#12305B; border-bottom:2px solid #E5E7EB; padding-bottom:4px; }
+.rpt .rpt-sec { margin:16px 0 6px; font-size:14px; font-weight:800; color:#12305B; border-bottom:2px solid var(--gray-200); padding-bottom:4px; }
 .rpt table { width:100%; border-collapse:collapse; font-size:13px; }
-.rpt th, .rpt td { border:1px solid #E5E7EB; padding:6px 9px; text-align:left; }
+.rpt th, .rpt td { border:1px solid var(--gray-200); padding:6px 9px; text-align:left; }
 .rpt td.num, .rpt th.num { text-align:right; }
 .rpt .kv { display:flex; flex-wrap:wrap; gap:6px 20px; font-size:13px; }
 .rpt .kv div { min-width:180px; }
 .rpt .kv b { color:#12305B; }
-.rpt .tot { font-weight:800; background:#F0FDF4; }
-.rpt .neg { color:#DC2626; } .rpt .pos { color:#16A34A; }
-.rpt-imgs img { height:120px; border:1px solid #E5E7EB; border-radius:6px; margin-right:8px; }
-.rpt-foot { margin-top:22px; font-size:12px; color:var(--gray); border-top:1px solid #E5E7EB; padding-top:8px; }
+.rpt .tot { font-weight:800; background:var(--green-50); }
+.rpt .neg { color:var(--red-600); } .rpt .pos { color:#16A34A; }
+.rpt-imgs img { height:120px; border:1px solid var(--gray-200); border-radius:6px; margin-right:8px; }
+.rpt-foot { margin-top:22px; font-size:12px; color:var(--gray); border-top:1px solid var(--gray-200); padding-top:8px; }
 @media print {
   @page { margin:14mm; }
   body > *:not(#print-area) { display:none !important; }
@@ -524,22 +464,21 @@ input, select, textarea { font-size: 16px !important; }
      บังหน้าจอไว้จนกว่าจะล็อกอินสำเร็จ — ไม่มี token = RLS ไม่ให้ข้อมูลอยู่แล้ว
      ตัวนี้แค่กัน UI ไม่ให้แสดงหน้าเปล่า ๆ ให้งง -->
 <style>
-#loginGate{position:fixed;inset:0;z-index:9999;background:linear-gradient(160deg,#1E3A8A,#0F172A);
-  display:none;align-items:center;justify-content:center;padding:20px}
-#loginGate .lp-card{background:#fff;border-radius:18px;padding:28px 26px;width:100%;max-width:340px;
+#loginGate{position:fixed;inset:0;z-index:9999;
+  display:none;align-items:center;justify-content:center;}
+#loginGate .lp-card{background:var(--white);width:100%;
   box-shadow:0 24px 60px rgba(0,0,0,.4);text-align:center}
-#loginGate h2{font-size:19px;font-weight:800;color:#1E3A8A;margin:10px 0 2px}
-#loginGate .lp-sub{font-size:12.5px;color:#6B7280;margin-bottom:18px}
+#loginGate h2{margin:10px 0 2px}
+#loginGate .lp-sub{font-size:12.5px;margin-bottom:18px}
 #loginDots{display:flex;gap:11px;justify-content:center;margin-bottom:8px;min-height:16px}
-#loginDots .lp-dot{width:13px;height:13px;border-radius:50%;background:#E5E7EB;transition:.15s}
-#loginDots .lp-dot.f{background:#2563EB;transform:scale(1.12)}
-#loginPinErr{font-size:12.5px;color:#DC2626;min-height:19px;margin-bottom:10px;font-weight:600}
-.lp-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.lp-pad button{padding:15px 0;font-size:20px;font-weight:700;border:1.5px solid #E5E7EB;background:#F9FAFB;
-  border-radius:12px;cursor:pointer;color:#111827;font-family:inherit;transition:.12s}
-.lp-pad button:hover{background:#EFF6FF;border-color:#93C5FD}
+#loginDots .lp-dot{width:13px;height:13px;border-radius:50%;background:var(--gray-200);transition:.15s}
+#loginDots .lp-dot.f{transform:scale(1.12)}
+#loginPinErr{font-size:12.5px;color:var(--red-600);min-height:19px;margin-bottom:10px;font-weight:600}
+.lp-pad{display:grid;grid-template-columns:repeat(3,1fr);}
+.lp-pad button{cursor:pointer;color:#111827;font-family:inherit;transition:.12s}
+.lp-pad button:hover{background:var(--blue-50);border-color:var(--blue-300)}
 .lp-pad button:active{transform:scale(.94)}
-.lp-pad button.lp-go{background:#2563EB;color:#fff;border-color:#2563EB}
+.lp-pad button.lp-go{color:var(--white);}
 </style>
 <!-- ════════════════════════════════════════════════════════════════
      UI 2026 — ชั้นดีไซน์ใหม่ (ทับสไตล์เดิมด้านบน)
@@ -556,6 +495,14 @@ input, select, textarea { font-size: 16px !important; }
   --shadow:0 1px 2px rgba(16,24,40,.04),0 6px 18px rgba(16,24,40,.06);
   --shadow-lg:0 12px 40px rgba(16,24,40,.16);
   --nav-h:62px;
+  /* พาเลตต์กลาง (ค่าเดิมที่เคยพิมพ์ตรงในหน้า) — ใช้ var(--…) แทนรหัสสี */
+  --gray-50:#F9FAFB; --gray-100:#F3F4F6; --gray-200:#E5E7EB; --gray-300:#D1D5DB; --gray-700:#374151; --gray-800:#1F2937;
+  --slate-50:#F8FAFC; --slate-100:#F1F5F9; --slate-200:#E2E8F0; --slate-300:#CBD5E1; --slate-600:#475569; --neutral-50:#FAFAFA;
+  --green-50:#F0FDF4; --green-200:#BBF7D0; --green-300:#86EFAC;
+  --amber-50:#FFFBEB; --amber-200:#FDE68A; --amber-300:#FCD34D; --amber-800:#92400E;
+  --red-200:#FECACA; --red-300:#FCA5A5; --red-500:#EF4444; --red-600:#DC2626;
+  --blue-50:#EFF6FF; --blue-200:#BFDBFE; --blue-300:#93C5FD; --blue-700:#1D4ED8;
+
 }
 html { -webkit-text-size-adjust:100%; }
 body {
@@ -580,7 +527,7 @@ img, svg, video, canvas { max-width:100%; }
 .hdr-ver { font-size:12px; opacity:.7; margin-left:4px; }
 .hdr-btn {
   position:relative; width:40px; height:40px; border-radius:12px; flex-shrink:0; cursor:pointer;
-  background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2); color:#fff; font-size:17px;
+  background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2); color:var(--white); font-size:17px;
   display:inline-flex; align-items:center; justify-content:center; transition:background .15s, transform .1s;
 }
 .hdr-btn:hover { background:rgba(255,255,255,.2); }
@@ -596,13 +543,13 @@ img, svg, video, canvas { max-width:100%; }
 }
 .tab-btn {
   flex:0 0 auto; border:none; border-radius:11px; margin:0; padding:9px 14px;
-  font-size:14px; font-weight:600; color:#475569; gap:7px; overflow:visible;
+  font-size:14px; font-weight:600; color:var(--slate-600); gap:7px; overflow:visible;
 }
-.tab-btn.active { background:var(--navy); color:#fff; border-bottom-color:transparent; }
+.tab-btn.active { background:var(--navy); color:var(--white); border-bottom-color:transparent; }
 .tab-btn:hover:not(.active) { background:#EEF2F7; color:var(--ink); }
 .tab-ic { font-size:16px; line-height:1; }
 .tab-badge { background:#E8EEF8; color:var(--navy); font-size:12px; height:19px; min-width:19px; }
-.tab-btn.active .tab-badge { background:rgba(255,255,255,.22); color:#fff; }
+.tab-btn.active .tab-badge { background:rgba(255,255,255,.22); color:var(--white); }
 
 .content { padding:20px 24px 40px; }
 
@@ -610,7 +557,7 @@ img, svg, video, canvas { max-width:100%; }
 .push-nudge {
   display:flex; align-items:center; gap:12px;
   margin:0 0 14px;
-  background:linear-gradient(135deg,#EEF4FF 0%,#F5F3FF 100%); border:1px solid #DBE6FF;
+  background:linear-gradient(135deg,var(--blue-lt) 0%,#F5F3FF 100%); border:1px solid #DBE6FF;
   border-radius:16px; padding:12px 14px; box-shadow:var(--shadow);
 }
 .pn-ic { font-size:24px; flex-shrink:0; }
@@ -618,7 +565,7 @@ img, svg, video, canvas { max-width:100%; }
 .pn-text b { color:var(--navy); }
 .pn-text > b:first-child { display:block; font-size:14px; }
 .pn-x { background:none; border:none; color:var(--gray); font-size:15px; cursor:pointer; align-self:flex-start; padding:2px 4px; }
-.ios-share { display:inline-block; padding:0 6px; border:1px solid #93C5FD; border-radius:6px; color:var(--blue); font-size:12px; font-weight:700; }
+.ios-share { display:inline-block; padding:0 6px; border:1px solid var(--blue-300); border-radius:6px; color:var(--blue); font-size:12px; font-weight:700; }
 
 /* ── การ์ด / ปุ่ม / ฟอร์ม ── */
 .card { border-radius:18px; border:1px solid var(--border); box-shadow:var(--shadow); padding:20px; }
@@ -627,23 +574,22 @@ img, svg, video, canvas { max-width:100%; }
 .btn:active { transform:scale(.97); }
 .btn-primary { background:var(--navy); box-shadow:0 2px 8px rgba(19,48,94,.22); }
 .btn-primary:hover { background:#0F2650; }
-.btn-ghost { background:#fff; color:var(--ink-2); border:1px solid var(--border); }
-.btn-ghost:hover { background:#F1F5F9; }
+.btn-ghost { background:var(--white); color:var(--ink-2); border:1px solid var(--border); }
+.btn-ghost:hover { background:var(--slate-100); }
 .btn-sm { min-height:36px; padding:7px 13px; border-radius:10px; }
 .btn-xs { min-height:30px; padding:5px 10px; border-radius:9px; }
-.icon-btn { width:38px; height:38px; border-radius:11px; background:#fff; border:1px solid var(--border); font-size:15px; }
-.icon-btn:hover { background:#F1F5F9; }
+.icon-btn { width:38px; height:38px; border-radius:11px; background:var(--white); border:1px solid var(--border); font-size:15px; }
+.icon-btn:hover { background:var(--slate-100); }
 .icon-btn.more { font-size:20px; font-weight:700; color:var(--ink-2); letter-spacing:1px; }
 .icon-btn.chev { border:none; background:transparent; width:28px; }
-.form-input, .form-select, .form-textarea { border-radius:12px; border:1.5px solid #E2E8F0; padding:11px 13px; }
-.form-input:focus, .form-select:focus, .form-textarea:focus { border-color:var(--blue); box-shadow:0 0 0 4px rgba(37,99,235,.12); }
-.form-label { color:#475569; font-weight:600; }
+.form-input, .form-select, .form-textarea { border-radius:12px; border:1.5px solid var(--slate-200); padding:11px 13px; }
+.form-label { color:var(--slate-600); font-weight:600; }
 .badge { padding:4px 10px; border-radius:999px; font-size:11.5px; font-weight:600; line-height:1.35; }
-.badge-blue  { background:#EEF4FF; color:#1D4ED8; }
-.badge-green { background:#ECFDF3; color:#15803D; }
-.badge-red   { background:#FEF2F2; color:#B91C1C; }
-.badge-amber { background:#FFF7E6; color:#B45309; }
-.badge-gray  { background:#F1F5F9; color:#475569; }
+.badge-blue  { background:var(--blue-lt); color:var(--blue-700); }
+.badge-green { background:var(--green-lt); color:var(--green); }
+.badge-red   { background:var(--red-lt); color:var(--red); }
+.badge-amber { background:var(--amber-lt); color:var(--amber); }
+.badge-gray  { background:var(--slate-100); color:var(--slate-600); }
 .modal { border-radius:20px; }
 .modal h3 { font-weight:700; }
 .stat-card { border-radius:16px; border:1px solid var(--border); }
@@ -652,11 +598,11 @@ img, svg, video, canvas { max-width:100%; }
 .toast { border-radius:14px; font-weight:600; box-shadow:var(--shadow-lg); }
 
 /* ── การ์ดทรัพย์ ── */
-.prop-card { background:#fff; border:1px solid var(--border); border-radius:18px; box-shadow:var(--shadow); margin-bottom:12px; }
-.prop-card.won, .prop-card.renovating, .prop-card.listed, .prop-card.sold { border-color:#BBF7D0; }
-.prop-card.lost { border-color:#FECACA; }
-.prop-card.bidding { border-color:#FDE68A; }
-.prop-header { background:#fff; padding:14px 16px; gap:14px; align-items:center; flex-wrap:nowrap; }
+.prop-card { background:var(--white); border:1px solid var(--border); border-radius:18px; box-shadow:var(--shadow); margin-bottom:12px; }
+.prop-card.won, .prop-card.renovating, .prop-card.listed, .prop-card.sold { border-color:var(--green-200); }
+.prop-card.lost { border-color:var(--red-200); }
+.prop-card.bidding { border-color:var(--amber-200); }
+.prop-header { background:var(--white); padding:14px 16px; gap:14px; align-items:center; flex-wrap:nowrap; }
 .prop-card.won .prop-header, .prop-card.renovating .prop-header, .prop-card.listed .prop-header, .prop-card.sold .prop-header { background:#F6FEF9; }
 .prop-card.lost .prop-header { background:#FFF8F8; }
 .prop-header:hover { filter:none; background:#FAFBFD; }
@@ -666,11 +612,11 @@ img, svg, video, canvas { max-width:100%; }
 .prop-thumb-empty { opacity:1; font-size:22px; color:var(--gray); }
 .prop-num {
   position:absolute; top:-6px; left:-6px; width:24px; height:24px; font-size:11.5px; font-weight:700;
-  border:2px solid #fff; box-shadow:0 2px 6px rgba(15,23,42,.18); background:var(--navy);
+  border:2px solid var(--white); box-shadow:0 2px 6px rgba(15,23,42,.18); background:var(--navy);
 }
 .prop-info { flex:1; min-width:0; }
 .prop-code {
-  display:inline-block; font-size:12px; font-weight:700; color:#1D4ED8; background:#EEF4FF;
+  display:inline-block; font-size:12px; font-weight:700; color:var(--blue-700); background:var(--blue-lt);
   padding:1px 8px; border-radius:7px; margin-bottom:3px; white-space:nowrap; font-variant-numeric:tabular-nums;
 }
 .prop-name {
@@ -690,29 +636,29 @@ img, svg, video, canvas { max-width:100%; }
 .notify-row { display:flex; align-items:center; gap:12px; background:#F8FAFF; border:1px solid #DBE6FF; border-radius:12px; padding:10px 12px; margin-bottom:14px; }
 .notify-title { font-size:12.5px; font-weight:700; color:var(--navy); }
 .notify-chips { display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; font-size:11.5px; }
-.nt-chip { background:#fff; border:1px solid #DBE6FF; color:#1D4ED8; padding:2px 9px; border-radius:999px; font-weight:600; white-space:nowrap; }
-.nt-chip.soon { background:#FEF2F2; border-color:#FECACA; color:#B91C1C; }
-.nt-chip.target { background:#FFF7E6; border-color:#FCD34D; color:#B45309; }
-.pref-row { display:flex; align-items:center; justify-content:space-between; gap:12px; background:#fff; border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin-bottom:8px; font-size:13.5px; line-height:1.45; }
+.nt-chip { background:var(--white); border:1px solid #DBE6FF; color:var(--blue-700); padding:2px 9px; border-radius:999px; font-weight:600; white-space:nowrap; }
+.nt-chip.soon { background:var(--red-lt); border-color:var(--red-200); color:var(--red); }
+.nt-chip.target { background:var(--amber-lt); border-color:var(--amber-300); color:var(--amber); }
+.pref-row { display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--white); border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin-bottom:8px; font-size:13.5px; line-height:1.45; }
 .pref-row .muted { font-size:12px; margin-top:1px; }
 
 /* ── เมนูตัวเลือก (⋯) ── */
 .sheet-overlay { position:fixed; inset:0; z-index:650; background:rgba(15,23,42,.45); display:none; align-items:center; justify-content:center; padding:20px; }
 .sheet-overlay.open { display:flex; animation:fadeIn .15s ease; }
-.sheet { width:100%; max-width:400px; background:#fff; border-radius:20px; padding:8px 10px 10px; box-shadow:var(--shadow-lg); }
+.sheet { width:100%; max-width:400px; background:var(--white); border-radius:20px; padding:8px 10px 10px; box-shadow:var(--shadow-lg); }
 .sheet-title { font-size:13px; font-weight:700; color:var(--gray); text-align:center; padding:10px 12px; border-bottom:1px solid var(--border); margin-bottom:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .sheet-item { display:flex; width:100%; align-items:center; gap:12px; padding:13px 12px; border:none; background:none; font:inherit; font-size:15px; font-weight:600; color:var(--ink); border-radius:12px; cursor:pointer; text-align:left; }
-.sheet-item:hover, .sheet-item:active { background:#F1F5F9; }
-.sheet-item.danger { color:#DC2626; }
+.sheet-item:hover, .sheet-item:active { background:var(--slate-100); }
+.sheet-item.danger { color:var(--red-600); }
 .sheet-ic { width:28px; text-align:center; font-size:18px; }
-.sheet-cancel { justify-content:center; margin-top:6px; background:#F1F5F9; }
+.sheet-cancel { justify-content:center; margin-top:6px; background:var(--slate-100); }
 @keyframes sheetUp { from { transform:translateY(100%); } to { transform:none; } }
 
 /* ── ตั้งค่า ── */
 .set-sec { background:var(--sec-bg); border:1px solid var(--sec-bd); border-radius:14px; padding:14px; margin-bottom:14px; scroll-margin-top:10px; }
 .set-sec-title { font-weight:700; color:var(--sec); margin-bottom:6px; font-size:15px; }
-.set-sec-desc { font-size:12.5px; color:#475569; line-height:1.65; margin-bottom:10px; }
-.set-status { background:#fff; border:1px solid var(--border); border-radius:10px; padding:10px 12px; font-size:13px; margin-bottom:10px; line-height:1.7; }
+.set-sec-desc { font-size:12.5px; color:var(--slate-600); line-height:1.65; margin-bottom:10px; }
+.set-status { background:var(--white); border:1px solid var(--border); border-radius:10px; padding:10px 12px; font-size:13px; margin-bottom:10px; line-height:1.7; }
 
 /* ── หน้าใส่ PIN ── */
 #loginGate {
@@ -722,10 +668,10 @@ img, svg, video, canvas { max-width:100%; }
 #loginGate .lp-card { border-radius:26px; padding:30px 24px 24px; max-width:360px; }
 .lp-logo { width:68px; height:68px; border-radius:20px; box-shadow:0 8px 24px rgba(19,48,94,.35); }
 #loginGate h2 { color:var(--navy); font-weight:700; font-size:20px; margin-top:12px; }
-#loginGate .lp-sub { line-height:1.55; color:#475569; }
+#loginGate .lp-sub { line-height:1.55; color:var(--slate-600); }
 #loginDots .lp-dot.f { background:var(--blue); }
 .lp-pad { gap:10px; }
-.lp-pad button { border-radius:16px; padding:16px 0; font-size:22px; font-weight:600; background:#F8FAFC; border:1px solid #E2E8F0; }
+.lp-pad button { border-radius:16px; padding:16px 0; font-size:22px; font-weight:600; background:var(--slate-50); border:1px solid var(--slate-200); }
 .lp-pad button.lp-go { background:var(--blue); border-color:var(--blue); }
 
 /* แท็บย่อชื่อ: จอใหญ่ใช้ชื่อเต็ม */
@@ -744,17 +690,17 @@ img, svg, video, canvas { max-width:100%; }
 .fluid-backdrop.open { opacity:1; pointer-events:auto; }
 .fl-main {
   position:absolute; inset:0; z-index:60; width:38px; height:38px; border-radius:12px; cursor:pointer;
-  background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.24); color:#fff;
+  background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.24); color:var(--white);
   display:flex; align-items:center; justify-content:center; transition:background .2s, transform .15s;
 }
 .fl-main:active { transform:scale(.94); }
-.fluid-nav[data-expanded="true"] .fl-main { background:#fff; color:var(--navy); }
+.fluid-nav[data-expanded="true"] .fl-main { background:var(--white); color:var(--navy); }
 .fl-main .fl-ic { position:absolute; width:24px; height:24px; transition:all .3s ease-in-out; transform-origin:center; }
 .fl-main .fl-ic svg { width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; }
 .fl-main .fl-x { opacity:0; transform:scale(0) rotate(-180deg); }
 .fluid-nav[data-expanded="true"] .fl-burger { opacity:0; transform:scale(0) rotate(180deg); }
 .fluid-nav[data-expanded="true"] .fl-x { opacity:1; transform:scale(1) rotate(0); }
-.fl-main .fl-dot { display:none; position:absolute; top:-3px; right:-3px; width:11px; height:11px; border-radius:50%; background:#EF4444; box-shadow:0 0 0 2px #1B4590; }
+.fl-main .fl-dot { display:none; position:absolute; top:-3px; right:-3px; width:11px; height:11px; border-radius:50%; background:var(--red-500); box-shadow:0 0 0 2px #1B4590; }
 .fl-main .fl-dot.on { display:block; }
 .fluid-nav[data-expanded="true"] .fl-main .fl-dot { display:none; }
 
@@ -763,7 +709,7 @@ img, svg, video, canvas { max-width:100%; }
   position:absolute; right:0; top:0; width:min(260px, calc(100vw - 28px)); height:52px;
   display:flex; align-items:center; gap:12px; padding:0 14px 0 8px;
   border:none; border-radius:16px; cursor:pointer; font:inherit; text-align:left;
-  background:#fff; color:var(--ink); box-shadow:0 6px 20px rgba(15,23,42,.16);
+  background:var(--white); color:var(--ink); box-shadow:0 6px 20px rgba(15,23,42,.16);
   opacity:0; pointer-events:none; transform-origin:calc(100% - 19px) 19px;
   transform:translateY(0) scale(.5);
   transition:transform .32s cubic-bezier(.4,0,.2,1), opacity .25s;
@@ -776,36 +722,36 @@ img, svg, video, canvas { max-width:100%; }
 }
 .fl-icw {
   width:38px; height:38px; border-radius:12px; flex-shrink:0;
-  display:flex; align-items:center; justify-content:center; background:#F1F5F9; color:#475569;
+  display:flex; align-items:center; justify-content:center; background:var(--slate-100); color:var(--slate-600);
 }
 .fl-icw svg { width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
 .fl-label { flex:1; font-size:16px; font-weight:600; white-space:nowrap; }
 .fl-item:active { transform:translateY(calc(var(--i) * 58px - 4px)) scale(.97); }
-.fl-item.active { background:#EEF4FF; color:var(--blue); box-shadow:0 0 0 2px var(--blue), 0 6px 20px rgba(37,99,235,.2); }
-.fl-item.active .fl-icw { background:var(--blue); color:#fff; }
-.fl-item.active .fl-label::after { content:'กำลังเปิด'; margin-left:8px; font-size:12px; font-weight:700; color:var(--blue); background:#fff; padding:2px 8px; border-radius:999px; vertical-align:2px; }
+.fl-item.active { background:var(--blue-lt); color:var(--blue); box-shadow:0 0 0 2px var(--blue), 0 6px 20px rgba(37,99,235,.2); }
+.fl-item.active .fl-icw { background:var(--blue); color:var(--white); }
+.fl-item.active .fl-label::after { content:'กำลังเปิด'; margin-left:8px; font-size:12px; font-weight:700; color:var(--blue); background:var(--white); padding:2px 8px; border-radius:999px; vertical-align:2px; }
 .fl-badge {
   min-width:22px; height:22px; padding:0 7px; border-radius:999px;
-  background:#EF4444; color:#fff; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center;
+  background:var(--red-500); color:var(--white); font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center;
 }
 
 /* ── บิล/ใบเสร็จ + AI อ่านบิล (ฟอร์มค่าใช้จ่าย) ── */
 .receipt-box { border:1.5px dashed #C7D2FE; background:linear-gradient(135deg,#F5F7FF,#FAF5FF); border-radius:16px; padding:14px; margin-bottom:16px; transition:border-color .15s, background .15s; }
-.receipt-box.drag { border-color:var(--blue); background:#EEF4FF; }
+.receipt-box.drag { border-color:var(--blue); background:var(--blue-lt); }
 .receipt-title { font-weight:700; color:var(--navy); font-size:15px; }
-.receipt-sub { font-size:12.5px; color:#475569; margin-top:2px; line-height:1.5; }
+.receipt-sub { font-size:12.5px; color:var(--slate-600); margin-top:2px; line-height:1.5; }
 .receipt-actions { display:flex; gap:8px; margin-top:12px; }
 .receipt-actions .btn { flex:1; min-height:46px; font-size:15px !important; }
 .receipt-drop-hint { font-size:11.5px; color:var(--gray); margin-top:8px; text-align:center; }
 @media (hover:none) { .receipt-drop-hint { display:none; } }
-.ai-status { margin-top:10px; font-size:13px; line-height:1.6; border-radius:12px; padding:10px 12px; background:#fff; border:1px solid var(--border); color:var(--ink-2); }
+.ai-status { margin-top:10px; font-size:13px; line-height:1.6; border-radius:12px; padding:10px 12px; background:var(--white); border:1px solid var(--border); color:var(--ink-2); }
 .ai-status.busy { border-color:#C7D2FE; color:#4338CA; }
-.ai-status.ok { border-color:#BBF7D0; background:#F0FDF4; color:#166534; }
-.ai-status.warn { border-color:#FDE68A; background:#FFFBEB; color:#92400E; }
+.ai-status.ok { border-color:var(--green-200); background:var(--green-50); color:#166534; }
+.ai-status.warn { border-color:var(--amber-200); background:var(--amber-50); color:var(--amber-800); }
 .ai-spin { display:inline-block; width:14px; height:14px; border-radius:50%; border:2px solid #C7D2FE; border-top-color:#4338CA; vertical-align:-2px; margin-right:4px; animation:aiSpin .8s linear infinite; }
 @keyframes aiSpin { to { transform:rotate(360deg); } }
 .ai-items { display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
-.ai-items span { background:#fff; border:1px solid #D1FAE5; border-radius:999px; padding:1px 9px; font-size:11.5px; color:var(--ink-2); }
+.ai-items span { background:var(--white); border:1px solid #D1FAE5; border-radius:999px; padding:1px 9px; font-size:11.5px; color:var(--ink-2); }
 .ai-filled { border-color:#8B5CF6 !important; background:#FAF5FF !important; box-shadow:0 0 0 3px rgba(139,92,246,.14) !important; }
 
 /* ══ มือถือ / แท็บเล็ตแนวตั้ง ══ */
@@ -815,7 +761,6 @@ img, svg, video, canvas { max-width:100%; }
     padding:calc(env(safe-area-inset-top) + 8px) max(14px,env(safe-area-inset-right)) 10px max(14px,env(safe-area-inset-left));
   }
   .hdr-logo { width:34px; height:34px; border-radius:10px; }
-  .header h1 { font-size:16px; }
   .header p { display:none; }
   .hdr-btn { width:38px; height:38px; font-size:16px; }
 
@@ -868,7 +813,7 @@ img, svg, video, canvas { max-width:100%; }
   /* เมนู ⋯ เป็น bottom sheet */
   .sheet-overlay { align-items:flex-end; padding:0; }
   .sheet { max-width:none; border-radius:22px 22px 0 0; padding:8px 12px calc(12px + env(safe-area-inset-bottom)); animation:sheetUp .22s ease; }
-  .sheet::before { content:''; display:block; width:40px; height:4px; background:#D1D5DB; border-radius:2px; margin:4px auto 4px; }
+  .sheet::before { content:''; display:block; width:40px; height:4px; background:var(--gray-300); border-radius:2px; margin:4px auto 4px; }
 
   .modal { border-radius:22px 22px 0 0; }
 }
@@ -890,8 +835,8 @@ img, svg, video, canvas { max-width:100%; }
 .prop-search { margin:0; }
 .prop-filters { display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; padding-bottom:2px; }
 .prop-filters::-webkit-scrollbar { display:none; }
-.pf-chip { flex-shrink:0; border:1.5px solid var(--border); background:#fff; color:var(--navy); border-radius:999px; padding:7px 13px; font:700 13px/1.2 inherit; font-family:inherit; cursor:pointer; min-height:40px; white-space:nowrap; }
-.pf-chip.on { background:var(--navy); border-color:var(--navy); color:#fff; }
+.pf-chip { flex-shrink:0; border:1.5px solid var(--border); background:var(--white); color:var(--navy); border-radius:999px; padding:7px 13px; font:700 13px/1.2 inherit; font-family:inherit; cursor:pointer; min-height:40px; white-space:nowrap; }
+.pf-chip.on { background:var(--navy); border-color:var(--navy); color:var(--white); }
 .pf-n { display:inline-block; min-width:18px; padding:0 5px; border-radius:9px; background:rgba(15,23,42,.08); font-size:12px; text-align:center; }
 .pf-chip.on .pf-n { background:rgba(255,255,255,.22); }
 /* การ์ดตอนกาง: ขั้นทรัพย์ไว้บนสุด · ซ่อนนัดที่ยังว่าง */
@@ -1082,7 +1027,7 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
         <div id="calc-prop-header" style="display:none;background:linear-gradient(135deg,var(--navy),var(--blue));color:white;padding:14px 20px">
           <div style="font-size:16px;font-weight:800" id="calc-header-name"></div>
           <div style="font-size:12px;opacity:.8;margin-top:3px" id="calc-header-sub"></div>
-          <button id="calc-back" class="btn btn-sm" style="display:none;margin-top:10px;background:rgba(255,255,255,.16);color:#fff;border:1.5px solid rgba(255,255,255,.45)" onclick="calcSaveAndBack()">💾 บันทึก + กลับไปที่ทรัพย์</button>
+          <button id="calc-back" class="btn btn-sm" style="display:none;margin-top:10px;background:rgba(255,255,255,.16);color:var(--white);border:1.5px solid rgba(255,255,255,.45)" onclick="calcSaveAndBack()">💾 บันทึก + กลับไปที่ทรัพย์</button>
         </div>
 
         <div style="padding:18px 20px">
@@ -1121,7 +1066,7 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
                   <col style="width:28%">
                 </colgroup>
                 <thead>
-                  <tr style="background:#F8FAFC;border-bottom:2px solid var(--border)">
+                  <tr style="background:var(--slate-50);border-bottom:2px solid var(--border)">
                     <th style="padding:8px 10px;text-align:left;font-weight:700;color:var(--navy)">รายการ</th>
                     <th style="padding:8px 10px;text-align:center;font-weight:700;color:var(--navy)">อัตรา</th>
                     <th style="padding:8px 10px;text-align:left;font-weight:700;color:var(--navy)">ฐานคำนวณ</th>
@@ -1132,7 +1077,7 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
                 <tfoot>
                   <tr style="background:#1F3A5F">
                     <td colspan="3" style="padding:10px 10px;font-weight:800;font-size:14px;color:white">รวมทุน (ไม่รวมราคาซื้อ)</td>
-                    <td style="padding:10px 10px;text-align:right;font-weight:800;font-size:15px;color:#FCD34D" id="calc-total-cost"></td>
+                    <td style="padding:10px 10px;text-align:right;font-weight:800;font-size:15px;color:var(--amber-300)" id="calc-total-cost"></td>
                   </tr>
                 </tfoot>
               </table>
@@ -1150,7 +1095,7 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
                   <col style="width:9%">
                 </colgroup>
                 <thead>
-                  <tr style="background:#EFF6FF;border-bottom:2px solid var(--border)">
+                  <tr style="background:var(--blue-50);border-bottom:2px solid var(--border)">
                     <th style="padding:8px 10px;text-align:left;font-weight:700;color:var(--navy)">ระดับ</th>
                     <th style="padding:8px 10px;text-align:right;font-weight:700;color:var(--navy)">ราคาซื้อ (฿)</th>
                     <th style="padding:8px 10px;text-align:right;font-weight:700;color:var(--navy)">ทุน (฿)</th>
@@ -1179,7 +1124,7 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
         <div id="calc-prop-ref" style="display:none"></div>
 
         <!-- Save back to property -->
-        <div id="calc-save-bar" style="display:none;margin-top:0;padding:12px 20px;background:var(--green-lt);border-top:1px solid #86EFAC;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div id="calc-save-bar" style="display:none;margin-top:0;padding:12px 20px;background:var(--green-lt);border-top:1px solid var(--green-300);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
           <span style="font-size:13px;color:var(--green);font-weight:700">คำนวณเสร็จแล้ว — บันทึกผลกลับไปยังทรัพย์?</span>
           <button class="btn btn-success btn-sm" onclick="calcSaveToProperty()">💾 บันทึกกลับทรัพย์</button>
         </div>
@@ -1222,7 +1167,7 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
         <label style="font-size:13px;font-weight:700;color:var(--navy)">🚩 จุดเริ่มต้น:</label>
         <select class="form-select" id="survey-start" aria-label="จุดเริ่มต้นเส้นทาง" style="max-width:340px;flex:1" onchange="surveySetStart(this.value);surveyStartUI()"></select>
       </div>
-      <div id="survey-custom" style="display:none;background:var(--blue-lt);border:1px solid #BFDBFE;border-radius:10px;padding:10px 12px;margin:-4px 0 12px">
+      <div id="survey-custom" style="display:none;background:var(--blue-lt);border:1px solid var(--blue-200);border-radius:10px;padding:10px 12px;margin:-4px 0 12px">
         <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px">✏️ จุดที่คุณอยู่ / จุดออกเดินทาง</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <input class="form-input" id="survey-custom-in" style="flex:1;min-width:220px;margin:0" placeholder="วางพิกัด เช่น 17.4123, 102.7890 หรือลิงก์ Google Maps แบบยาว" aria-label="พิกัดจุดเริ่มต้น" onchange="surveySetCustom(this.value)">
@@ -1345,7 +1290,7 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
     <div style="overflow-x:auto;margin-bottom:4px">
       <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:380px">
         <thead>
-          <tr style="background:#F1F5F9">
+          <tr style="background:var(--slate-100)">
             <th style="padding:8px;text-align:left;font-weight:700;color:var(--navy);white-space:nowrap;border-bottom:2px solid var(--border)">นัดที่</th>
             <th style="padding:8px;text-align:left;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">วันที่</th>
             <th style="padding:8px;text-align:left;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">หมายเหตุ</th>
@@ -1433,7 +1378,7 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
       <a class="btn btn-ghost btn-sm" id="pdf-view-open" target="_blank" download>⬇ ดาวน์โหลด</a>
       <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-pdf')">✕ ปิด</button>
     </div>
-    <div id="pdf-view-pages" style="max-height:75vh;overflow:auto;background:#F1F5F9;border-radius:9px;padding:8px"></div>
+    <div id="pdf-view-pages" style="max-height:75vh;overflow:auto;background:var(--slate-100);border-radius:9px;padding:8px"></div>
   </div>
 </div>
 
@@ -1444,7 +1389,7 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
       <h3 style="margin:0;flex:1">📍 ใส่พิกัดจากกรมที่ดิน (LandsMaps)</h3>
       <button class="btn btn-ghost btn-sm" onclick="closeDolLL()">✕ ปิด</button>
     </div>
-    <div style="font-size:12px;color:#374151;line-height:1.7;background:var(--blue-lt);border-radius:9px;padding:9px 12px;margin-bottom:10px">
+    <div style="font-size:12px;color:var(--gray-700);line-height:1.7;background:var(--blue-lt);border-radius:9px;padding:9px 12px;margin-bottom:10px">
       1) กด <b>🔎 LandsMaps</b> (คัดลอกเลขโฉนดให้แล้ว) → ติ๊ก "I am human" ครั้งแรกครั้งเดียว<br>
       2) ใน LandsMaps เลือกจังหวัด/อำเภอตามแถว → วางเลขโฉนด → ค้นหา<br>
       3) คัดลอกพิกัดแปลง (ละติจูด, ลองจิจูด) มาวางในช่องของแถวนั้น → ขึ้น ✓ = บันทึกแล้ว<br>
@@ -1455,18 +1400,18 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
 </div>
 
 <!-- หน้าบันทึกรายละเอียด: Excalidraw (วาด/เขียน/รูปทรง/ข้อความ/แทรกรูป) + ช่องพิมพ์บันทึก -->
-<div id="sketch-overlay" style="display:none;position:fixed;inset:0;z-index:600;background:#fff;flex-direction:column">
-  <div id="sk-head" style="background:var(--navy);color:#fff;padding:7px 10px;padding-top:calc(7px + env(safe-area-inset-top, 0px));display:flex;align-items:center;gap:6px;flex-wrap:nowrap">
+<div id="sketch-overlay" style="display:none;position:fixed;inset:0;z-index:600;background:var(--white);flex-direction:column">
+  <div id="sk-head" style="background:var(--navy);color:var(--white);padding:7px 10px;padding-top:calc(7px + env(safe-area-inset-top, 0px));display:flex;align-items:center;gap:6px;flex-wrap:nowrap">
     <div id="sk-title" style="font-weight:800;font-size:14px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📝 บันทึกรายละเอียด</div>
     <span id="sk-saved" style="font-size:12px;opacity:.8;white-space:nowrap"></span>
     <button class="btn btn-xs sk-hbtn" id="sk-props-btn" onclick="skToggleProps()" title="แสดง/ซ่อนแถบสีและขนาดเส้น">🎨<span class="sk-lbl"> แถบเครื่องมือ</span></button>
     <button class="btn btn-xs sk-hbtn" onclick="skToggleText()" title="พิมพ์บันทึก">📝<span class="sk-lbl"> ข้อความ</span></button>
     <button class="btn btn-xs sk-hbtn" id="sk-ins-prop" onclick="skInsertImage('prop')" title="แทรกรูปทรัพย์">🖼<span class="sk-lbl"> แทรกรูปทรัพย์</span></button>
     <button class="btn btn-xs sk-hbtn" id="sk-ins-land" onclick="skInsertImage('land')" title="แทรกแผนที่แปลง">🗺<span class="sk-lbl"> แทรกแผนที่</span></button>
-    <button class="btn btn-sm" id="sk-done" style="background:#fff;color:var(--navy);white-space:nowrap;flex-shrink:0" onclick="closeSketch()">✓ เสร็จ</button>
+    <button class="btn btn-sm" id="sk-done" style="background:var(--white);color:var(--navy);white-space:nowrap;flex-shrink:0" onclick="closeSketch()">✓ เสร็จ</button>
   </div>
-  <div id="sk-textbox" style="display:none;padding:8px 10px;background:#F8FAFC;border-bottom:1px solid var(--border)">
-    <textarea id="sk-text" class="form-textarea" placeholder="📝 พิมพ์บันทึก — สภาพทรัพย์ มีคนอยู่ไหม ทางเข้า เพื่อนบ้าน สิ่งที่ต้องซ่อม..." style="min-height:70px;font-size:15px;margin:0;background:#fff" oninput="skTextChanged()"></textarea>
+  <div id="sk-textbox" style="display:none;padding:8px 10px;background:var(--slate-50);border-bottom:1px solid var(--border)">
+    <textarea id="sk-text" class="form-textarea" placeholder="📝 พิมพ์บันทึก — สภาพทรัพย์ มีคนอยู่ไหม ทางเข้า เพื่อนบ้าน สิ่งที่ต้องซ่อม..." style="min-height:70px;font-size:15px;margin:0;background:var(--white)" oninput="skTextChanged()"></textarea>
   </div>
   <div style="flex:1;position:relative;min-height:0;margin-bottom:env(safe-area-inset-bottom, 0px)">
     <div id="ex-root" style="position:absolute;inset:0"></div>
@@ -1589,11 +1534,11 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
     <div class="form-group" style="margin-top:4px">
       <label class="form-label">ผู้จ่ายเงินไปก่อน *</label>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <label style="flex:1;min-width:140px;display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;font-size:14px;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;background:#FAFAFA">
+        <label style="flex:1;min-width:140px;display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;font-size:14px;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;background:var(--neutral-50)">
           <input type="radio" name="reno-payer" value="me" id="reno-payer-me" checked style="width:16px;height:16px;accent-color:var(--green);cursor:pointer">
           <span>👤 ฉันจ่าย</span>
         </label>
-        <label style="flex:1;min-width:140px;display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;font-size:14px;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;background:#FAFAFA">
+        <label style="flex:1;min-width:140px;display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;font-size:14px;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;background:var(--neutral-50)">
           <input type="radio" name="reno-payer" value="partner" id="reno-payer-partner" style="width:16px;height:16px;accent-color:var(--blue);cursor:pointer">
           <span>🤝 หุ้นส่วนจ่าย</span>
         </label>
@@ -1620,15 +1565,15 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
   <div class="modal">
     <h3>🔄 บันทึกยอดโอนคืนระหว่างกัน</h3>
     <input type="hidden" id="settle-prop-id" />
-    <div id="settle-info" style="font-size:13px;color:#374151;background:#FFFBEB;border:1.5px solid #FCD34D;border-radius:9px;padding:10px 12px;margin-bottom:14px;line-height:1.7"></div>
+    <div id="settle-info" style="font-size:13px;color:var(--gray-700);background:var(--amber-50);border:1.5px solid var(--amber-300);border-radius:9px;padding:10px 12px;margin-bottom:14px;line-height:1.7"></div>
     <div class="form-group">
       <label class="form-label">ใครเป็นคนโอนคืน *</label>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <label style="flex:1;min-width:150px;display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;font-size:14px;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;background:#FAFAFA">
+        <label style="flex:1;min-width:150px;display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;font-size:14px;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;background:var(--neutral-50)">
           <input type="radio" name="settle-from" value="me" id="settle-from-me" checked style="width:16px;height:16px;accent-color:var(--green);cursor:pointer">
           <span>👤 ฉันโอนคืนหุ้นส่วน</span>
         </label>
-        <label style="flex:1;min-width:150px;display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;font-size:14px;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;background:#FAFAFA">
+        <label style="flex:1;min-width:150px;display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;font-size:14px;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;background:var(--neutral-50)">
           <input type="radio" name="settle-from" value="partner" id="settle-from-partner" style="width:16px;height:16px;accent-color:var(--blue);cursor:pointer">
           <span>🤝 หุ้นส่วนโอนคืนฉัน</span>
         </label>
@@ -1723,9 +1668,9 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
     </div>
 
     <!-- Backup / Restore -->
-    <div style="background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:10px;padding:14px;margin-bottom:16px">
+    <div style="background:var(--green-50);border:1.5px solid var(--green-300);border-radius:10px;padding:14px;margin-bottom:16px">
       <div style="font-weight:800;color:var(--green);margin-bottom:8px">💾 สำรอง / กู้คืนข้อมูล</div>
-      <div style="font-size:12px;color:#374151;line-height:1.6;margin-bottom:10px">
+      <div style="font-size:12px;color:var(--gray-700);line-height:1.6;margin-bottom:10px">
         ดาวน์โหลดไฟล์ JSON เก็บไว้เป็นเซฟตี้ ถ้า Cloud พัง — Import กลับได้
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -2411,7 +2356,7 @@ function saleSettlementNarrative(propId) {
   const myRecv      = receipts.filter(r=>r.receiver!=='partner').reduce((s,r)=>s+r.amount,0);
   const partnerRecv = receipts.filter(r=>r.receiver==='partner').reduce((s,r)=>s+r.amount,0);
   return `
-    <div style="font-size:12px;color:#374151;line-height:2;margin-bottom:10px;background:#F8FAFC;border:1px solid #E5E7EB;border-radius:8px;padding:9px 11px">
+    <div style="font-size:12px;color:var(--gray-700);line-height:2;margin-bottom:10px;background:var(--slate-50);border:1px solid var(--gray-200);border-radius:8px;padding:9px 11px">
       💵 ขายบ้านได้ <b>${fmtPrice(sold)}</b> <span style="color:var(--gray)">(กำไรรวม ${gross>=0?'+':''}${fmtPrice(Math.round(gross))})</span><br>
       👤 ฉันควรได้รับสุทธิรวม <b style="color:var(--green)">${fmtPrice(Math.round(myEnt))}</b> <span style="color:var(--gray);font-size:12px">(ทุนที่จ่ายไป ${fmtNum(ps.myPaid)} + กำไรส่วนตัว ${fmtNum(Math.round(net))})</span><br>
       🤝 หุ้นส่วนควรได้รับสุทธิรวม <b style="color:var(--blue)">${fmtPrice(Math.round(partnerEnt))}</b> <span style="color:var(--gray);font-size:12px">(ทุนที่จ่ายไป ${fmtNum(ps.partnerPaid)} + กำไรส่วนตัว ${fmtNum(Math.round(net))})</span>
@@ -2447,7 +2392,7 @@ function settleBoxHtml(propId) {
     const heldOverCapital = Math.max(0, rRecv - rPaid);       // ถือเงินเกินทุนตัวเองไปแล้วเท่าไหร่ (นับเป็นกำไรที่ได้แล้วบางส่วน)
     const profitShort = Math.max(0, net - heldOverCapital);   // คืนกำไร — ส่วนแบ่งกำไรที่ยังไม่ได้รับ
     breakdownHtml = `
-      <div style="margin-top:6px;padding-top:6px;border-top:1px dashed #E5E7EB;font-size:12px;color:#374151;line-height:2">
+      <div style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--gray-200);font-size:12px;color:var(--gray-700);line-height:2">
         📦 แยกยอดที่ต้องโอนให้${who}:
         ${capitalShort>=0.5 ? `<div>• คืนทุน (${who}จ่ายไปแล้วแต่ยังไม่ได้คืน): <b>${fmtPrice(Math.round(capitalShort))}</b></div>` : ''}
         ${profitShort>=0.5  ? `<div>• คืนกำไร (ส่วนแบ่งกำไรของ${who}ที่ยังไม่ได้รับ): <b>${fmtPrice(Math.round(profitShort))}</b></div>` : ''}
@@ -2461,14 +2406,14 @@ function settleBoxHtml(propId) {
     ${saleSettlementNarrative(propId)}
     <div style="border:1px solid ${Math.abs(netOwe)<0.5?'#86EFAC':'#FCD34D'};border-radius:9px;padding:8px 11px;margin-bottom:12px;background:${Math.abs(netOwe)<0.5?'#F0FDF4':'#FFFBEB'}">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-        <div style="font-size:12px;color:#374151">
+        <div style="font-size:12px;color:var(--gray-700)">
           🔄 ค้างสุทธิ: <b style="font-size:13px">${oweShort}</b>
         </div>
         <button class="btn btn-primary btn-xs" onclick="openSettle('${propId}')">+ บันทึกยอดโอนคืน</button>
       </div>
       ${breakdownHtml}
       ${settles.length ? `
-      <div style="margin-top:6px;border-top:1px dashed #E5E7EB;padding-top:5px">
+      <div style="margin-top:6px;border-top:1px dashed var(--gray-200);padding-top:5px">
         ${settles.map(s=>`
           <div style="display:flex;align-items:center;gap:6px;font-size:12px;padding:2px 0">
             <span style="color:var(--gray);min-width:66px">${fmtDate(s.date)}</span>
@@ -2657,9 +2602,9 @@ function parcelBlockHtml(p) {
       ${parcelPending(p) ? `<span class="badge badge-amber">⏳ รอ${!parcelExact(p) ? 'พิกัด/' : ''}ภาพแปลง</span>` : ''}
     </div>
     ${parcelPending(p) ? `<div style="font-size:12px;color:var(--amber);margin:-4px 0 8px">รอพิกัดจากกรมที่ดิน — กด 🔎 เปิด LandsMaps แล้วกดปุ่มลัด 📍 (ตั้งค่าที่ ⚙️)</div>` : ''}
-    ${hasImg ? `<img src="${p.imgLand}" style="width:100%;max-height:320px;object-fit:contain;border-radius:8px;background:#fff;border:1px solid var(--border);cursor:zoom-in;margin-bottom:8px" onclick="showLightbox('${p.imgLand}')" title="ภาพแผนที่แปลงจาก LandsMaps" alt="ภาพแผนที่แปลง ${escapeHtml(p.code||p.name||'')}">`
+    ${hasImg ? `<img src="${p.imgLand}" style="width:100%;max-height:320px;object-fit:contain;border-radius:8px;background:var(--white);border:1px solid var(--border);cursor:zoom-in;margin-bottom:8px" onclick="showLightbox('${p.imgLand}')" title="ภาพแผนที่แปลงจาก LandsMaps" alt="ภาพแผนที่แปลง ${escapeHtml(p.code||p.name||'')}">`
       : exact ? `<div class="parcel-map" data-pmap="${p.id}" data-ll="${ll.lat},${ll.lng}"><div style="padding:90px 0;text-align:center;font-size:12px;color:var(--gray)">⏳ กำลังโหลดภาพดาวเทียม...</div></div>` : ''}
-    ${!exact && p.pool ? `<div style="background:var(--amber-lt);border:1px solid #FCD34D;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:12px">
+    ${!exact && p.pool ? `<div style="background:var(--amber-lt);border:1px solid var(--amber-300);border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:12px">
         <div style="font-weight:700;color:var(--amber);margin-bottom:6px">ยังไม่มีพิกัดแปลงจริง — วางพิกัดจาก LandsMaps ที่นี่ (หรือบอก Claude ให้หาให้):</div>
         <input class="form-input" style="font-size:12px;padding:6px 9px" placeholder="เช่น 17.4102, 102.8231" onchange="surveySetLL('${p.id}', this.value)">
       </div>` : ''}
@@ -2777,7 +2722,7 @@ function openLmImport(data) {
   ov.className = 'modal-overlay open'; ov.id = 'modal-lm';
   ov.innerHTML = `<div class="modal" style="max-width:520px">
     <h3>📍 รับแปลงจาก LandsMaps</h3>
-    ${data.img ? `<img src="${data.img}" alt="ภาพแผนที่แปลงจาก LandsMaps" style="width:100%;max-height:300px;object-fit:contain;border-radius:10px;border:1px solid var(--border);background:#fff;margin-bottom:10px">` : `<div style="font-size:13px;color:var(--amber);margin-bottom:10px">ไม่มีภาพแผนที่แปลง (ส่งมาแค่พิกัด)</div>`}
+    ${data.img ? `<img src="${data.img}" alt="ภาพแผนที่แปลงจาก LandsMaps" style="width:100%;max-height:300px;object-fit:contain;border-radius:10px;border:1px solid var(--border);background:var(--white);margin-bottom:10px">` : `<div style="font-size:13px;color:var(--amber);margin-bottom:10px">ไม่มีภาพแผนที่แปลง (ส่งมาแค่พิกัด)</div>`}
     <div style="background:var(--bg);border-radius:10px;padding:8px 12px;font-size:14px;margin-bottom:12px">
       พิกัด <b>${data.lat.toFixed(6)}, ${data.lng.toFixed(6)}</b>${data.area?` · เนื้อที่ <b>${escapeHtml(data.area)}</b>`:''}${data.price?` · ราคาประเมิน <b>${escapeHtml(data.price)}</b> ฿/ตร.ว.`:''}
     </div>
@@ -2858,7 +2803,7 @@ function surveyStartUI() {
   if (msg) msg.innerHTML = c ? `ตั้งไว้ที่ <b>${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}</b> · <a href="https://www.google.com/maps/search/?api=1&query=${c.lat},${c.lng}" target="_blank">ดูบนแผนที่</a>` : 'ยังไม่ได้ตั้งจุด';
 }
 function planBanner(msg) {
-  return `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--amber-lt);border:1.5px solid #FCD34D;border-radius:10px;padding:10px 12px;margin-top:8px">
+  return `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--amber-lt);border:1.5px solid var(--amber-300);border-radius:10px;padding:10px 12px;margin-top:8px">
     <span style="font-size:13px;font-weight:700;color:var(--amber);flex:1">🧭 ${msg}</span>
     <button class="btn btn-primary" onclick="surveyPlan()">🧭 จัดเรียงเส้นทาง</button>
   </div>`;
@@ -3197,7 +3142,7 @@ function surveyPriceInputs(p) {
           style="flex:1;min-width:0;border:1.5px solid ${color};border-radius:7px;padding:6px 10px;font-size:14px;font-weight:700;color:var(--navy);background:white;outline:none">
         <span style="font-size:13px;font-weight:700;color:var(--gray)">฿</span></span>
     </div>`;
-  return `<div style="background:#F9FAFB;border:1px solid var(--border);border-radius:9px;padding:9px 12px;margin-bottom:12px;display:grid;gap:8px">
+  return `<div style="background:var(--gray-50);border:1px solid var(--border);border-radius:9px;padding:9px 12px;margin-bottom:12px;display:grid;gap:8px">
     ${field('🎯 ราคาขายที่คาดหวัง', p.targetSell, 'savePropTargetSell', 'เช่น 1,800,000', '#15803D')}
     ${field('🛠 ค่ารีโนเวท/ซ่อมแซม (ประเมิน)', p.renoBudget, 'savePropRenoBudget', 'เช่น 300,000', '#0EA5E9')}
   </div>`;
@@ -3239,7 +3184,7 @@ function surveyCardHtml(x, total, open) {
   }).join('');
   const nav = x.ll ? `https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=${x.ll.lat},${x.ll.lng}` : '';
   return `
-    ${legTxt ? `<div style="font-size:12px;color:var(--gray);padding:0 0 6px 17px;margin:-6px 0 0 17px;border-left:2px dashed #CBD5E1">⬇ ${legTxt}</div>` : ''}
+    ${legTxt ? `<div style="font-size:12px;color:var(--gray);padding:0 0 6px 17px;margin:-6px 0 0 17px;border-left:2px dashed var(--slate-300)">⬇ ${legTxt}</div>` : ''}
     <div class="prop-card ${sv.done ? 'won' : ''} ${open ? 'expanded' : ''}" id="sv-${p.id}" style="${sv.skip ? 'opacity:.55' : ''}">
       <div class="prop-header sv" onclick="document.getElementById('sv-${p.id}').classList.toggle('expanded');initParcelMaps()">
         <div class="prop-media">${thumb}<span class="prop-num" style="background:${numBg}">${num}</span></div>
@@ -3277,9 +3222,9 @@ function surveyCardHtml(x, total, open) {
           ${x.ll ? `<a href="${nav}" target="_blank" class="btn btn-primary btn-xs">🚗 นำทาง</a>
           <a href="https://www.google.com/maps/search/?api=1&query=${x.ll.lat},${x.ll.lng}" target="_blank" class="btn btn-ghost btn-xs">📍 Google Map</a>` : ''}
         </div>
-        ${p.pdfUrl ? `<div id="svpdf-${p.id}" style="${_svPdfOpen.has(p.id) ? '' : 'display:none;'}max-height:70vh;overflow:auto;background:#F1F5F9;border-radius:9px;padding:8px;margin-bottom:12px"></div>` : ''}
+        ${p.pdfUrl ? `<div id="svpdf-${p.id}" style="${_svPdfOpen.has(p.id) ? '' : 'display:none;'}max-height:70vh;overflow:auto;background:var(--slate-100);border-radius:9px;padding:8px;margin-bottom:12px"></div>` : ''}
         ${parcelBlockHtml(p)}
-        ${led.court || led.plaintiff || led.office ? `<div style="font-size:12px;color:#374151;line-height:1.7;margin-bottom:12px">
+        ${led.court || led.plaintiff || led.office ? `<div style="font-size:12px;color:var(--gray-700);line-height:1.7;margin-bottom:12px">
           ${led.type ? `<div>🏷 ${escapeHtml(led.type)}</div>` : ''}
           ${led.court ? `<div>⚖️ ศาล${escapeHtml(led.court)}</div>` : ''}
           ${led.plaintiff ? `<div>โจทก์: ${escapeHtml(led.plaintiff)}</div>` : ''}
@@ -3312,7 +3257,7 @@ function renderDolLL() {
   document.getElementById('dol-ll-list').innerHTML = rows.map(p => {
     const done = !p.llApprox && parseLatLng(p.mapUrl);
     const led = p.led || {};
-    return `<div id="dolrow-${p.id}" style="padding:10px 6px;border-bottom:1px solid var(--border);${done ? 'background:#F0FDF4' : ''}">
+    return `<div id="dolrow-${p.id}" style="padding:10px 6px;border-bottom:1px solid var(--border);${done ? 'background:var(--green-50)' : ''}">
       <div style="display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin-bottom:7px">
         <div class="dol-num" style="background:${done ? 'var(--green)' : '#D97706'}">${p.survey?.order || '•'}</div>
         <div style="flex:1;min-width:150px">
@@ -3721,13 +3666,13 @@ function sketchCardBlock(p) {
   const note = (p.pool ? p.survey?.note : p.notes) || '';
   const thumb = sketchThumb(p);
   const drawn = hasSketch(p);
-  return `<div style="border:1.5px dashed #CBD5E1;border-radius:10px;padding:10px;margin-bottom:12px;background:#FAFCFF;cursor:pointer" onclick="openSketch('${p.id}')">
+  return `<div style="border:1.5px dashed var(--slate-300);border-radius:10px;padding:10px;margin-bottom:12px;background:#FAFCFF;cursor:pointer" onclick="openSketch('${p.id}')">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:${note || drawn ? '8' : '0'}px">
       <b style="font-size:13px;color:var(--navy);flex:1">📝 บันทึกรายละเอียด</b>
       <span class="btn btn-primary btn-xs">${note || drawn ? '✏️ เปิดแก้ไข' : '+ เขียนบันทึก'}</span>
     </div>
-    ${note ? `<div style="font-size:13px;white-space:pre-wrap;color:#374151;margin-bottom:${drawn ? 8 : 0}px">${escapeHtml(note)}</div>` : ''}
-    ${thumb ? `<img src="${thumb}" style="max-width:100%;max-height:220px;border-radius:6px;border:1px solid var(--border);background:#fff">`
+    ${note ? `<div style="font-size:13px;white-space:pre-wrap;color:var(--gray-700);margin-bottom:${drawn ? 8 : 0}px">${escapeHtml(note)}</div>` : ''}
+    ${thumb ? `<img src="${thumb}" style="max-width:100%;max-height:220px;border-radius:6px;border:1px solid var(--border);background:var(--white)">`
       : drawn ? `<div style="font-size:12px;color:var(--gray)">🖊 มีภาพวาด — แตะเพื่อเปิดดู</div>` : ''}
   </div>`;
 }
@@ -3779,7 +3724,7 @@ async function renderPdfInto(box, url) {
       const vp = page.getViewport({ scale: (w / base.width) * (window.devicePixelRatio || 1) });
       const c = document.createElement('canvas');
       c.width = vp.width; c.height = vp.height;
-      c.style.cssText = 'width:100%;display:block;margin:0 auto 8px;background:#fff;border-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,.12)';
+      c.style.cssText = 'width:100%;display:block;margin:0 auto 8px;background:var(--white);border-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,.12)';
       box.appendChild(c);
       await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
     }
@@ -4063,13 +4008,13 @@ async function renderSurvey() {
     // พิกัดประมาณ = หมุดส้มขอบประ (ยังไม่ใช่ตำแหน่งแปลงจริง)
     const bg = done ? '#16A34A' : approx ? '#D97706' : '#1F3A5F';
     addMark([x.ll.lat, x.ll.lng],
-      `<div style="width:28px;height:28px;border-radius:50%;background:${bg};color:#fff;border:2px ${approx ? 'dashed' : 'solid'} #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font:800 13px sans-serif">${label(x, i)}</div>`, 28, 28,
-      `<b>${label(x, i)}. ${escapeHtml((x.p.code ? x.p.code + ' — ' : '') + x.p.name)}</b><br><span style="font-size:12px">${escapeHtml(x.p.loc || '')}</span>${approx ? '<br><span style="font-size:12px;color:#B45309">≈ พิกัดประมาณ (กลางตำบล) — ยังไม่ใช่ตำแหน่งแปลงจริง</span>' : ''}`, dx, dy);
+      `<div style="width:28px;height:28px;border-radius:50%;background:${bg};color:var(--white);border:2px ${approx ? 'dashed' : 'solid'} #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font:800 13px sans-serif">${label(x, i)}</div>`, 28, 28,
+      `<b>${label(x, i)}. ${escapeHtml((x.p.code ? x.p.code + ' — ' : '') + x.p.name)}</b><br><span style="font-size:12px">${escapeHtml(x.p.loc || '')}</span>${approx ? '<br><span style="font-size:12px;color:var(--amber)">≈ พิกัดประมาณ (กลางตำบล) — ยังไม่ใช่ตำแหน่งแปลงจริง</span>' : ''}`, dx, dy);
   });
   if (!_surveyGps && meta.gps && meta.origin) _surveyGps = meta.origin;   // จำจุดเริ่มข้ามการเปิดแอป
   const gpsOn = !!(_surveyGps && meta.gps);
   if (gpsOn) addMark([_surveyGps.lat, _surveyGps.lng],
-    `<div style="width:16px;height:16px;border-radius:50%;background:#EF4444;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>`, 16, 16, '📍 จุดเริ่ม (ตำแหน่งตอนจัดเส้นทาง)');
+    `<div style="width:16px;height:16px;border-radius:50%;background:var(--red-500);border:2px solid var(--white);box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>`, 16, 16, '📍 จุดเริ่ม (ตำแหน่งตอนจัดเส้นทาง)');
   let line = null;
   if (ordered.length > 1 || (gpsOn && ordered.length)) {
     line = _surveyGeom
@@ -4318,7 +4263,7 @@ function updateBadges() {
 function renderDocTypes() {
   const el = document.getElementById('doctypes-list');
   el.innerHTML = S.docTypes.map(dt => `
-    <div style="display:flex;align-items:center;gap:6px;background:#F3F4F6;border-radius:20px;padding:5px 12px 5px 10px;">
+    <div style="display:flex;align-items:center;gap:6px;background:var(--gray-100);border-radius:20px;padding:5px 12px 5px 10px;">
       <span style="font-size:13px;font-weight:600;">📄 ${dt.name}</span>
       <button class="icon-btn del" style="width:22px;height:22px;font-size:12px;" onclick="deleteDocType('${dt.id}')">✕</button>
     </div>`).join('');
@@ -4651,7 +4596,7 @@ function renoBudgetBar(p, spent, acqCost) {
         placeholder="เช่น 1,800,000"
         oninput="fmtNumInput(this)"
         onblur="savePropTargetSell('${p.id}',this.value)"
-        style="flex:1;min-width:0;border:1.5px solid #15803D;border-radius:7px;padding:6px 10px;font-size:14px;font-weight:700;color:var(--navy);background:white;outline:none">
+        style="flex:1;min-width:0;border:1.5px solid var(--green);border-radius:7px;padding:6px 10px;font-size:14px;font-weight:700;color:var(--navy);background:white;outline:none">
       <span style="font-size:13px;font-weight:700;color:var(--gray)">฿</span></span>
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:${budget?'8px':'2px'}">
@@ -4669,7 +4614,7 @@ function renoBudgetBar(p, spent, acqCost) {
       → ใช้เป็น “ค่าซ่อมแซม” ในหน้าคำนวณอัตโนมัติ${size?` · พื้นที่ ${size} ตร.ว.${budget?` ≈ ${fmtNum(Math.round(budget/size))} ฿/ตร.ว.`:''}`:''}
     </div>`;
 
-  if (!budget) return `<div style="background:#F9FAFB;border:1px solid var(--border);border-radius:9px;padding:9px 12px;margin-bottom:10px">${input}</div>`;
+  if (!budget) return `<div style="background:var(--gray-50);border:1px solid var(--border);border-radius:9px;padding:9px 12px;margin-bottom:10px">${input}</div>`;
 
   const pct     = budget ? (spent / budget) * 100 : 0;
   const over    = spent - budget;
@@ -4685,7 +4630,7 @@ function renoBudgetBar(p, spent, acqCost) {
         <span style="font-weight:700;color:var(--navy)">งบ ${fmtPrice(budget)}</span>
         <span style="color:${barColor};font-weight:800">${Math.round(pct)}%</span>
       </div>
-      <div style="height:8px;background:#E5E7EB;border-radius:20px;overflow:hidden">
+      <div style="height:8px;background:var(--gray-200);border-radius:20px;overflow:hidden">
         <div style="height:100%;width:${barPct}%;background:${barColor};border-radius:20px;transition:width .3s"></div>
       </div>
       <div style="font-size:12px;margin-top:6px;font-weight:700;color:${isOver?'var(--red)':'var(--gray)'}">
@@ -4740,9 +4685,9 @@ function renderSaleReceipts(p) {
     </div>`;
   const net = netBalanceForProps([p.id]);
   return `
-    <div style="border-top:1px dashed #86EFAC;margin-top:8px;padding-top:10px;display:flex;flex-direction:column;gap:9px">
+    <div style="border-top:1px dashed var(--green-300);margin-top:8px;padding-top:10px;display:flex;flex-direction:column;gap:9px">
       <div style="font-size:12px;font-weight:800;color:var(--green)">💰 การรับเงินจากการขาย</div>
-      <div style="font-size:12px;color:var(--gray);line-height:1.6;background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:6px 8px">
+      <div style="font-size:12px;color:var(--gray);line-height:1.6;background:var(--amber-50);border:1px solid var(--amber-200);border-radius:6px;padding:6px 8px">
         ⚠️ กรอกเฉพาะเงินที่ <b>เข้ากระเป๋า/บัญชีของฉันหรือหุ้นส่วนจริงๆ</b> เท่านั้น — ถ้ายอดคงเหลือถูกตัดตรงไปโปะแบงก์/ปิดวงเงินที่ยืมมาซื้อ/ค่านายหน้า โดยไม่เคยเข้ามือใครเลย <b>ห้ามกรอกตรงนี้</b> ให้ไปบันทึกเป็นรายการค่าใช้จ่ายแทน (หารครึ่งอัตโนมัติอยู่แล้ว) ไม่งั้นยอดค้างสุทธิด้านล่างจะผิดได้มาก
       </div>
       ${inputRow('🧾','มัดจำที่ได้รับ','saleDeposit','saleDepositReceiver',dep,'เช่น 100,000',p.saleDepositReceiver)}
@@ -4759,7 +4704,7 @@ function renderSaleReceipts(p) {
 function saleInputsHtml(p) {
   const sold = Number(p.actualSell) || 0;
   return `
-    <div style="background:#F0FDF4;border-radius:9px;padding:12px 14px;border:1px solid #BBF7D0;margin-bottom:14px">
+    <div style="background:var(--green-50);border-radius:9px;padding:12px 14px;border:1px solid var(--green-200);margin-bottom:14px">
       <div style="display:flex;flex-direction:column;gap:8px">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <span style="font-size:13px;font-weight:700;color:var(--navy);white-space:nowrap;min-width:160px">🏷 ราคาที่ซื้อทรัพย์ได้</span>
@@ -5027,7 +4972,7 @@ function renderProps() {
                       onclick="setPropStatus('${p.id}','lost')">✗ ไม่ได้ทรัพย์</button>
             </div>
             ${p.status==='lost' ? `
-              <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:8px 12px;font-size:12px;color:var(--red);font-weight:600">
+              <div style="background:var(--red-lt);border:1px solid var(--red-200);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--red);font-weight:600">
                 ทรัพย์นี้ประมูลไม่ได้ — <button class="btn btn-ghost btn-xs" onclick="setPropStatus('${p.id}','watching')">↩ กลับมาติดตามใหม่</button>
               </div>` : `
               <div class="stage-stepper">
@@ -5098,12 +5043,12 @@ function renderProps() {
                 const isAcq = isAcquisitionCost(e);
                 const payerBadge = isP
                   ? `<span style="font-size:12px;background:var(--blue-lt);color:var(--blue);padding:1px 5px;border-radius:4px;font-weight:700;flex-shrink:0" title="หุ้นส่วนจ่าย">🤝 หุ้นส่วน</span>`
-                  : `<span style="font-size:12px;background:#F0FDF4;color:var(--green);padding:1px 5px;border-radius:4px;font-weight:700;flex-shrink:0" title="ฉันจ่าย">👤 ฉัน</span>`;
-                const settledBadge = e.settled ? `<span class="exp-settled" style="font-size:12px;background:#F3F4F6;color:var(--gray);padding:1px 5px;border-radius:4px;font-weight:700;flex-shrink:0" title="ตัดบัญชีระหว่างเราแล้ว">✓ ตัด</span>` : '';
+                  : `<span style="font-size:12px;background:var(--green-50);color:var(--green);padding:1px 5px;border-radius:4px;font-weight:700;flex-shrink:0" title="ฉันจ่าย">👤 ฉัน</span>`;
+                const settledBadge = e.settled ? `<span class="exp-settled" style="font-size:12px;background:var(--gray-100);color:var(--gray);padding:1px 5px;border-radius:4px;font-weight:700;flex-shrink:0" title="ตัดบัญชีระหว่างเราแล้ว">✓ ตัด</span>` : '';
                 return `
                 <div class="exp-row" onclick="event.stopPropagation();editExpense('${e.id}')" style="display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px dashed #C6E6D0;font-size:12px;cursor:pointer;border-radius:4px;${isAcq?'opacity:.7':''}" onmouseover="this.style.background='rgba(0,0,0,.03)'" onmouseout="this.style.background=''">
                   <span style="color:var(--gray);min-width:62px;flex-shrink:0">${fmtDate(e.date)}</span>
-                  <span class="exp-desc" style="flex:1;font-weight:600;color:${e.settled?'var(--gray)':'#1F2937'}">${e.desc}${isAcq?` <span style="font-size:11px;background:#FEF3C7;color:#92400E;padding:1px 4px;border-radius:3px;font-weight:700" title="นับเป็นต้นทุนซื้อ/ค่าธรรมเนียม ไม่รวมในงบรีโนเวท">ต้นทุนซื้อ</span>`:''}</span>
+                  <span class="exp-desc" style="flex:1;font-weight:600;color:${e.settled?'var(--gray)':'#1F2937'}">${e.desc}${isAcq?` <span style="font-size:11px;background:#FEF3C7;color:var(--amber-800);padding:1px 4px;border-radius:3px;font-weight:700" title="นับเป็นต้นทุนซื้อ/ค่าธรรมเนียม ไม่รวมในงบรีโนเวท">ต้นทุนซื้อ</span>`:''}</span>
                   ${payerBadge}
                   ${settledBadge}
                   <span style="font-weight:700;color:${isP?'var(--blue)':'var(--green)'};white-space:nowrap;flex-shrink:0">${fmtPrice(e.amount)}</span>
@@ -5115,7 +5060,7 @@ function renderProps() {
               </div>
               <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:8px 0 4px;text-align:center;border-top:1px solid #C6E6D0;margin-top:2px;">
                 <div>
-                  <div style="font-size:12px;font-weight:800;color:#1F2937">${fmtPrice(renoStats.total)}</div>
+                  <div style="font-size:12px;font-weight:800;color:var(--gray-800)">${fmtPrice(renoStats.total)}</div>
                   <div style="font-size:12px;color:var(--gray)">รวมทั้งหมด</div>
                 </div>
                 <div>
@@ -5138,12 +5083,12 @@ function renderProps() {
           ${p.notes?`
           <div style="margin-top:16px;">
             <div class="section-title">📝 หมายเหตุ</div>
-            <div style="font-size:13px;color:#374151;background:#F9FAFB;padding:10px 14px;border-radius:8px;">${p.notes}</div>
+            <div style="font-size:13px;color:var(--gray-700);background:var(--gray-50);padding:10px 14px;border-radius:8px;">${p.notes}</div>
           </div>`:''}
 
           <!-- BUY / SELL PRICE (ชนะประมูลขึ้นไป) -->
           ${isAcquired(p)?`
-          <div onclick="event.stopPropagation()" style="margin-top:14px;background:#F0FDF4;border-radius:9px;padding:12px 14px;border:1px solid #BBF7D0">
+          <div onclick="event.stopPropagation()" style="margin-top:14px;background:var(--green-50);border-radius:9px;padding:12px 14px;border:1px solid var(--green-200)">
             <div style="display:flex;flex-direction:column;gap:8px">
               <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                 <span style="font-size:13px;font-weight:700;color:var(--navy);white-space:nowrap;min-width:160px">🏷 ราคาที่ซื้อทรัพย์ได้</span>
@@ -5154,7 +5099,7 @@ function renderProps() {
                   onblur="savePropActualBuy('${p.id}',this.value)"
                   style="flex:1;min-width:140px;border:1.5px solid var(--navy);border-radius:7px;padding:6px 10px;font-size:14px;font-weight:700;color:var(--navy);background:white;outline:none">
               </div>
-              <div style="font-size:12px;color:#B45309;margin-top:-4px">⚠️ ราคานี้ไม่ถูกหักออกจาก "กำไรรวม" อัตโนมัติ — ต้องไปบันทึกเป็นรายการค่าใช้จ่ายในแท็บ "ค่าใช้จ่าย" ด้วยตัวเอง ไม่งั้นกำไรที่แสดงจะสูงเกินจริง</div>
+              <div style="font-size:12px;color:var(--amber);margin-top:-4px">⚠️ ราคานี้ไม่ถูกหักออกจาก "กำไรรวม" อัตโนมัติ — ต้องไปบันทึกเป็นรายการค่าใช้จ่ายในแท็บ "ค่าใช้จ่าย" ด้วยตัวเอง ไม่งั้นกำไรที่แสดงจะสูงเกินจริง</div>
               <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                 <span style="font-size:13px;font-weight:700;color:var(--green);white-space:nowrap;min-width:160px">💵 ราคาที่ขายได้จริง</span>
                 <input type="text" inputmode="numeric"
@@ -5169,7 +5114,7 @@ function renderProps() {
                 if (!_sell) return '';
                 const _gross=_sell-_tc; const _net=_gross/2;
                 const _gc=_gross>=0?'var(--green)':'var(--red)'; const _nc=_net>=0?'var(--green)':'var(--red)';
-                return '<div style="border-top:1px solid #BBF7D0;padding-top:8px;display:flex;gap:16px;flex-wrap:wrap">'
+                return '<div style="border-top:1px solid var(--green-200);padding-top:8px;display:flex;gap:16px;flex-wrap:wrap">'
                   +'<span style="font-size:12px;color:var(--gray)">กำไรรวม: <strong style="color:'+_gc+'">'+(  _gross>=0?'+':'')+fmtNum(Math.round(_gross))+'</strong> ฿</span>'
                   +'<span style="font-size:13px;font-weight:700;color:var(--navy)">กำไรส่วนตัว (÷2): <strong style="color:'+_nc+';font-size:15px">'+(_net>=0?'+':'')+fmtNum(Math.round(_net))+'</strong> ฿</span>'
                   +'</div>';
@@ -5531,7 +5476,7 @@ async function openImgPick(type) {
     const url  = `${SB_URL}/storage/v1/object/public/auction-images/${path}`;
     const isUsed = used.has(path);
     const kb = f.metadata?.size ? Math.round(f.metadata.size/1024) + ' KB' : '';
-    return `<div style="border:1.5px solid ${isUsed?'var(--border)':'#FCD34D'};border-radius:9px;overflow:hidden;cursor:pointer;background:#FAFAFA"
+    return `<div style="border:1.5px solid ${isUsed?'var(--border)':'#FCD34D'};border-radius:9px;overflow:hidden;cursor:pointer;background:var(--neutral-50)"
                  onclick="applyPickedImg('${url}')" title="${isUsed?'ใช้อยู่กับทรัพย์บางรายการ':'ยังไม่ถูกใช้ที่ไหน'}">
       <img src="${url}" loading="lazy" style="width:100%;height:88px;object-fit:cover;display:block">
       <div style="font-size:12px;padding:3px 5px;color:var(--gray);display:flex;justify-content:space-between;gap:4px">
@@ -5772,12 +5717,12 @@ function calcStorageUsage() {
   const color = pct > 80 ? 'var(--red)' : pct > 50 ? 'var(--amber)' : 'var(--green)';
   document.getElementById('storage-info').innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-      <div style="flex:1;background:#E5E7EB;border-radius:4px;height:10px;overflow:hidden">
+      <div style="flex:1;background:var(--gray-200);border-radius:4px;height:10px;overflow:hidden">
         <div style="width:${pct}%;height:100%;background:${color};border-radius:4px;transition:width .4s"></div>
       </div>
       <span style="font-weight:700;color:${color};white-space:nowrap">${pct}%</span>
     </div>
-    <div style="color:#374151">ใช้ไป <strong>${mb} MB</strong> จาก ~5 MB (localStorage)</div>
+    <div style="color:var(--gray-700)">ใช้ไป <strong>${mb} MB</strong> จาก ~5 MB (localStorage)</div>
     <div style="color:var(--gray);font-size:12px;margin-top:2px">รูปภาพทั้งหมด: ${imgCount} ภาพ · ข้อมูล: ${kb} KB</div>`;
 }
 
@@ -5891,7 +5836,7 @@ function propDocsHtml(p) {
           <button onclick="event.stopPropagation();deleteDocFromProp('${p.id}','${d.typeId}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:15px;padding:0 2px;line-height:1;flex-shrink:0" title="ลบ">✕</button>
           <span class="chevron" style="font-size:12px;color:var(--gray)">▼</span>
         </div>
-        <div class="doc-body" style="padding:12px 14px;background:#FAFAFA;border-top:1px solid var(--border)">
+        <div class="doc-body" style="padding:12px 14px;background:var(--neutral-50);border-top:1px solid var(--border)">
           <div class="img-grid" id="dimg_${p.id}_${d.typeId}">
             ${d.images.map((img,i)=>`
               <div class="img-thumb">
@@ -6230,7 +6175,7 @@ function renderReno() {
       </div>
       <div class="reno-stat">
         <div class="reno-stat-num">${fmtNum(st.partnerPaid)}</div>
-        <div class="reno-stat-label"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#93C5FD;margin-right:3px"></span>🤝 หุ้นส่วนจ่าย (฿)</div>
+        <div class="reno-stat-label"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--blue-300);margin-right:3px"></span>🤝 หุ้นส่วนจ่าย (฿)</div>
       </div>
       <div class="reno-stat" title="+ = หุ้นส่วนต้องคืนฉัน, − = ฉันต้องคืนหุ้นส่วน (หลังหักยอดโอนคืนแล้ว)">
         <div class="reno-stat-num">${netBal>=0?'+':''}${fmtNum(netBal)}</div>
@@ -6328,7 +6273,7 @@ function renderReno() {
       const isP = e.payer === 'partner';
       const payerBadge = isP
         ? `<span class="badge" style="font-size:12px;background:var(--blue-lt);color:var(--blue);font-weight:700">🤝 หุ้นส่วนจ่าย</span>`
-        : `<span class="badge" style="font-size:12px;background:#F0FDF4;color:var(--green);font-weight:700">👤 ฉันจ่าย</span>`;
+        : `<span class="badge" style="font-size:12px;background:var(--green-50);color:var(--green);font-weight:700">👤 ฉันจ่าย</span>`;
       return `
       <div class="expense-row${e.settled?' reimbursed-row':''}">
         <div class="expense-date">${fmtDate(e.date)}</div>
@@ -6337,7 +6282,7 @@ function renderReno() {
           <div class="expense-sub">
             <span class="badge badge-gray" style="font-size:12px;">${e.cat||'อื่นๆ'}</span>
             ${payerBadge}
-            ${e.settled?`<span class="badge" style="font-size:12px;background:#F3F4F6;color:var(--gray);font-weight:700;">✓ ตัดบัญชีแล้ว</span>`:''}
+            ${e.settled?`<span class="badge" style="font-size:12px;background:var(--gray-100);color:var(--gray);font-weight:700;">✓ ตัดบัญชีแล้ว</span>`:''}
             ${e.vendor?' · '+e.vendor:''}${e.pay?' · '+e.pay:''}
           </div>
           ${e.images&&e.images.length?`
@@ -6563,9 +6508,9 @@ function renderSummary() {
           <tr style="background:var(--navy);">
             <td style="color:white;font-weight:800;">รวม</td>
             <td class="num" style="color:white;font-weight:800;">${fmtNum(profitProps.reduce((s,x)=>s+Number(x.p.actualSell),0))}</td>
-            <td class="num" style="color:#FCA5A5;font-weight:700;">${fmtNum(profitProps.reduce((s,x)=>s+x.allExp,0))}</td>
+            <td class="num" style="color:var(--red-300);font-weight:700;">${fmtNum(profitProps.reduce((s,x)=>s+x.allExp,0))}</td>
             <td class="num" style="color:${profitProps.reduce((s,x)=>s+x.gross,0)>=0?'#86EFAC':'#FCA5A5'};font-weight:800;">${fmtNum(profitProps.reduce((s,x)=>s+x.gross,0))}</td>
-            <td class="num" style="color:#86EFAC;font-weight:800;font-size:15px;">${fmtNum(profitProps.reduce((s,x)=>s+x.net,0))}</td>
+            <td class="num" style="color:var(--green-300);font-weight:800;font-size:15px;">${fmtNum(profitProps.reduce((s,x)=>s+x.net,0))}</td>
           </tr>
         </tbody>
       </table></div>
@@ -6620,8 +6565,8 @@ function renderSummary() {
           <tr style="background:var(--navy);">
             <td style="color:white;font-weight:800;">รวม</td>
             <td class="num" style="color:white;font-weight:800;">${fmtNum(totalExp)}</td>
-            <td class="num" style="color:#86EFAC;font-weight:700;">${fmtNum(totalMy)}</td>
-            <td class="num" style="color:#93C5FD;font-weight:700;">${fmtNum(totalP)}</td>
+            <td class="num" style="color:var(--green-300);font-weight:700;">${fmtNum(totalMy)}</td>
+            <td class="num" style="color:var(--blue-300);font-weight:700;">${fmtNum(totalP)}</td>
             <td class="num" style="color:${totalBal>=0?'#86EFAC':'#FCA5A5'};font-weight:800;">${totalBal>=0?'+':''}${fmtNum(totalBal)}</td>
             <td class="num" style="color:white;">${S.expenses.length}</td>
           </tr>
@@ -6659,7 +6604,7 @@ function renderSummaryProp(pid) {
         <div class="stat-card"><div class="stat-num" style="color:var(--blue)">${bidPrice?fmtNum(bidPrice):'—'}</div><div class="stat-label">ราคาเป้า นัดที่${tIdx+1} (฿)</div></div>
         <div class="stat-card"><div class="stat-num" style="color:var(--green)">${Number(p.targetSell)?fmtNum(Number(p.targetSell)):'—'}</div><div class="stat-label">ราคาขายที่คาดหวัง (฿)</div></div>
         ${hasSold?`<div class="stat-card"><div class="stat-num" style="color:var(--green);font-weight:800">${fmtNum(Number(p.actualSell))}</div><div class="stat-label">ราคาที่ขายได้จริง (฿)</div></div>`:''}
-        <div class="stat-card"><div class="stat-num" style="color:#374151">${fmtNum(expAll)}</div><div class="stat-label">ค่าใช้จ่ายรวมทั้งหมด (฿)</div></div>
+        <div class="stat-card"><div class="stat-num" style="color:var(--gray-700)">${fmtNum(expAll)}</div><div class="stat-label">ค่าใช้จ่ายรวมทั้งหมด (฿)</div></div>
         <div class="stat-card"><div class="stat-num" style="color:var(--green)">${fmtNum(ps.myPaid)}</div><div class="stat-label">👤 ฉันจ่าย (฿)</div></div>
         <div class="stat-card"><div class="stat-num" style="color:var(--blue)">${fmtNum(ps.partnerPaid)}</div><div class="stat-label">🤝 หุ้นส่วนจ่าย (฿)</div></div>
         <div class="stat-card" title="+ = หุ้นส่วนต้องคืนฉัน, − = ฉันต้องคืนหุ้นส่วน (รวมค่าใช้จ่าย + การขาย)"><div class="stat-num" style="color:${netBalanceForProps([pid])>=0?'var(--green)':'var(--red)'}">${netBalanceForProps([pid])>=0?'+':''}${fmtNum(Math.round(netBalanceForProps([pid])))}</div><div class="stat-label">🔄 ค้างชำระระหว่างกัน (฿)</div></div>
@@ -6695,14 +6640,14 @@ function renderSummaryProp(pid) {
             <td style="font-weight:600;${e.settled?'color:var(--gray)':''}">${e.desc}</td>
             <td><span class="badge badge-gray" style="font-size:12px">${e.cat||'อื่นๆ'}</span></td>
             <td class="num" style="color:${isP?'var(--blue)':'var(--navy)'};font-weight:700">${fmtNum(e.amount)}</td>
-            <td>${isP?`<span class="badge" style="background:var(--blue-lt);color:var(--blue);font-size:12px">🤝 หุ้นส่วน</span>`:`<span class="badge" style="background:#F0FDF4;color:var(--green);font-size:12px">👤 ฉัน</span>`}</td>
-            <td>${e.settled?`<span class="badge" style="background:#F3F4F6;color:var(--gray);font-size:12px">✓ ตัดแล้ว</span>`:'<span class="badge badge-amber" style="font-size:12px">ค้าง</span>'}</td>
+            <td>${isP?`<span class="badge" style="background:var(--blue-lt);color:var(--blue);font-size:12px">🤝 หุ้นส่วน</span>`:`<span class="badge" style="background:var(--green-50);color:var(--green);font-size:12px">👤 ฉัน</span>`}</td>
+            <td>${e.settled?`<span class="badge" style="background:var(--gray-100);color:var(--gray);font-size:12px">✓ ตัดแล้ว</span>`:'<span class="badge badge-amber" style="font-size:12px">ค้าง</span>'}</td>
           </tr>`;
           }).join('')}
           <tr style="background:var(--navy)">
             <td colspan="3" style="color:white;font-weight:800">รวม</td>
             <td class="num" style="color:white;font-weight:800">${fmtNum(expAll)}</td>
-            <td colspan="2" style="color:#93C5FD;font-size:12px">ฉัน ${fmtNum(ps.myPaid)} · หุ้นส่วน ${fmtNum(ps.partnerPaid)} · ค้างชำระ <span style="color:${ps.balance>=0?'#86EFAC':'#FCA5A5'};font-weight:700">${ps.balance>=0?'+':''}${fmtNum(ps.balance)}</span></td>
+            <td colspan="2" style="color:var(--blue-300);font-size:12px">ฉัน ${fmtNum(ps.myPaid)} · หุ้นส่วน ${fmtNum(ps.partnerPaid)} · ค้างชำระ <span style="color:${ps.balance>=0?'#86EFAC':'#FCA5A5'};font-weight:700">${ps.balance>=0?'+':''}${fmtNum(ps.balance)}</span></td>
           </tr>
         </tbody>
       </table></div>
@@ -6761,7 +6706,7 @@ function renderPnL() {
           oninput="window._pnlSearch=this.value; window._pnlSelectedId=''; window._pnlOpen=true; pnlFilterList()"
           onfocus="window._pnlOpen=true; pnlFilterList()"
           autocomplete="off"
-          style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:10px 40px 10px 14px;font-size:14px;font-family:inherit;box-sizing:border-box;outline:none;background:#fff;color:#1F2937">
+          style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:10px 40px 10px 14px;font-size:14px;font-family:inherit;box-sizing:border-box;outline:none;background:var(--white);color:var(--gray-800)">
         <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--gray);pointer-events:none;font-size:16px">▾</span>
         <div id="pnl-list"></div>
       </div>
@@ -6799,7 +6744,7 @@ function pnlFilterList() {
     <div style="border:1.5px solid var(--border);border-top:none;border-radius:0 0 10px 10px;overflow:hidden;background:white;box-shadow:0 4px 12px rgba(0,0,0,.08)">
       ${filtered.map(r => `
         <div onclick="window._pnlSelectedId='${r.p.id}';window._pnlSearch='${((r.p.code?r.p.code+' ':'')+r.p.name).replace(/'/g,"\\'")}';document.getElementById('pnl-search').value=window._pnlSearch;pnlFilterList()"
-          style="padding:11px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid #F3F4F6"
+          style="padding:11px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--gray-100)"
           onmouseover="this.style.background='#EFF6FF'" onmouseout="this.style.background='white'">
           ${r.p.code?`<span style="font-size:12px;background:var(--blue-lt);color:var(--blue);padding:1px 6px;border-radius:4px;font-weight:700;flex-shrink:0">${r.p.code}</span>`:''}
           <span style="font-size:14px;color:var(--navy);font-weight:600;flex:1">${r.p.name}</span>
@@ -6821,22 +6766,22 @@ function pnlDetailHTML({ p, costs, sold, gross, net, isP }) {
         style="background:none;border:1.5px solid var(--border);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:12px;color:var(--gray)">← กลับ</button>
       ${p.code?`<span style="font-size:12px;background:var(--blue-lt);color:var(--blue);padding:1px 7px;border-radius:5px;font-weight:700">${p.code}</span>`:''}
       <span style="font-size:16px;font-weight:800;color:var(--navy)">${p.name}</span>
-      ${!sold?`<span style="font-size:12px;background:#FEF3C7;color:#92400E;padding:1px 8px;border-radius:5px;font-weight:700">⏳ รอกรอกราคาขาย</span>`:''}
+      ${!sold?`<span style="font-size:12px;background:#FEF3C7;color:var(--amber-800);padding:1px 8px;border-radius:5px;font-weight:700">⏳ รอกรอกราคาขาย</span>`:''}
     </div>
     <div class="pnl-stat-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;text-align:center;margin-bottom:14px">
-      <div style="background:#F8FAFC;border-radius:8px;padding:10px 6px">
+      <div style="background:var(--slate-50);border-radius:8px;padding:10px 6px">
         <div style="font-size:14px;font-weight:800;color:var(--navy)">${costs.buy ? fmtNum(costs.buy) : '—'}</div>
         <div style="font-size:12px;color:var(--gray)">ราคาซื้อ (฿)</div>
       </div>
-      <div style="background:#F8FAFC;border-radius:8px;padding:10px 6px">
+      <div style="background:var(--slate-50);border-radius:8px;padding:10px 6px">
         <div style="font-size:14px;font-weight:800;color:var(--navy)">${fmtNum(Math.round(costs.fees))}</div>
         <div style="font-size:12px;color:var(--gray)">ค่าธรรมเนียม (ประมาณการ)</div>
       </div>
-      <div style="background:#FEF2F2;border-radius:8px;padding:10px 6px">
+      <div style="background:var(--red-lt);border-radius:8px;padding:10px 6px">
         <div style="font-size:14px;font-weight:700;color:var(--red)">${fmtNum(Math.round(costs.expTotal))}</div>
         <div style="font-size:12px;color:var(--gray)">ค่าใช้จ่ายจริง (฿)</div>
       </div>
-      <div style="background:#F0FDF4;border-radius:8px;padding:10px 6px">
+      <div style="background:var(--green-50);border-radius:8px;padding:10px 6px">
         <div style="font-size:14px;font-weight:800;color:var(--green)">${sold ? fmtNum(sold) : '—'}</div>
         <div style="font-size:12px;color:var(--gray)">ราคาขาย (฿)</div>
       </div>
@@ -6851,12 +6796,12 @@ function pnlDetailHTML({ p, costs, sold, gross, net, isP }) {
     </div>
     ${sold ? `
     <div style="display:flex;align-items:center;gap:8px">
-      <div style="flex:1;background:#E5E7EB;border-radius:99px;height:8px;overflow:hidden">
+      <div style="flex:1;background:var(--gray-200);border-radius:99px;height:8px;overflow:hidden">
         <div style="width:${Math.min(100,Math.max(0,pct!==null?50+pct/2:0))}%;background:${isP?'#22C55E':'#EF4444'};height:100%;border-radius:99px"></div>
       </div>
       ${pct!==null?`<span style="font-size:12px;font-weight:700;color:${isP?'var(--green)':'var(--red)'}">${isP?'+':''}${pct.toFixed(1)}%</span>`:''}
     </div>` : `
-    <div style="background:#FFFBEB;border:1.5px dashed #FCD34D;border-radius:8px;padding:10px 14px;font-size:13px;color:#92400E">
+    <div style="background:var(--amber-50);border:1.5px dashed var(--amber-300);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--amber-800)">
       ⏳ ยังไม่มีราคาขาย — กรอกได้ที่การ์ดทรัพย์ในแท็บ "ทรัพย์"
     </div>`}
   </div>`;
@@ -6883,10 +6828,10 @@ function renderSold() {
   });
   const totalNet = rows.reduce((s, r) => s + r.net, 0);
   el.innerHTML = `
-    <div class="card" style="margin-bottom:16px;background:linear-gradient(135deg,#15803D,#22C55E);color:white;border-radius:14px;padding:18px">
+    <div class="card" style="margin-bottom:16px;background:linear-gradient(135deg,var(--green),#22C55E);color:white;border-radius:14px;padding:18px">
       <div style="font-size:13px;opacity:.9;margin-bottom:6px">✅ ขายแล้ว ${rows.length} หลัง · กำไรสะสมส่วนตัว (÷2)</div>
       <div style="font-size:30px;font-weight:800">${totalNet>=0?'+':''}${fmtNum(Math.round(totalNet))} ฿</div>
-      <button class="btn btn-sm" style="margin-top:12px;background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.4)" onclick="exportSoldReport()">📥 Export สรุปทุกหลัง (Excel)</button>
+      <button class="btn btn-sm" style="margin-top:12px;background:rgba(255,255,255,.18);color:var(--white);border:1px solid rgba(255,255,255,.4)" onclick="exportSoldReport()">📥 Export สรุปทุกหลัง (Excel)</button>
     </div>
     <div class="house-pick-grid">${rows.map(soldCardHTML).join('')}</div>
     <div id="sold-detail" style="margin-top:6px"></div>`;
@@ -6932,7 +6877,7 @@ function showSoldDetail(id) {
   const ps = expenseStats(items);
   const el = document.getElementById('sold-detail');
   el.innerHTML = `
-    <div class="card" style="border:2px solid #86EFAC">
+    <div class="card" style="border:2px solid var(--green-300)">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
         <span style="font-size:16px;font-weight:800;color:var(--navy)">🏠 ${p.name} — รายละเอียดย้อนหลัง</span>
         <button class="mini-tap" onclick="closeSoldDetail()" style="margin-left:auto;background:none;border:1.5px solid var(--border);border-radius:6px;padding:3px 10px;cursor:pointer;font-size:12px;color:var(--gray)">✕ ปิด</button>
@@ -6948,11 +6893,11 @@ function showSoldDetail(id) {
       </div>
       ${items.length ? `
       <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
-        <thead><tr style="background:#F8FAFC;text-align:left">
+        <thead><tr style="background:var(--slate-50);text-align:left">
           <th style="padding:7px 8px">วันที่</th><th style="padding:7px 8px">รายการ</th><th style="padding:7px 8px">ใครจ่าย</th><th style="padding:7px 8px;text-align:right">จำนวน</th>
         </tr></thead>
         <tbody>
-          ${items.map(e=>`<tr style="border-bottom:1px solid #F3F4F6">
+          ${items.map(e=>`<tr style="border-bottom:1px solid var(--gray-100)">
             <td style="padding:7px 8px;white-space:nowrap;color:var(--gray)">${fmtDate(e.date)}</td>
             <td style="padding:7px 8px">${e.desc} ${e.cat?`<span style="font-size:12px;color:var(--gray)">· ${e.cat}</span>`:''}</td>
             <td style="padding:7px 8px;white-space:nowrap">${e.payer==='partner'?'🤝 หุ้นส่วน':'👤 ฉัน'}${e.settled?' <span style="color:var(--gray);font-size:12px">✓ตัด</span>':''}</td>
@@ -7352,18 +7297,18 @@ function calcUpdate(skipFeeRows) {
   if (!skipFeeRows) {
     const brokerPctStored = document.getElementById('calc-broker-pct')?.value || '';
     document.getElementById('calc-fee-rows').innerHTML = fees.map(f => {
-      const rowStyle = f.isHeader ? 'background:#F8FAFC;font-weight:700;border-bottom:1px solid var(--border)' : 'border-bottom:1px dashed #EEE';
+      const rowStyle = f.isHeader ? 'background:var(--slate-50);font-weight:700;border-bottom:1px solid var(--border)' : 'border-bottom:1px dashed #EEE';
       const noVal = !appraisal && !sell;
       const rateContent = f.pctEditable
         ? `<span style="display:inline-flex;align-items:center;gap:2px"><input type="text" inputmode="decimal" id="calc-broker-pct-input" value="${brokerPctStored}" placeholder="?" style="width:38px;border:1px solid var(--blue);border-radius:4px;padding:2px 4px;font-size:12px;text-align:center;color:var(--blue);font-weight:700" oninput="calcBrokerFromPct(this)">%</span>`
         : f.rate;
       const valCell = f.pctEditable
-        ? `<span id="calc-broker-display" style="font-weight:600;color:#374151">${broker ? fmtN(Math.round(broker)) : '—'}</span>`
+        ? `<span id="calc-broker-display" style="font-weight:600;color:var(--gray-700)">${broker ? fmtN(Math.round(broker)) : '—'}</span>`
         : f.editable
           ? `<input type="text" inputmode="numeric" value="${f.val ? Number(f.val).toLocaleString('th-TH') : ''}" placeholder="0" style="width:100%;border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:12px;text-align:right" oninput="fmtNumInput(this);document.getElementById('calc-${f.editable}').value=this.value.replace(/[^0-9.]/g,'');calcUpdate(true)">`
           : `<span style="font-weight:${f.isHeader?'700':'600'};color:${f.isHeader?'var(--navy)':'#374151'}">${noVal&&!f.isHeader ? '—' : f.isHeader ? (f.val?fmtN(f.val):'—') : fmtN(Math.round(f.val*100)/100)}</span>`;
       return `<tr style="${rowStyle}">
-        ${td(f.label, f.isHeader?'color:var(--navy)':'color:#374151')}
+        ${td(f.label, f.isHeader?'color:var(--navy)':'color:var(--gray-700)')}
         ${td(rateContent, 'text-align:center;color:var(--blue);font-weight:700')}
         ${td(f.baseLabel, 'color:var(--gray);font-size:12px')}
         ${td(valCell, 'text-align:right')}
