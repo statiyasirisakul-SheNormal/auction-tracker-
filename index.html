@@ -3790,39 +3790,12 @@ function surveyTogglePdf(id) {
   document.querySelectorAll(`[data-pdfbtn="${id}"]`).forEach(b => b.innerHTML = _svPdfOpen.has(id) ? '📄 ซ่อน PDF' : '📄 ดู PDF ประกาศ');
 }
 function pdfButton(p, cls) {
-  // ยังไม่มี PDF (ทรัพย์ที่เพิ่มเองก่อนมีระบบอ่าน PDF) → ปุ่มแนบ PDF ประกาศ
-  if (!p.pdfUrl) return cls === 'icon' ? '' :
-    `<label class="btn btn-ghost btn-xs" style="cursor:pointer;margin:0" onclick="event.stopPropagation()">📎 แนบ PDF ประกาศ
-       <input type="file" accept="application/pdf,.pdf" style="display:none" onchange="attachPropPdf('${p.id}', this)"></label>`;
+  // PDF ประกาศเข้าระบบทางเดียว: "+ เพิ่มทรัพย์สำรวจ" ในแท็บสำรวจ (ผู้ใช้กำหนด 16 ต.ค.) — การ์ดที่ไม่มี PDF ไม่ต้องมีปุ่ม
+  if (!p.pdfUrl) return '';
   const call = `event.preventDefault();event.stopPropagation();showPdf('${escapeHtml(p.pdfUrl)}','${escapeHtml((p.code ? p.code + ' — ' : '') + (p.name || '')).replace(/'/g, '&#39;')}')`;
   return cls === 'icon'
     ? `<button class="icon-btn" onclick="${call}" title="เปิด PDF ประกาศของทรัพย์นี้">📄</button>`
     : `<button class="btn btn-ghost btn-xs" onclick="${call}">📄 PDF ประกาศ</button>`;
-}
-
-// แนบ PDF ประกาศให้ทรัพย์ที่ยังไม่มี → เก็บไฟล์ + อ่านข้อมูลประกาศ (ราคาประเมิน/จำนอง/ศาล ฯลฯ) มาเติม
-// ไม่ทับชื่อ ราคาเริ่มต้น หรือตารางนัดที่ผู้ใช้กรอกไว้แล้ว
-async function attachPropPdf(id, input) {
-  const p = findAnyProp(id); const file = input.files?.[0]; input.value = '';
-  if (!p || !file) return;
-  toast('⏳ กำลังอ่านและอัปโหลด PDF...');
-  let d = null;
-  try { d = await readLedPdf(file, { noPhoto: true }); } catch (e) { console.warn('[pdf] อ่านไม่ได้', e); }
-  if (d && d.code && p.code && d.code.replace(/\s/g,'') !== String(p.code).replace(/\s/g,'')
-      && !confirm(`PDF นี้เป็นลำดับที่ ${d.code} แต่ทรัพย์นี้คือ ${p.code}
-แนบต่อไหม?`)) return;
-  const url = await uploadBlobToStorage(file, 'ประกาศ.pdf');
-  if (!url) { toast('❌ อัปโหลด PDF ไม่สำเร็จ — ลองใหม่อีกครั้ง', 'error'); return; }
-  p.pdfUrl = url; p.pdfName = file.name;
-  if (d) {
-    p.led = { ...(d.led || {}), ...(p.led || {}) };
-    if (d.led?.free) { p.led.free = d.led.free; p.led.mortgage = d.led.mortgage; p.led.mortgagee = d.led.mortgagee; }
-    if (!Number(p.ledAppraisal) && d.ledAppraisal) p.ledAppraisal = d.ledAppraisal;
-    if (!Number(p.appraisal) && d.appraisal) { p.appraisal = d.appraisal; p.price = d.appraisal; }
-    if (!p.case && d.case) p.case = d.case;
-  }
-  saveS(); renderProps(); if (p.pool && typeof renderSurvey === 'function') renderSurvey();
-  toast('✓ แนบ PDF ประกาศแล้ว' + (d?.ledAppraisal ? ' · ราคาประเมิน ' + fmtNum(d.ledAppraisal) + ' ฿' : ''), 'success');
 }
 
 // ฟอนต์ใน PDF ของกรมฯ มีกับดัก 3 อย่าง:
