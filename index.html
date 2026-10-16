@@ -3179,6 +3179,21 @@ function surveyPriceInputs(p) {
     ${field('🛠 ค่ารีโนเวท/ซ่อมแซม (ประเมิน)', p.renoBudget, 'savePropRenoBudget', 'เช่น 300,000', '#0EA5E9')}
   </div>`;
 }
+// หัวการ์ดทรัพย์ (รูป + เลขลำดับ + รหัส/ชื่อ/ที่ตั้ง/ราคา) — ใช้ร่วมกันทั้งการ์ดหน้าแรกและการ์ดสำรวจ
+// bold = ตัวเลขราคาเป็นตัวหนา (หน้าแรก) · numBg = สีวงเลขลำดับ (สำรวจ) · extra = แถวชิปใต้ชื่อ (สำรวจ)
+function propHeadInfo(p, { thumb, num, numBg = '', base = 0, bold = false, extra = '' }) {
+  const b = v => bold ? '<b>' + fmtNum(v) + '</b>' : fmtNum(v);
+  const loc = p.loc ? escapeHtml(p.loc) : '';
+  const led = Number(p.ledAppraisal);
+  const price = (base ? (loc ? ' · ' : '') + 'เริ่ม ' + b(base) + ' ฿' : '') + (led && led !== base ? ' · ประเมิน ' + b(led) + ' ฿' : '');
+  return `<div class="prop-media">${thumb}<span class="prop-num"${numBg ? ` style="background:${numBg}"` : ''}>${num}</span></div>
+          <div class="prop-info">
+            ${p.code ? `<span class="prop-code">${escapeHtml(p.code)}</span>` : ''}
+            <div class="prop-name">${escapeHtml(p.name)}</div>
+            <div class="prop-sub">${loc}${price}</div>
+            ${extra}
+          </div>`;
+}
 function surveyCardHtml(x, total, open) {
   const p = x.p, sv = p.survey || {}, idx = x.idx;
   const inRoute = idx !== undefined;
@@ -3219,13 +3234,7 @@ function surveyCardHtml(x, total, open) {
     ${legTxt ? `<div style="font-size:var(--fs-sm);color:var(--gray);padding:0 0 6px 17px;margin:-6px 0 0 17px;border-left:2px dashed var(--slate-300)">⬇ ${legTxt}</div>` : ''}
     <div class="prop-card ${sv.done ? 'won' : ''} ${open ? 'expanded' : ''}" id="sv-${p.id}" style="${sv.skip ? 'opacity:.55' : ''}">
       <div class="prop-header sv" onclick="document.getElementById('sv-${p.id}').classList.toggle('expanded');initParcelMaps()">
-        <div class="prop-media">${thumb}<span class="prop-num" style="background:${numBg}">${num}</span></div>
-        <div class="prop-info">
-          ${p.code ? `<span class="prop-code">${escapeHtml(p.code)}</span>` : ''}
-          <div class="prop-name">${escapeHtml(p.name)}</div>
-          <div class="prop-sub">${escapeHtml(p.loc || '')}${base ? (p.loc ? ' · ' : '') + 'เริ่ม ' + fmtNum(base) + ' ฿' : ''}${Number(p.ledAppraisal) && Number(p.ledAppraisal) !== base ? ' · ประเมิน ' + fmtNum(p.ledAppraisal) + ' ฿' : ''}</div>
-          ${chips ? `<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:5px">${chips}</div>` : ''}
-        </div>
+        ${propHeadInfo(p, { thumb, num, numBg, base, extra: chips ? `<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:5px">${chips}</div>` : '' })}
         <div class="prop-actions" onclick="event.stopPropagation()" style="display:flex;gap:5px;align-items:center">
           ${inRoute ? `<button class="icon-btn" ${idx === 0 ? 'disabled style="opacity:.3"' : ''} onclick="surveyMove('${p.id}',-1)" title="เลื่อนขึ้น">▲</button>
           <button class="icon-btn" ${idx === total - 1 ? 'disabled style="opacity:.3"' : ''} onclick="surveyMove('${p.id}',1)" title="เลื่อนลง">▼</button>` : ''}
@@ -4976,12 +4985,7 @@ function renderProps() {
     return `
       <div class="prop-card ${p.status||'watching'}" id="pp-${p.id}">
         <div class="prop-header" onclick="toggleProp('${p.id}')">
-          <div class="prop-media">${thumb}<span class="prop-num">${i+1}</span></div>
-          <div class="prop-info">
-            ${p.code?`<span class="prop-code">${escapeHtml(p.code)}</span>`:''}
-            <div class="prop-name">${escapeHtml(p.name)}</div>
-            <div class="prop-sub">${p.loc?escapeHtml(p.loc):''}${p.loc&&base?' · ':''}${base?'เริ่ม <b>'+fmtNum(base)+'</b> ฿':''}${Number(p.ledAppraisal)&&Number(p.ledAppraisal)!==base?' · ประเมิน <b>'+fmtNum(p.ledAppraisal)+'</b> ฿':''}</div>
-          </div>
+          ${propHeadInfo(p, { thumb, num: i + 1, base, bold: true })}
           <div class="prop-badges">
             ${dateChip}
             ${targetChip}
