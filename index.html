@@ -44,7 +44,6 @@ body { min-height:100vh; font-size:var(--fs-body); }
 }
 
 .content { max-width:1280px; margin:0 auto; }
-@media(max-width:640px){ .content { } }
 .tab-panel { display:none; }
 .tab-panel.active { display:block; animation:fadeIn .15s ease; }
 @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
@@ -83,7 +82,7 @@ body { min-height:100vh; font-size:var(--fs-body); }
 }
 .form-textarea { resize:vertical; min-height:70px; }
 .form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-@media(max-width:480px){ .form-row { grid-template-columns:1fr; } }
+@media (max-width:640px){ .form-row { grid-template-columns:1fr; } }
 
 .modal-overlay {
   position:fixed; inset:0; background:rgba(0,0,0,.55);
@@ -94,7 +93,7 @@ body { min-height:100vh; font-size:var(--fs-body); }
 /* ปุ่ม +/− ของ Leaflet ตั้ง z-index 1000 มาเอง → ลอยทับหน้าต่าง popup ต้องกดให้ต่ำกว่า modal */
 .leaflet-top, .leaflet-bottom { z-index:450 !important; }
 .sk-hbtn { background:rgba(255,255,255,.15) !important; color:var(--white) !important; white-space:nowrap; flex-shrink:0; min-height:32px !important; }
-@media (max-width:600px) { .sk-lbl { display:none; } #sk-saved { display:none; } }
+@media (max-width:640px) { .sk-lbl { display:none; } #sk-saved { display:none; } }
 .sk-hbtn.on { background:rgba(255,255,255,.38) !important; }
 /* แถบตั้งค่าเส้นด้านซ้าย: ไอแพด = แถบของ Excalidraw เอง (กดซ่อนได้) · มือถือ = #sk-props ของเราแทน (Excalidraw โหมดมือถือไม่มีแถบซ้าย) */
 #sketch-overlay.sk-hide-props .excalidraw .App-menu__left { display:none !important; }
@@ -181,7 +180,6 @@ input[type="file"] { display:none; }
 /* ทรัพย์ที่ยังไม่มีรูป — ช่องว่างจาง ๆ ให้การ์ดเรียงตรงกันทุกใบ */
 .prop-thumb-empty { width:46px; height:46px; border-radius:var(--r-md); flex-shrink:0; border:1.5px dashed var(--border);
   background:var(--neutral-50); display:flex; align-items:center; justify-content:center; }
-@media (max-width:520px){ .prop-thumb, .prop-thumb-empty { } }
 .prop-name { text-overflow:ellipsis; }
 .prop-body { display:none; }
 .prop-card.expanded .prop-body { display:block; }
@@ -189,8 +187,7 @@ input[type="file"] { display:none; }
 
 /* ── ROUNDS ── */
 .rounds-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin-bottom:18px; }
-@media(max-width:700px){ .rounds-grid { grid-template-columns:repeat(3,1fr); } }
-@media(max-width:420px){ .rounds-grid { } }
+@media (max-width:760px){ .rounds-grid { grid-template-columns:repeat(3,1fr); } }
 .round-tile { border:2px solid var(--border); padding:10px 8px; text-align:center; cursor:pointer; user-select:none; transition:all .2s; }
 .round-tile.target  { border-color:var(--amber-500); background:var(--amber-lt); box-shadow:0 0 0 2px #FCD34D55; }
 .round-tile.joined  { border-color:var(--blue); background:var(--blue-lt); }
@@ -323,12 +320,12 @@ input[type="file"] { display:none; }
 /* ป้องกัน iOS auto-zoom เมื่อ focus input */
 input, select, textarea { font-size: var(--fs-lg) !important; }
 /* แต่ยังคง font เล็กสำหรับ desktop */
-@media (min-width: 641px) {
+@media (min-width:641px) {
   .form-input, .form-select, .form-textarea { font-size: var(--fs-base) !important; }
   .btn { font-size: var(--fs-md) !important; }
 }
 
-@media (max-width: 640px) {
+@media (max-width:640px) {
   .header p  { display: none; }
 
   .tab-btn .t-full { display: none; }
@@ -428,7 +425,7 @@ input, select, textarea { font-size: var(--fs-lg) !important; }
   button { touch-action: manipulation; }
 }
 
-@media (max-width: 420px) {
+@media (max-width:420px) {
   .rounds-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .round-tile  { padding: 8px 6px; }
   .round-price { font-size:var(--fs-sm); }
@@ -499,6 +496,7 @@ input, select, textarea { font-size: var(--fs-lg) !important; }
   --font:'IBM Plex Sans Thai','Sarabun',system-ui,-apple-system,sans-serif;
   --fs-xs:11px; --fs-sm:12px; --fs-md:13px; --fs-base:14px; --fs-body:15px; --fs-lg:16px; --fs-xl:18px; --fs-2xl:20px; --fs-3xl:24px;
   --r-sm:6px; --r-md:10px; --r-lg:14px; --r-pill:999px;
+  /* จุดเปลี่ยนตามจอ (ใช้แค่นี้): 360 จอเล็กมาก · 420 มือถือ · 640 มือถือแนวนอน/แท็บเล็ตเล็ก · 760 แท็บเล็ต — CSS var ใช้ใน @media ไม่ได้ จึงจดไว้ตรงนี้ */
   /* พาเลตต์เพิ่ม (ค่าเดิมที่เคยพิมพ์ตรง) */
   --green-600:#16A34A;
   --green-500:#22C55E;
