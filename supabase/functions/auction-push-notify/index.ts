@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════
 //  Edge Function: auction-push-notify — แจ้งเตือนผ่านเครื่อง (Web Push) แยก 2 แบบ
 //    1) ทุกนัดทุกทรัพย์ (auction_settings.push_all)      → ทันทีที่เปลี่ยนเป็นวันประมูล (00:01)
-//    2) นัดที่เข้าซื้อ 🎯 (auction_settings.push_target) → ล่วงหน้า 5 วัน (ข้อความเตรียมตัว)
+//    2) นัดที่เข้าซื้อ 🎯 (auction_settings.push_target) → ครั้งเดียวเมื่อเข้าช่วง 7 วันก่อนนัด (ตรงกับตัวกรอง "นัดเข้าซื้อใน 7 วัน")
 //  สวิตช์ทั้งสองตั้งในแอป (⚙️ › แจ้งเตือน) ค่าเริ่มต้น = เปิด
 //  รันวันละครั้ง 00:01 เวลาไทย (= 17:01 UTC ของวันก่อน) ด้วย pg_cron (ดู supabase/push.sql)
 //
@@ -16,7 +16,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ALL_OFFSETS = [0];                              // ทุกนัด: วันประมูล (ส่งตอน 00:01)
-const TARGET_DAYS = 5;                                // นัดที่เข้าซื้อ: ล่วงหน้า 5 วัน
+const TARGET_DAYS = 7;                                // นัดที่เข้าซื้อ: เข้าช่วง 7 วันก่อนนัด (เตือนครั้งเดียว กันซ้ำด้วย push_sent)
 const ROUND_DISC = [0, 0.10, 0.20, 0.30, 0.30, 0.30]; // ตรงกับ ROUNDS ใน index.html
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -151,11 +151,11 @@ function dueReminders(rows: { id: string; data: any }[], today: string, prefs: P
         tag: `auction-${row.id}-${ri}`, propId: row.id, url: `./index.html#prop=${row.id}`,
       });
 
-      // 2) นัดที่เข้าซื้อ — ล่วงหน้า 5 วัน ให้มีเวลาเตรียมเงิน/เอกสาร
-      if (prefs.target && isTarget && diff === TARGET_DAYS) {
+      // 2) นัดที่เข้าซื้อ — ทรัพย์เข้าช่วง 7 วันก่อนนัด (หรือเพิ่งตั้งนัดที่เข้าซื้อที่อยู่ในช่วงนั้น) → เตือนครั้งเดียว
+      if (prefs.target && isTarget && diff >= 1 && diff <= TARGET_DAYS) {
         out.push({
           key: `${row.id}:${ri}:${date}:target${TARGET_DAYS}d`,
-          payload: payload(`🎯 อีก ${TARGET_DAYS} วัน ประมูลนัดที่เข้าซื้อ (นัดที่ ${ri + 1})`, [
+          payload: payload(`🎯 เข้าช่วง 7 วัน · อีก ${diff} วัน ประมูลนัดที่เข้าซื้อ (นัดที่ ${ri + 1})`, [
             name, priceLine, "เตรียมเงินวางหลักประกัน + ใบมอบอำนาจ/เอกสารให้พร้อม", p.loc ? `📍 ${p.loc}` : "",
           ]),
         });

@@ -1663,7 +1663,7 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
         <label class="switch"><input type="checkbox" id="pref-push-all" onchange="savePushPref('all', this.checked)"><span class="switch-slider"></span></label>
       </div>
       <div class="pref-row">
-        <div><b>🎯 นัดที่เลือกจะเข้าซื้อ</b><div class="muted">เตือนล่วงหน้า 5 วัน ให้เตรียมเงินและเอกสาร (เฉพาะนัด 🎯 ของแต่ละทรัพย์)</div></div>
+        <div><b>🎯 นัดที่เลือกจะเข้าซื้อ</b><div class="muted">เตือนทันทีที่ทรัพย์เข้าช่วง 7 วันก่อนนัด 🎯 (ตรงกับตัวกรอง "นัดเข้าซื้อใน 7 วัน") ให้เตรียมเงินและเอกสาร</div></div>
         <label class="switch"><input type="checkbox" id="pref-push-target" onchange="savePushPref('target', this.checked)"><span class="switch-slider"></span></label>
       </div>
       <div id="push-status" class="set-status" style="margin-top:10px">—</div>
@@ -2056,7 +2056,22 @@ function scheduleSync() {
     .finally(() => {
       _syncing = false;
       if (_syncQueued) { _syncQueued = false; scheduleSync(); }
+      else pushSoonAfterSync();
     });
+}
+
+// ทรัพย์เพิ่งเข้าช่วง "นัดเข้าซื้อใน 7 วัน" (เช่น เพิ่งเปลี่ยนนัด 🎯 / ใส่วันนัดใหม่) → ไม่ต้องรอรอบ 00:01
+// สั่ง edge function รันทันที (ฝั่งเซิร์ฟเวอร์กันซ้ำด้วย push_sent อยู่แล้ว) · จำ key ที่สั่งไปแล้วในเครื่องกันเรียกถี่
+const _pushSoonAsked = new Set();
+function pushSoonAfterSync() {
+  if (typeof pushPrefs === 'undefined' || !pushPrefs.target) return;
+  const keys = S.props.filter(p => !p.pool && p.notify !== false && !['lost','sold'].includes(p.status))
+    .map(p => { const d = propTargetDays(p); const r = (p.rounds||[])[p.targetRound||0];
+                return d !== null && d >= 1 && d <= PUSH_TARGET_DAYS ? `${p.id}:${p.targetRound||0}:${r.date}` : null; })
+    .filter(k => k && !_pushSoonAsked.has(k));
+  if (!keys.length) return;
+  keys.forEach(k => _pushSoonAsked.add(k));
+  initSb()?.functions.invoke('auction-push-notify', { body: { action: 'run' } }).catch(() => {});
 }
 
 async function syncToCloud() {
@@ -4567,9 +4582,9 @@ function printPropReport(id) {
 
 // แจ้งเตือนผ่านเครื่อง (Web Push) แยก 2 แบบ — ส่งจากเซิร์ฟเวอร์ (edge function auction-push-notify) ทุกวัน 00:01
 //   1) ทุกนัดทุกทรัพย์: เด้งทันทีที่เปลี่ยนเป็นวันประมูล
-//   2) นัดที่เข้าซื้อ 🎯: ล่วงหน้า 5 วัน ให้เตรียมเงิน/เอกสาร
+//   2) นัดที่เข้าซื้อ 🎯: ครั้งเดียวเมื่อเข้าช่วง 7 วันก่อนนัด (ตรงกับตัวกรอง soon) ให้เตรียมเงิน/เอกสาร
 // เปิด/ปิดทั้งสองแบบได้ใน ⚙️ (pushPrefs) · ปิดรายทรัพย์ได้ด้วยสวิตช์นี้
-const PUSH_TARGET_DAYS = 5;
+const PUSH_TARGET_DAYS = 7;
 function notifyRow(p) {
   const today = new Date(); today.setHours(0,0,0,0);
   const ti = p.targetRound || 0;
@@ -4580,7 +4595,7 @@ function notifyRow(p) {
     return dl >= 0 ? { ri, d, dl } : null;
   }).filter(Boolean);
   const on = p.notify !== false;
-  // วันที่ส่งเตือน 🎯 (ลบ 5 วันแบบเวลาท้องถิ่น — ห้ามใช้ toISOString เพราะเป็น UTC จะถอยไป 1 วันในไทย)
+  // วันที่ส่งเตือน 🎯 (ลบ 7 วันแบบเวลาท้องถิ่น — ห้ามใช้ toISOString เพราะเป็น UTC จะถอยไป 1 วันในไทย)
   const warnDate = d => {
     const w = new Date(d+'T00:00:00'); w.setDate(w.getDate() - PUSH_TARGET_DAYS);
     return `${w.getFullYear()}-${String(w.getMonth()+1).padStart(2,'0')}-${String(w.getDate()).padStart(2,'0')}`;
@@ -4589,14 +4604,14 @@ function notifyRow(p) {
   if (!upcoming.length) info = '<span class="muted">ยังไม่มีนัดที่จะถึง — ใส่วันนัดในหน้าแก้ไขแล้วจะเตือนให้อัตโนมัติ</span>';
   else if (!on) info = '<span class="muted">ปิดการเตือนทรัพย์นี้ไว้</span>';
   else info = upcoming.map(x => x.ri === ti
-    ? `<span class="nt-chip target">🎯 นัด ${x.ri+1} · ${fmtDate(x.d)}${pushPrefs.target && x.dl >= PUSH_TARGET_DAYS ? ` · เตือน ${fmtDate(warnDate(x.d))}` : ''}</span>`
+    ? `<span class="nt-chip target">🎯 นัด ${x.ri+1} · ${fmtDate(x.d)}${!pushPrefs.target ? '' : x.dl > PUSH_TARGET_DAYS ? ` · เตือน ${fmtDate(warnDate(x.d))}` : x.dl >= 1 ? ' · 🔔 อยู่ในช่วง 7 วัน' : ''}</span>`
     : `<span class="nt-chip${x.dl<=3?' soon':''}">นัด ${x.ri+1} · ${fmtDate(x.d)}</span>`).join('');
   return `
     <div class="notify-row" onclick="event.stopPropagation()">
       <div style="min-width:0;flex:1">
         <div class="notify-title">🔔 แจ้งเตือน <span class="muted" style="font-weight:600">· ${[
           pushPrefs.all ? 'ทุกนัดเด้ง 00:01 วันประมูล' : '',
-          pushPrefs.target ? `🎯 นัดที่เข้าซื้อ เตือนก่อน ${PUSH_TARGET_DAYS} วัน` : '',
+          pushPrefs.target ? `🎯 นัดที่เข้าซื้อ เตือนเมื่อเข้าช่วง ${PUSH_TARGET_DAYS} วัน` : '',
         ].filter(Boolean).join(' · ') || 'ปิดทั้งสองแบบใน ⚙️'}</span></div>
         <div class="notify-chips">${info}</div>
       </div>
@@ -7546,7 +7561,7 @@ function openPropFromHash() {
 // ═══════════════════════════════════════════════
 //  แจ้งเตือนผ่านเครื่อง (Web Push)
 //  เครื่องที่กดเปิด → เก็บ subscription ในตาราง push_subscriptions
-//  เซิร์ฟเวอร์ (edge function auction-push-notify) ส่งเตือนทุกวัน 00:01 (ทุกนัด = วันประมูล · นัดที่เข้าซื้อ 🎯 = ล่วงหน้า 5 วัน)
+//  เซิร์ฟเวอร์ (edge function auction-push-notify) ส่งเตือนทุกวัน 00:01 (ทุกนัด = วันประมูล · นัดที่เข้าซื้อ 🎯 = เข้าช่วง 7 วันก่อนนัด) + ยิงทันทีหลังบันทึกถ้ามีทรัพย์เพิ่งเข้าช่วง
 // ═══════════════════════════════════════════════
 const VAPID_PUBLIC = 'BNPPabgwf4XtLEcv77wlepy10jrZNabRwUObyNAKJ5pUfnsTM-S347fxh62mz9GJSohxL2LnGOowHbdUOQXxg-s';
 const PUSH_NUDGE_KEY = 'auction_push_nudge_hide_until';
@@ -7706,7 +7721,7 @@ async function renderPushNudge() {
     ? `<div class="pn-text"><b>รับแจ้งเตือนวันนัดบน iPhone</b><div>${IOS_A2HS_HTML}</div></div>`
     : s === 'denied'
       ? `<div class="pn-text"><b>การแจ้งเตือนถูกบล็อกไว้</b><div>เปิดในการตั้งค่าเครื่องเพื่อรับเตือนวันนัด</div></div><button class="btn btn-primary btn-sm" onclick="openSettings('notify')">วิธีเปิด</button>`
-      : `<div class="pn-text"><b>เปิดแจ้งเตือนวันนัดประมูล</b><div>เด้ง 00:01 วันประมูลทุกนัด · 🎯 นัดที่เลือกเข้าซื้อเตือนก่อน 5 วัน</div></div><button class="btn btn-primary btn-sm" onclick="enablePush()">เปิดเลย</button>`;
+      : `<div class="pn-text"><b>เปิดแจ้งเตือนวันนัดประมูล</b><div>เด้ง 00:01 วันประมูลทุกนัด · 🎯 นัดที่เลือกเข้าซื้อเตือนเมื่อเข้าช่วง 7 วัน</div></div><button class="btn btn-primary btn-sm" onclick="enablePush()">เปิดเลย</button>`;
   el.innerHTML = `<div class="pn-ic">🔔</div>${body}<button class="pn-x" onclick="hidePushNudge()" aria-label="ซ่อน">✕</button>`;
   el.style.display = 'flex';
 }
