@@ -1406,7 +1406,7 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
 <div class="modal-overlay" id="modal-pdf">
   <div class="modal modal-wide" style="max-width:860px">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-      <h3 style="margin:0;flex:1" id="pdf-view-title">📄 PDF ประกาศ</h3>
+      <h3 style="margin:0;flex:1" id="pdf-view-title">📄 ประกาศ PDF</h3>
       <a class="btn btn-ghost btn-sm" id="pdf-view-open" target="_blank" download>⬇ ดาวน์โหลด</a>
       <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-pdf')">✕ ปิด</button>
     </div>
@@ -3257,7 +3257,7 @@ function surveyCardHtml(x, total, open) {
               ? `<span class="badge badge-amber" title="${escapeHtml(led.mortgagee || '')}">⚠️ ติดจำนอง${led.mortgage ? ' ' + fmtNum(led.mortgage) + ' ฿' : ''}</span>`
               : `<span class="badge badge-green">${escapeHtml(led.free)}</span>`) : ''}
           ${led.deposit ? `<span class="badge badge-amber">หลักประกัน ${fmtNum(led.deposit)} ฿</span>` : ''}
-          ${p.pdfUrl ? `<button class="btn btn-ghost btn-xs" data-pdfbtn="${p.id}" onclick="surveyTogglePdf('${p.id}')">${_svPdfOpen.has(p.id) ? '📄 ซ่อน PDF' : '📄 ดู PDF ประกาศ'}</button>` : ''}
+          ${p.pdfUrl ? `<button class="btn btn-ghost btn-xs" data-pdfbtn="${p.id}" onclick="surveyTogglePdf('${p.id}')">${_svPdfOpen.has(p.id) ? '📄 ซ่อนประกาศ PDF' : '📄 ประกาศ PDF'}</button>` : ''}
           <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openSketch('${p.id}')">📝 บันทึก${hasSketch(p) || p.survey?.note ? ' ✏️' : ''}</button>
           <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openCalcFor('${p.id}')">🧮 คำนวณ</button>
           ${x.ll ? `<a href="${nav}" target="_blank" class="btn btn-primary btn-xs">🚗 นำทาง</a>
@@ -3746,7 +3746,7 @@ function loadPdfJs() {
 }
 // เปิด PDF ในหน้าเว็บ: เรนเดอร์ทุกหน้าเป็นรูปด้วย pdf.js
 async function showPdf(url, title) {
-  document.getElementById('pdf-view-title').textContent = '📄 ' + (title || 'PDF ประกาศ');
+  document.getElementById('pdf-view-title').textContent = '📄 ' + (title || 'ประกาศ PDF');
   const dl = document.getElementById('pdf-view-open'); dl.href = url;
   const box = document.getElementById('pdf-view-pages');
   box.innerHTML = '<div style="padding:30px;text-align:center;color:var(--gray)">⏳ กำลังเปิด PDF...</div>';
@@ -3787,7 +3787,7 @@ function surveyTogglePdf(id) {
     renderPdfInto(box, p.pdfUrl);
     box.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
-  document.querySelectorAll(`[data-pdfbtn="${id}"]`).forEach(b => b.innerHTML = _svPdfOpen.has(id) ? '📄 ซ่อน PDF' : '📄 ดู PDF ประกาศ');
+  document.querySelectorAll(`[data-pdfbtn="${id}"]`).forEach(b => b.innerHTML = _svPdfOpen.has(id) ? '📄 ซ่อนประกาศ PDF' : '📄 ประกาศ PDF');
 }
 function pdfButton(p, cls) {
   // PDF ประกาศเข้าระบบทางเดียว: "+ เพิ่มทรัพย์สำรวจ" ในแท็บสำรวจ (ผู้ใช้กำหนด 16 ต.ค.) — การ์ดที่ไม่มี PDF ไม่ต้องมีปุ่ม
@@ -3795,7 +3795,7 @@ function pdfButton(p, cls) {
   const call = `event.preventDefault();event.stopPropagation();showPdf('${escapeHtml(p.pdfUrl)}','${escapeHtml((p.code ? p.code + ' — ' : '') + (p.name || '')).replace(/'/g, '&#39;')}')`;
   return cls === 'icon'
     ? `<button class="icon-btn" onclick="${call}" title="เปิด PDF ประกาศของทรัพย์นี้">📄</button>`
-    : `<button class="btn btn-ghost btn-xs" onclick="${call}">📄 PDF ประกาศ</button>`;
+    : `<button class="btn btn-ghost btn-xs" onclick="${call}">📄 ประกาศ PDF</button>`;
 }
 
 // ฟอนต์ใน PDF ของกรมฯ มีกับดัก 3 อย่าง:
@@ -5009,7 +5009,7 @@ function renderProps() {
             <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openSketch('${p.id}')">📝 บันทึก${hasSketch(p) ? ' ✏️' : ''}</button>
             ${pdfButton(p)}
             <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openCalcFor('${p.id}')">🧮 คำนวณ</button>
-            <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();printPropReport('${p.id}')">🖨 พิมพ์ / PDF</button>
+            <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();printPropReport('${p.id}')">🖨 พิมพ์</button>
           </div>
           ${parcelBlockHtml(p)}
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px">
@@ -7500,7 +7500,7 @@ function openPropMenu(id) {
     { icon: '✏️', label: 'แก้ไขข้อมูลทรัพย์', run: () => editProp(id) },
     { icon: on ? '🔕' : '🔔', label: on ? 'ปิดแจ้งเตือนทรัพย์นี้' : 'เปิดแจ้งเตือนทรัพย์นี้', run: () => setPropNotify(id, !on) },
     { icon: '🧮', label: 'คำนวณทรัพย์นี้', run: () => { switchTab('calc'); setTimeout(() => { const s = document.getElementById('calc-prop-sel'); if (s) { s.value = id; calcFillFromProp(); } }, 100); } },
-    { icon: '🖨', label: 'พิมพ์ / PDF', run: () => printPropReport(id) },
+    { icon: '🖨', label: 'พิมพ์', run: () => printPropReport(id) },
     { icon: '🗑', label: 'ลบทรัพย์', danger: true, run: () => deleteProp(id) },
   ]);
 }
