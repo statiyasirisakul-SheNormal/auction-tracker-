@@ -3845,6 +3845,10 @@ async function readLedPdf(file, opt = {}) {
   let text = '';
   for (let i = 1; i <= pdf.numPages; i++) text += await pageText(await pdf.getPage(i)) + '\n';
   text = text.split('\n').map(thaiFix).join('\n');
+  // PDF ที่พิมพ์จาก Chrome/Edge (หน้าเว็บ asset.led.go.th) ทำวรรณยุกต์ซ้อนหาย เช่น "ลำดับที่" → "ลำดับที" — ซ่อมคำที่ใช้จับข้อมูล
+  text = text.replace(/(ลำดับ|แดง|เลข|เนื้?อ|สถาน|นัด)ที(?![่-๋])/g, '$1ที่').replace(/เนือที่/g, 'เนื้อที่')
+    .replace(/ทีดิน/g, 'ที่ดิน').replace(/สิงปลูก/g, 'สิ่งปลูก').replace(/ยอดหนีจำนอง/g, 'ยอดหนี้จำนอง')
+    .replace(/ผู้เชียวชาญ/g, 'ผู้เชี่ยวชาญ').replace(/ตร\s*\.\s*วา/g, 'ตร.วา').replace(/ตร\s*\.\s*ม\s*\./g, 'ตร.ม.');
   const flat = text.replace(/\s+/g, ' ');
   const grab = (re) => { const m = flat.match(re); return m ? m[1].trim() : ''; };
   const money = (s) => { const n = parseFloat(String(s).replace(/,/g, '')); return isFinite(n) ? n : 0; };
