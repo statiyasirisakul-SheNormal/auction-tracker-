@@ -1663,7 +1663,7 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
         <label class="switch"><input type="checkbox" id="pref-push-all" onchange="savePushPref('all', this.checked)"><span class="switch-slider"></span></label>
       </div>
       <div class="pref-row">
-        <div><b>🎯 นัดที่เลือกจะเข้าซื้อ</b><div class="muted">เตือนทันทีที่ทรัพย์เข้าช่วง 7 วันก่อนนัด 🎯 (ตรงกับตัวกรอง "นัดเข้าซื้อใน 7 วัน") ให้เตรียมเงินและเอกสาร</div></div>
+        <div><b>🎯 นัดที่เลือกจะเข้าซื้อ</b><div class="muted">เตือนทันทีที่ทรัพย์เข้าช่วง 7 วันก่อนนัด 🎯 (ตัวกรอง 🎯 7 วัน) ให้เตรียมเงินและเอกสาร</div></div>
         <label class="switch"><input type="checkbox" id="pref-push-target" onchange="savePushPref('target', this.checked)"><span class="switch-slider"></span></label>
       </div>
       <div id="push-status" class="set-status" style="margin-top:10px">—</div>
@@ -4847,7 +4847,9 @@ function propNeedsResult(p) {
 }
 const PROP_FILTERS = [
   { k:'all',    label:'ทั้งหมด',        fn:() => true },
-  { k:'soon',   label:'🎯 นัดเข้าซื้อใน 7 วัน', fn:p => { const d = propTargetDays(p); return d !== null && d <= 7; } },
+  // นัดที่เลือกจะประมูล 🎯 ภายใน N วัน (k 'soon' = 7 วัน คงไว้ให้ตัวกรองที่จำไว้ในเครื่องเดิมใช้ต่อได้)
+  ...[[ 'soon3', 3 ], [ 'soon', 7 ], [ 'soon14', 14 ]].map(([k, n]) =>
+    ({ k, label:`🎯 ${n} วัน`, fn:p => { const d = propTargetDays(p); return d !== null && d <= n; } })),
   { k:'check',  label:'🔎 รอใส่ผลนัด',   fn:p => propNeedsResult(p) },
   { k:'active', label:'🔨 กำลังประมูล',  fn:p => !isAcquired(p) && p.status !== 'lost' },
   { k:'owned',  label:'✓ ได้ทรัพย์แล้ว', fn:p => isAcquired(p) },
