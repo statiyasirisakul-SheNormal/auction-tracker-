@@ -864,6 +864,8 @@ img, svg, video, canvas { max-width:100%; }
 .prop-filters::-webkit-scrollbar { display:none; }
 .pf-chip { flex-shrink:0; border:1.5px solid var(--border); background:var(--white); color:var(--navy); border-radius:var(--r-pill); padding:7px 13px; font:700 13px/1.2 inherit; font-family:inherit; cursor:pointer; min-height:40px; white-space:nowrap; }
 .pf-chip.on { background:var(--navy); border-color:var(--navy); color:var(--white); }
+.pf-select, .pf-chip.pf-select.on { appearance:none; -webkit-appearance:none; padding-right:30px; background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%); background-position:calc(100% - 15px) 50%,calc(100% - 10px) 50%; background-size:5px 5px; background-repeat:no-repeat; }
+.pf-select option { background:var(--white); color:var(--navy); }
 .pf-n { display:inline-block; min-width:18px; padding:0 5px; border-radius:var(--r-md); background:rgba(15,23,42,.08); font-size:var(--fs-sm); text-align:center; }
 .pf-chip.on .pf-n { background:rgba(255,255,255,.22); }
 /* การ์ดตอนกาง: ขั้นทรัพย์ไว้บนสุด · ซ่อนนัดที่ยังว่าง */
@@ -4849,7 +4851,7 @@ const PROP_FILTERS = [
   { k:'all',    label:'ทั้งหมด',        fn:() => true },
   // นัดที่เลือกจะประมูล 🎯 ภายใน N วัน (k 'soon' = 7 วัน คงไว้ให้ตัวกรองที่จำไว้ในเครื่องเดิมใช้ต่อได้)
   ...[[ 'soon3', 3 ], [ 'soon', 7 ], [ 'soon14', 14 ]].map(([k, n]) =>
-    ({ k, label:`🎯 ${n} วัน`, fn:p => { const d = propTargetDays(p); return d !== null && d <= n; } })),
+    ({ k, group:'soon', label:`🎯 ${n} วัน`, fn:p => { const d = propTargetDays(p); return d !== null && d <= n; } })),
   { k:'check',  label:'🔎 รอใส่ผลนัด',   fn:p => propNeedsResult(p) },
   { k:'active', label:'🔨 กำลังประมูล',  fn:p => !isAcquired(p) && p.status !== 'lost' },
   { k:'owned',  label:'✓ ได้ทรัพย์แล้ว', fn:p => isAcquired(p) },
@@ -4861,7 +4863,19 @@ function propMatchesQuery(p, q) {
 function renderPropFilters(list) {
   const box = document.getElementById('prop-filters'); if (!box) return;
   box.parentElement.style.display = list.length ? '' : 'none';
+  // ตัวกรองกลุ่มเดียวกัน (🎯 3/7/14 วัน) รวมเป็น dropdown เดียว วางตรงตำแหน่งตัวแรกของกลุ่ม
+  const seen = new Set();
   box.innerHTML = PROP_FILTERS.map(f => {
+    if (f.group) {
+      if (seen.has(f.group)) return '';
+      seen.add(f.group);
+      const items = PROP_FILTERS.filter(x => x.group === f.group);
+      const on = items.some(x => x.k === propFilter.f);
+      return `<select class="pf-chip pf-select${on?' on':''}" aria-label="นัดประมูล" onchange="setPropFilter({f:this.value||'all'})">
+        <option value=""${on?'':' selected'}>🎯 นัดประมูล</option>
+        ${items.map(x => `<option value="${x.k}"${x.k===propFilter.f?' selected':''}>${x.label} (${list.filter(x.fn).length})</option>`).join('')}
+      </select>`;
+    }
     const n = list.filter(f.fn).length, on = propFilter.f === f.k;
     return `<button class="pf-chip${on?' on':''}" aria-pressed="${on}" onclick="setPropFilter({f:'${f.k}'})">${f.label} <span class="pf-n">${n}</span></button>`;
   }).join('');
