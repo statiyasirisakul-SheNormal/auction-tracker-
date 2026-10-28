@@ -4849,6 +4849,8 @@ function propNeedsResult(p) {
 }
 const PROP_FILTERS = [
   { k:'all',    label:'ทั้งหมด',        fn:() => true },
+  // ประมูลวันนี้ (นัดไหนก็ได้ที่ไม่งดขาย)
+  { k:'today', group:'soon', label:'📅 วันนี้', fn:p => (p.rounds||[]).some(r => r && typeof r === 'object' && r.date && !isHaltedNote(r.note) && daysUntil(r.date) === 0) },
   // นัดที่เลือกจะประมูล 🎯 ภายใน N วัน (k 'soon' = 7 วัน คงไว้ให้ตัวกรองที่จำไว้ในเครื่องเดิมใช้ต่อได้)
   ...[[ 'soon3', 3 ], [ 'soon', 7 ], [ 'soon14', 14 ]].map(([k, n]) =>
     ({ k, group:'soon', label:`🎯 ${n} วัน`, fn:p => { const d = propTargetDays(p); return d !== null && d <= n; } })),
