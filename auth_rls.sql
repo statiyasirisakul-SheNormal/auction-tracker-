@@ -91,3 +91,14 @@ DROP POLICY IF EXISTS "auction_images_delete" ON storage.objects;
 CREATE POLICY "auction_images_write"  ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'auction-images');
 CREATE POLICY "auction_images_update" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'auction-images');
 CREATE POLICY "auction_images_delete" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'auction-images');
+
+-- ราคาหมู่บ้าน (3 พ.ย. 2026) — แถวละหมู่บ้าน มีเบอร์โทรเจ้าของบ้าน ต้องล็อกอินเท่านั้น
+CREATE TABLE IF NOT EXISTS public.auction_villages (
+  id text PRIMARY KEY,
+  user_key text NOT NULL,
+  data jsonb NOT NULL,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS auction_villages_user_key ON public.auction_villages(user_key);
+ALTER TABLE public.auction_villages ENABLE ROW LEVEL SECURITY;
+CREATE POLICY auction_villages_auth ON public.auction_villages FOR ALL TO authenticated USING (true) WITH CHECK (true);

@@ -960,6 +960,9 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
   <button class="tab-btn" onclick="switchTab('survey')">
     <span class="tab-ic">🧭</span><span class="t-full">สำรวจทรัพย์</span><span class="t-short">สำรวจ</span><span class="tab-badge" id="badge-survey">0</span>
   </button>
+  <button class="tab-btn" onclick="switchTab('village')">
+    <span class="tab-ic">🏘</span><span class="t-full">ราคาหมู่บ้าน</span><span class="t-short">หมู่บ้าน</span>
+  </button>
 </nav>
 
 <!-- ฉากมืดตอนกางเมนูมือถือ (ตัวเมนูอยู่ในหัวแอป: #fluid-nav) -->
@@ -1183,6 +1186,20 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
     </div>
   </div>
 
+
+  <!-- ══ VILLAGE (ราคาหมู่บ้านจากการสำรวจ) ════════════════ -->
+  <div class="tab-panel" id="tab-village">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">🏘 ราคาหมู่บ้าน</div>
+        <button class="btn btn-primary btn-sm" onclick="villageAdd()">+ เพิ่มหมู่บ้าน</button>
+      </div>
+      <input class="form-input" id="village-q" type="search" placeholder="ค้นหาหมู่บ้าน" aria-label="ค้นหาหมู่บ้าน" oninput="renderVillages()" style="margin-bottom:12px">
+      <div id="village-list"></div>
+    </div>
+  </div>
+  <datalist id="village-names"></datalist>
+  <datalist id="village-types"></datalist>
 
   <!-- ══ SURVEY (จัดเส้นทางไปสำรวจทรัพย์) ════════════════ -->
   <div class="tab-panel" id="tab-survey">
@@ -1468,6 +1485,28 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
 </div>
 
 <!-- Add survey property from PDF -->
+<div class="modal-overlay" id="modal-village-row">
+  <div class="modal">
+    <h3 id="vr-title">เพิ่มราคา</h3>
+    <div class="form-group"><label class="form-label">ประเภทบ้าน</label><input class="form-input" id="vr-type" list="village-types"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">ตร.ว.</label><input class="form-input" id="vr-size" type="number" inputmode="decimal" step="any"></div>
+      <div class="form-group"><label class="form-label">ราคาขาย (ล้าน)</label><input class="form-input" id="vr-price" type="number" inputmode="decimal" step="any"></div>
+      <div class="form-group"><label class="form-label">ค่าเช่า/เดือน</label><input class="form-input" id="vr-rent" type="number" inputmode="numeric" step="any"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">เบอร์/รหัส</label><input class="form-input" id="vr-contact"></div>
+      <div class="form-group"><label class="form-label">ที่มา</label><input class="form-input" id="vr-source"></div>
+    </div>
+    <div class="form-group"><label class="form-label">หมายเหตุ</label><input class="form-input" id="vr-note"></div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-bottom:12px"><input type="checkbox" id="vr-reno"> รีโนเวทแล้ว</label>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-village-row')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="villageRowSave()">บันทึก</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-pool-pdf">
   <div class="modal">
     <h3>🧭 เพิ่มทรัพย์สำรวจ</h3>
@@ -2165,6 +2204,7 @@ async function loadFromCloud() {
       await syncToCloud();
     }
     setSyncStatus('ok', '');
+    loadVillages();
     return true;
   } catch (e) {
     // "Failed to fetch" = ยิงไปไม่ถึงเซิร์ฟเวอร์เลย ไม่ใช่ข้อมูลผิด
@@ -2564,7 +2604,7 @@ function switchTab(t) {
   try { localStorage.setItem('acktion_lasttab', t); } catch(e) {}
   document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.removeAttribute('aria-current'); });
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  const tabOrder = ['props','reno','summary','calc','pnl','sold','survey'];
+  const tabOrder = ['props','reno','summary','calc','pnl','sold','survey','village'];
   const idx = tabOrder.indexOf(t);
   if (idx >= 0) { const tb = document.querySelectorAll('.tab-btn')[idx]; tb.classList.add('active'); tb.setAttribute('aria-current','page'); }
   document.getElementById('tab-'+t).classList.add('active');
@@ -2575,6 +2615,7 @@ function switchTab(t) {
   if (t === 'pnl')     renderPnL();
   if (t === 'sold')    renderSold();
   if (t === 'survey')  renderSurvey();
+  if (t === 'village') { renderVillages(); loadVillages(); }
 }
 
 // ── Leaflet + OpenStreetMap (ฟรี ไม่ต้องใช้ API key) — ใช้ในแท็บสำรวจทรัพย์ ──
@@ -3224,6 +3265,7 @@ function propHeadInfo(p, { thumb, num, numBg = '', base = 0, bold = false, extra
           <div class="prop-info">
             ${p.code ? `<span class="prop-code">${escapeHtml(p.code)}</span>` : ''}
             <div class="prop-name">${escapeHtml(p.name)}</div>
+            <div class="prop-sub" data-vhead="${p.id}" style="font-weight:600;color:var(--navy)${p.village ? '' : ';display:none'}">🏘 ${escapeHtml(p.village || '')}</div>
             <div class="prop-sub">${loc}${price}</div>
             ${extra}
           </div>`;
@@ -3298,6 +3340,7 @@ function surveyCardHtml(x, total, open) {
           <a href="https://www.google.com/maps/search/?api=1&query=${x.ll.lat},${x.ll.lng}" target="_blank" class="btn btn-ghost btn-xs">📍 Google Map</a>` : ''}
         </div>
         ${p.pdfUrl ? `<div id="svpdf-${p.id}" style="${_svPdfOpen.has(p.id) ? '' : 'display:none;'}max-height:70vh;overflow:auto;background:var(--slate-100);border-radius:var(--r-md);padding:8px;margin-bottom:12px"></div>` : ''}
+        ${villageFieldHtml(p)}
         ${parcelBlockHtml(p)}
         ${led.court || led.plaintiff || led.office ? `<div style="font-size:var(--fs-sm);color:var(--gray-700);line-height:1.7;margin-bottom:12px">
           ${led.type ? `<div>🏷 ${escapeHtml(led.type)}</div>` : ''}
@@ -3318,6 +3361,192 @@ function surveyCardHtml(x, total, open) {
         </div>
       </div>
     </div>`;
+}
+
+// ── ราคาหมู่บ้าน: ตาราง auction_villages แถวละหมู่บ้าน data = {id,name,note,listings:[{id,type,size,price(ล้าน),was,rent,contact,source,note,reno,date}]} ──
+// มีเบอร์โทรเจ้าของบ้าน → อยู่หลัง RLS เท่านั้น ห้ามฝังในโค้ด (repo เป็น public) · โหลดไม่เกิน 5 นาทีครั้งเพื่อลด egress
+const VILLAGE_CACHE = 'acktion_villages';
+let VILLAGES = (() => { try { return JSON.parse(localStorage.getItem(VILLAGE_CACHE)) || []; } catch(e) { return []; } })();
+let _villagesAt = 0, _villageOpen = new Set(), _vrEdit = null;
+function villageCache() {
+  try { localStorage.setItem(VILLAGE_CACHE, JSON.stringify(VILLAGES)); } catch(e) {}
+  const names = document.getElementById('village-names');
+  if (names) names.innerHTML = VILLAGES.map(v => `<option value="${escapeHtml(v.name)}">`).join('');
+  const types = document.getElementById('village-types');
+  if (types) types.innerHTML = [...new Set(VILLAGES.flatMap(v => v.listings.map(r => r.type)).filter(Boolean))].sort().map(t => `<option value="${escapeHtml(t)}">`).join('');
+}
+async function loadVillages(force) {
+  villageCache();
+  if (!force && Date.now() - _villagesAt < 300000) return;
+  const client = initSb(); if (!client) return;
+  const { data: sess } = await client.auth.getSession();
+  if (!sess?.session) return;   // ยังไม่ล็อกอิน RLS คืนแถวว่าง → ห้ามเอาไปทับ cache
+  const { data, error } = await client.from('auction_villages').select('data').eq('user_key', USER_KEY);
+  if (error) { console.warn('[village]', error.message); return; }
+  _villagesAt = Date.now();
+  VILLAGES = data.map(r => r.data);
+  villageCache();
+  if (document.getElementById('tab-village')?.classList.contains('active')) renderVillages();
+  S.props.concat(S.pool).forEach(villageFieldRefresh);
+}
+async function villageSave(v) {
+  villageCache();
+  const { error } = await initSb().from('auction_villages').upsert({ id: v.id, user_key: USER_KEY, data: v, updated_at: new Date().toISOString() });
+  if (error) toast('❌ บันทึกไม่สำเร็จ: ' + error.message, 'error');
+  return !error;
+}
+const villageByName = name => VILLAGES.find(v => v.name === String(name || '').trim());
+const median = a => { const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const fmtM = n => (+n).toFixed(2).replace(/0$/, '');
+function villageRange(v) {
+  const ps = v.listings.map(r => r.price).filter(n => n > 0);
+  if (!ps.length) return '';
+  return `${ps.length} หลัง · ${ps.length > 1 ? fmtM(Math.min(...ps)) + '–' + fmtM(Math.max(...ps)) : fmtM(ps[0])} ล้าน`;
+}
+// เบอร์มือถือในช่องติดต่อ → กดโทรได้ (รหัสทรัพย์ของธนาคารปล่อยเป็นข้อความ)
+const contactHtml = c => escapeHtml(c || '').replace(/(?<![\d-])0[689]\d{8}(?!\d)/g, m => `<a href="tel:${m}">${m}</a>`);
+
+function renderVillages() {
+  const box = document.getElementById('village-list'); if (!box) return;
+  const q = (document.getElementById('village-q')?.value || '').trim().toLowerCase();
+  const list = VILLAGES.filter(v => !q || v.name.toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name, 'th'));
+  const all = S.props.concat(S.pool);
+  box.innerHTML = list.map(v => {
+    const open = _villageOpen.has(v.id) || (q && list.length === 1);
+    const mine = all.filter(p => p.village === v.name);
+    const types = [...new Set(v.listings.map(r => r.type))];
+    return `<div class="prop-card ${open ? 'expanded' : ''}" id="vl-${v.id}">
+      <div class="prop-header" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px" onclick="villageToggle('${v.id}')">
+        <div class="prop-info">
+          <div class="prop-name">${escapeHtml(v.name)}</div>
+          <div class="prop-sub">${villageRange(v) || 'ยังไม่มีราคา'}${mine.length ? ` · ทรัพย์ ${mine.length}` : ''}</div>
+        </div>
+        <span class="chevron">▼</span>
+      </div>
+      ${open ? `<div class="prop-body" style="display:block">
+        ${v.note ? `<div style="font-size:var(--fs-sm);color:var(--gray);margin-bottom:10px">${escapeHtml(v.note)}</div>` : ''}
+        ${mine.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${mine.map(p => `<span class="badge badge-blue">🔖 ${escapeHtml(p.code || p.name)}</span>`).join('')}</div>` : ''}
+        ${types.map(t => {
+          const rows = v.listings.filter(r => r.type === t);
+          const ps = rows.map(r => r.price).filter(n => n > 0);
+          return `<div class="section-title" style="margin-bottom:6px">${escapeHtml(t || 'ไม่ระบุประเภท')}${ps.length > 1 ? ` <span style="font-weight:500;color:var(--gray)">· กลาง ${fmtM(median(ps))} ล้าน</span>` : ''}</div>
+          <div style="margin-bottom:14px">${rows.map(r => `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:var(--fs-sm)">
+            <div style="flex:1;min-width:0;line-height:1.5">
+              <div><b style="color:var(--navy);font-size:var(--fs-md)">${r.rent ? 'เช่า ' + fmtNum(r.rent) : r.price ? fmtM(r.price) + ' ล้าน' : 'ไม่มีราคา'}</b>${r.was ? ` <span style="color:var(--gray)">จาก ${fmtM(r.was)}</span>` : ''}${r.size ? ` · ${r.size} ตร.ว.` : ''}${r.price > 0 && r.size > 0 ? ` · ${fmtNum(Math.round(r.price * 1e6 / r.size))}/ตร.ว.` : ''}${r.reno ? ' <span class="badge badge-green">รีโนเวท</span>' : ''}</div>
+              <div style="color:var(--gray);overflow-wrap:anywhere">${[contactHtml(r.contact), escapeHtml(r.source || ''), r.date ? fmtDate(r.date) : '', escapeHtml(r.note || '')].filter(Boolean).join(' · ')}</div>
+            </div>
+            <button class="icon-btn" onclick="villageRowEdit('${v.id}','${r.id}')" title="แก้ไข">✏️</button>
+            <button class="icon-btn" onclick="villageRowDel('${v.id}','${r.id}')" title="ลบ">✕</button>
+          </div>`).join('')}</div>`;
+        }).join('')}
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="villageRowEdit('${v.id}')">+ เพิ่มราคา</button>
+          <button class="btn btn-ghost btn-sm" onclick="villageRename('${v.id}')">✏️ แก้ชื่อ</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="villageDel('${v.id}')">✕ ลบหมู่บ้าน</button>
+        </div>
+      </div>` : ''}
+    </div>`;
+  }).join('') || `<div style="padding:24px;text-align:center;color:var(--gray)">ไม่พบหมู่บ้าน</div>`;
+}
+function villageToggle(id) { _villageOpen.has(id) ? _villageOpen.delete(id) : _villageOpen.add(id); renderVillages(); }
+function villageOpen(id) {
+  _villageOpen.add(id); switchTab('village');
+  document.getElementById('vl-' + id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function villageCreate(name) {
+  const v = { id: 'v_' + uid().slice(1), name, note: '', listings: [] };
+  VILLAGES.push(v); villageSave(v);
+  return v;
+}
+function villageAdd() {
+  const name = (prompt('ชื่อหมู่บ้าน') || '').trim(); if (!name) return;
+  if (villageByName(name)) { toast('มีหมู่บ้านนี้แล้ว', 'error'); return; }
+  _villageOpen.add(villageCreate(name).id); renderVillages();
+}
+function villageRename(id) {
+  const v = VILLAGES.find(x => x.id === id); if (!v) return;
+  const name = (prompt('ชื่อหมู่บ้าน', v.name) || '').trim();
+  if (!name || name === v.name) return;
+  if (villageByName(name)) { toast('มีหมู่บ้านนี้แล้ว', 'error'); return; }
+  S.props.concat(S.pool).forEach(p => { if (p.village === v.name) p.village = name; });   // ทรัพย์ที่ผูกไว้ตามชื่อใหม่ด้วย
+  v.name = name; villageSave(v); saveS(); renderVillages();
+}
+async function villageDel(id) {
+  const v = VILLAGES.find(x => x.id === id); if (!v) return;
+  if (!confirm(`ลบ ${v.name} และราคาทั้งหมด ${v.listings.length} รายการ?`)) return;
+  const { error } = await initSb().from('auction_villages').delete().eq('id', id).eq('user_key', USER_KEY);
+  if (error) { toast('❌ ลบไม่สำเร็จ: ' + error.message, 'error'); return; }
+  VILLAGES = VILLAGES.filter(x => x.id !== id); villageCache(); renderVillages();
+}
+function villageRowEdit(vid, rid) {
+  const v = VILLAGES.find(x => x.id === vid); if (!v) return;
+  const r = v.listings.find(x => x.id === rid) || {};
+  _vrEdit = { vid, rid };
+  document.getElementById('vr-title').textContent = (rid ? 'แก้ราคา · ' : 'เพิ่มราคา · ') + v.name;
+  [['type','type'],['size','size'],['price','price'],['rent','rent'],['contact','contact'],['source','source'],['note','note']]
+    .forEach(([f, k]) => { document.getElementById('vr-' + f).value = r[k] ?? ''; });
+  document.getElementById('vr-reno').checked = !!r.reno;
+  openModal('modal-village-row');
+}
+function villageRowSave() {
+  const v = VILLAGES.find(x => x.id === _vrEdit?.vid); if (!v) return;
+  const val = f => document.getElementById('vr-' + f).value.trim();
+  const num = f => { const n = parseFloat(val(f)); return isFinite(n) ? n : undefined; };
+  const old = v.listings.find(x => x.id === _vrEdit.rid);
+  const r = { id: old?.id || 'r' + uid().slice(1), type: val('type'), size: num('size'), price: num('price'), rent: num('rent'),
+              was: old?.was, contact: val('contact'), source: val('source'), note: val('note'), reno: document.getElementById('vr-reno').checked || undefined,
+              date: old ? old.date : todayISO() };
+  if (r.price === undefined && r.rent === undefined && r.size === undefined) { toast('กรอกตร.ว. หรือราคา', 'error'); return; }
+  if (old) v.listings[v.listings.indexOf(old)] = r; else v.listings.push(r);
+  villageSave(v); closeModal('modal-village-row');
+  _villageOpen.add(v.id); renderVillages();
+  S.props.concat(S.pool).forEach(villageFieldRefresh);
+}
+function villageRowDel(vid, rid) {
+  const v = VILLAGES.find(x => x.id === vid); if (!v || !confirm('ลบรายการนี้?')) return;
+  v.listings = v.listings.filter(x => x.id !== rid);
+  villageSave(v); renderVillages();
+}
+
+// ช่องหมู่บ้านในการ์ดทรัพย์ — PDF กรมฯ ไม่มีชื่อหมู่บ้าน: แนะนำจากทรัพย์ที่ผูกไว้แล้วในรัศมี 150 ม. (ต้องเป็นพิกัดจริง ไม่ใช่พิกัดตำบล)
+function villageGuess(p) {
+  if (p.village || p.llApprox) return '';
+  const ll = parseLatLng(p.mapUrl); if (!ll) return '';
+  let best = '', bestKm = 0.15;
+  S.props.concat(S.pool).forEach(o => {
+    if (!o.village || o.llApprox || o.id === p.id) return;
+    const l = parseLatLng(o.mapUrl); if (!l) return;
+    const d = haversineKm(ll, l);
+    if (d < bestKm) { bestKm = d; best = o.village; }
+  });
+  return best;
+}
+function villageFieldInner(p) {
+  const v = villageByName(p.village), guess = villageGuess(p), range = v && villageRange(v);
+  return `<span style="font-size:var(--fs-sm);font-weight:700;color:var(--navy);white-space:nowrap">🏘 หมู่บ้าน</span>
+    <input type="text" list="village-names" class="field-inline wide" aria-label="หมู่บ้าน" style="--fi-c:var(--border);font-weight:600" value="${escapeHtml(p.village || '')}" onclick="event.stopPropagation()" onchange="savePropVillage('${p.id}',this.value)">
+    ${guess ? `<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();savePropVillage('${p.id}',this.dataset.v)" data-v="${escapeHtml(guess)}">${escapeHtml(guess)}?</button>` : ''}
+    ${v ? `<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();villageOpen('${v.id}')">${range || 'ดูราคา'}</button>` : ''}`;
+}
+function villageFieldHtml(p) {
+  return `<div id="vf-${p.id}" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">${villageFieldInner(p)}</div>`;
+}
+function villageFieldRefresh(p) {
+  const el = document.getElementById('vf-' + p.id);
+  if (el && !el.contains(document.activeElement)) el.innerHTML = villageFieldInner(p);
+}
+function savePropVillage(id, val) {
+  const p = findAnyProp(id); if (!p) return;
+  const name = String(val || '').trim();
+  if (name === (p.village || '')) return;
+  if (name) p.village = name; else delete p.village;
+  if (name && !villageByName(name)) villageCreate(name);
+  saveS();
+  document.querySelectorAll(`[data-vhead="${id}"]`).forEach(el => { el.textContent = '🏘 ' + name; el.style.display = name ? '' : 'none'; });
+  // ทรัพย์ใกล้เคียงอาจได้คำแนะนำใหม่ด้วย
+  S.props.concat(S.pool).forEach(villageFieldRefresh);
+  const el = document.getElementById('vf-' + id); if (el) el.innerHTML = villageFieldInner(p);
+  toast('✓ บันทึกหมู่บ้านแล้ว');
 }
 
 // ── หน้าใส่พิกัดจากกรมที่ดินทีละหลายทรัพย์ ──
@@ -5065,6 +5294,7 @@ function renderProps() {
             <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openCalcFor('${p.id}')">🧮 คำนวณ</button>
             <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();printPropReport('${p.id}')">🖨 พิมพ์</button>
           </div>
+          ${villageFieldHtml(p)}
           ${parcelBlockHtml(p)}
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px">
             <div class="section-title" style="margin-bottom:0">📅 ตารางนัด</div>
@@ -7488,6 +7718,7 @@ const FLUID_TABS = [
   { t:'pnl',     label:'กำไร/ขาดทุน', svg:'<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>' },
   { t:'sold',    label:'ขายแล้ว',     svg:'<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>' },
   { t:'survey',  label:'สำรวจทรัพย์', svg:'<circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/>' },
+  { t:'village', label:'ราคาหมู่บ้าน', svg:'<path d="M3 21h18"/><path d="M5 21V10l5-4 5 4v11"/><path d="M15 21v-7l3-2 3 2v7"/><path d="M9 21v-5h2v5"/>' },
 ];
 function buildFluidNav() {
   const nav = document.getElementById('fluid-nav');
