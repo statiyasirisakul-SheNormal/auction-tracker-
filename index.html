@@ -3303,6 +3303,44 @@ function nextRoundInfo(p) {
 }
 
 // ลิงก์นำทาง Google Maps หลายจุด: 1 ลิงก์รับได้ต้นทาง + 9 จุดแวะ + ปลายทาง → เกินนั้นแบ่งเป็นช่วง
+// แต่ละช่วงคือ 1 ลิงก์ Google Maps (ได้ไม่เกิน 10 จุด) · ใช้สีเดียวกันทั้งปุ่ม หมุด และเลขในการ์ด
+const SEG_COLORS = ['#1F3A5F', '#7C3AED', '#0E7490', '#BE185D', '#4D7C0F'];
+const segColor = i => SEG_COLORS[i % SEG_COLORS.length];
+function surveySegments(ordered) {
+  const remain = ordered.filter(x => !x.p.survey?.done), segs = [], of = new Map();
+  for (let i = 0; i < remain.length; i += 10) segs.push(remain.slice(i, i + 10));
+  segs.forEach((g, i) => g.forEach(x => of.set(x.p.id, i)));
+  return { remain, segs, of };
+}
+function surveyJump(id) {
+  const c = document.getElementById('sv-' + id); if (!c) return;
+  c.classList.add('expanded'); initParcelMaps();
+  c.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+// เริ่มจากช่วงที่เลือกก่อน: คงลำดับในช่วงนั้นไว้ แล้วจัดจุดที่เหลือใหม่ต่อจากจุดสุดท้ายของช่วง
+async function surveyStartSeg(i) {
+  const { ordered } = surveyOrdered(), { remain, segs } = surveySegments(ordered);
+  const first = segs[i]; if (!first) return;
+  toast('⏳ กำลังจัดเส้นทาง...');
+  const rest = remain.filter(x => !first.includes(x)), last = first[first.length - 1];
+  const pts = [last.ll, ...rest.map(x => x.ll)];
+  const { cost, source } = await surveyMatrix(pts, false);
+  const next = solveRoute(cost, source).slice(1).map(k => rest[k - 1]);
+  const seq = [...first, ...next];
+  let meta = {}; try { meta = JSON.parse(localStorage.getItem('acktion_survey_meta') || '{}'); } catch(e) {}
+  const origin = meta.gps ? (_surveyGps || meta.origin || null) : null;
+  const { legs, geom } = await surveyLegs([...(origin ? [origin] : []), ...seq.map(x => x.ll)], !!origin);
+  _surveyGeom = ordered.length === seq.length ? geom : null;   // มีจุดที่ไปแล้วปนอยู่ เส้นถนนนี้ไม่ครบทั้งรอบ
+  const done = ordered.filter(x => x.p.survey?.done);
+  done.forEach((x, k) => { surveyOf(x.p).order = k + 1; });
+  seq.forEach((x, k) => {
+    const sv = surveyOf(x.p);
+    sv.order = done.length + k + 1;
+    sv.leg = origin ? legs[k] : (k === 0 ? null : legs[k - 1]);
+  });
+  saveS(); renderSurvey();
+  toast(`✓ เริ่มจากช่วง ${i + 1} แล้ว`, 'success');
+}
 function surveyNavLinks(stops, fromGps) {
   const out = []; let origin = fromGps ? null : stops[0], rest = fromGps ? stops : stops.slice(1);
   while (rest.length) {
@@ -3388,7 +3426,7 @@ function surveyCardHtml(x, total, open) {
   const thumb = thumbSrc
     ? `<img class="prop-thumb" src="${thumbSrc}" alt="" loading="lazy" onclick="event.stopPropagation();showLightbox('${thumbSrc}')">`
     : `<div class="prop-thumb-empty">${p.pdfPending ? '📄' : '🏠'}</div>`;
-  const numBg = sv.done ? 'var(--green)' : inRoute ? 'var(--navy)' : '#9CA3AF';
+  const numBg = sv.done ? 'var(--green)' : inRoute ? segColor(x.seg || 0) : '#4B5563';
   const num = sv.done ? '✓' : inRoute ? idx + 1 : p.pdfPending ? '⏳' : '•';
   const chips = [
     p.pdfPending ? `<span class="badge badge-amber">⏳ กำลังอ่าน PDF</span>` : '',
@@ -4489,9 +4527,18 @@ async function renderSurvey() {
     const totKm  = ordered.reduce((s, x) => s + (x.p.survey.leg?.km  || 0), 0);
     const totMin = ordered.reduce((s, x) => s + (x.p.survey.leg?.min || 0), 0);
     const anyEst = ordered.some(x => x.p.survey.leg?.est);
-    const remain = ordered.filter(x => !x.p.survey.done);
+    const { remain, segs } = surveySegments(ordered);
     const doneN  = ordered.length - remain.length;
     const links  = remain.length ? surveyNavLinks(remain.map(x => x.ll), true) : [];
+    const segRows = segs.length > 1 ? segs.map((g, i) => {
+      const km = g.reduce((t, x) => t + (x.p.survey.leg?.km || 0), 0), min = g.reduce((t, x) => t + (x.p.survey.leg?.min || 0), 0);
+      return `<div style="display:flex;gap:6px 8px;align-items:center;flex-wrap:wrap;padding:9px 0;border-top:1px solid var(--blue-200)">
+        <a class="btn btn-sm" style="background:${segColor(i)};color:#fff" href="${links[i]}" target="_blank">🚗 ช่วง ${i + 1} ↗</a>
+        <span style="font-size:var(--fs-sm);color:var(--gray-700);white-space:nowrap">${g.length} จุด · ${fmtKm(km)} กม. · ${fmtMin(min)}</span>
+        ${i ? `<button class="btn btn-ghost btn-xs" onclick="surveyStartSeg(${i})">⬆ เริ่มช่วงนี้</button>` : '<span class="badge badge-blue">ไปก่อน</span>'}
+        <span style="flex-basis:100%;display:flex;gap:5px;flex-wrap:wrap">${g.map(x => `<button class="btn btn-ghost btn-xs" style="gap:5px" onclick="surveyJump('${x.p.id}')"><b style="background:${segColor(i)};color:#fff;border-radius:50%;min-width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px">${ordered.indexOf(x) + 1}</b>${escapeHtml(x.p.code || x.p.name)}</button>`).join('')}</span>
+      </div>`;
+    }).join('') : '';
     sumEl.innerHTML = `
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:var(--blue-lt);border-radius:var(--r-md);padding:10px 12px">
         <span class="badge badge-blue">🏠 ${ordered.length} จุด</span>
@@ -4499,7 +4546,8 @@ async function renderSurvey() {
         <span class="badge badge-gray">🚗 ${anyEst ? '≈ ' : ''}${fmtKm(totKm)} กม. · ${fmtMin(totMin)}</span>
         ${meta.source === 'straight' || anyEst ? '<span style="font-size:var(--fs-sm);color:var(--gray)">(บางช่วงประมาณจากเส้นตรง)</span>' : ''}
         <span style="flex:1"></span>
-        ${links.map((u, i) => `<a class="btn btn-success btn-sm" href="${u}" target="_blank">🚗 นำทางจุดที่เหลือ${links.length > 1 ? ` ช่วง ${i + 1}` : ''} ↗</a>`).join('')}
+        ${links.length === 1 ? `<a class="btn btn-success btn-sm" href="${links[0]}" target="_blank">🚗 นำทางจุดที่เหลือ ↗</a>` : ''}
+        ${segRows ? `<div style="flex-basis:100%;margin-top:2px">${segRows}</div>` : ''}
       </div>
       ${unplanned.length ? planBanner(`มีทรัพย์ใหม่ ${unplanned.length} รายการที่ยังไม่อยู่ในเส้นทาง`) : ''}
       ${(() => { const n = ordered.filter(x => x.p.llApprox).length; return n ? `<div style="background:var(--orange-50);border:1.5px solid #FDBA74;border-radius:var(--r-md);padding:9px 12px;margin-top:8px;font-size:var(--fs-sm);color:var(--orange-800);line-height:1.6">
@@ -4513,7 +4561,8 @@ async function renderSurvey() {
   const listEl = document.getElementById('survey-list');
   const openIds = new Set([...listEl.querySelectorAll('.prop-card.expanded')].map(e => e.id.replace('sv-', '')));
   const skipped = surveyCandidates().filter(p => p.survey?.skip).map(p => ({ p, ll: parseLatLng(p.mapUrl) }));
-  let cards = [...ordered.map((x, i) => ({ ...x, idx: i })), ...unplanned, ...approx, ...noLL, ...skipped];
+  const segOf = surveySegments(ordered).of;
+  let cards = [...ordered.map((x, i) => ({ ...x, idx: i, seg: segOf.get(x.p.id) })), ...unplanned, ...approx, ...noLL, ...skipped];
   const rankBtn = document.getElementById('survey-rank-btn');
   if (rankBtn) rankBtn.textContent = surveyRankOn() ? '🧭 เรียงตามเส้นทาง' : '💰 เรียงตามส่วนต่าง';
   if (surveyRankOn()) {
@@ -4548,10 +4597,11 @@ async function renderSurvey() {
     const done = x.p.survey?.done, approx = !!x.p.llApprox;
     const [dx, dy] = ring.get(x) || [0, 0];
     // พิกัดประมาณ = หมุดส้มขอบประ (ยังไม่ใช่ตำแหน่งแปลงจริง)
-    const bg = done ? '#16A34A' : approx ? '#D97706' : '#1F3A5F';
+    const seg = segOf.get(x.p.id);
+    const bg = done ? '#16A34A' : approx ? '#D97706' : segColor(seg || 0);
     addMark([x.ll.lat, x.ll.lng],
       `<div style="width:28px;height:28px;border-radius:50%;background:${bg};color:var(--white);border:2px ${approx ? 'dashed' : 'solid'} #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font:800 13px sans-serif">${label(x, i)}</div>`, 28, 28,
-      `<b>${label(x, i)}. ${escapeHtml((x.p.code ? x.p.code + ' — ' : '') + x.p.name)}</b><br><span style="font-size:var(--fs-sm)">${escapeHtml(x.p.loc || '')}</span>${approx ? '<br><span style="font-size:var(--fs-sm);color:var(--amber)">≈ พิกัดประมาณ (กลางตำบล) — ยังไม่ใช่ตำแหน่งแปลงจริง</span>' : ''}`, dx, dy);
+      `<b>${label(x, i)}. ${escapeHtml((x.p.code ? x.p.code + ' — ' : '') + x.p.name)}</b>${seg !== undefined ? ` · ช่วง ${seg + 1}` : ''}<br><span style="font-size:var(--fs-sm)">${escapeHtml(x.p.loc || '')}</span>${approx ? '<br><span style="font-size:var(--fs-sm);color:var(--amber)">≈ พิกัดประมาณ (กลางตำบล) — ยังไม่ใช่ตำแหน่งแปลงจริง</span>' : ''}`, dx, dy);
   });
   if (!_surveyGps && meta.gps && meta.origin) _surveyGps = meta.origin;   // จำจุดเริ่มข้ามการเปิดแอป
   const gpsOn = !!(_surveyGps && meta.gps);
