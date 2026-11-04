@@ -3002,10 +3002,15 @@ function surveyGroupCost(D, thr, pen) {
 }
 // หาลำดับไปครบทุกจุด เริ่มที่จุด 0 เสมอ ไม่ต้องวนกลับ (open path)
 // ≤9 จุด → ลองทุกแบบ · มากกว่านั้น → หลายจุดเริ่มต้น + กลับช่วง (2-opt) + ย้ายจุด (or-opt) จนหมดเวลา ใช้ seed คงที่
-function solveRoute(D, source) {
+function solveRoute(D, source, fromHere) {
   const n = D.length;
   if (n <= 2) return [...Array(n).keys()];
   const C = source === 'road' ? surveyGroupCost(D, 180, 120) : surveyGroupCost(D, 1.5, 1);
+  // เริ่มจากตำแหน่งที่อยู่: จุดแรกต้องเป็นกลุ่มที่ใกล้ที่สุด แม้ระยะรวมจะยาวขึ้นเล็กน้อย (ไม่งั้นระบบอาจขับไปสุดอีกฝั่งก่อนแล้วไล่กลับ)
+  if (fromHere) {
+    const nearest = Math.min(...D[0].slice(1)), limit = nearest * 1.15 + (source === 'road' ? 60 : 0.5);
+    for (let k = 1; k < n; k++) if (D[0][k] > limit) C[0][k] += 1e6;
+  }
   if (n <= 9) {
     let best = Infinity, bestPath = null;
     const path = [0], used = new Array(n).fill(false); used[0] = true;
@@ -3119,7 +3124,7 @@ async function surveyPlan() {
     const o1 = solveSub(inner);
     order = outer.length ? [...o1, ...solveSub([o1[o1.length - 1], ...outer]).slice(1)] : o1;
   } else {
-    order = solveRoute(cost, source);
+    order = solveRoute(cost, source, !!origin);
   }
   const seq = order.map(i => pts[i]);
   const ordered = (origin ? order.slice(1).map(i => stops[i - 1]) : order.map(i => stops[i]));
@@ -3317,18 +3322,28 @@ function surveyJump(id) {
   c.classList.add('expanded'); initParcelMaps();
   c.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
-// เริ่มจากช่วงที่เลือกก่อน: คงลำดับในช่วงนั้นไว้ แล้วจัดจุดที่เหลือใหม่ต่อจากจุดสุดท้ายของช่วง
+// เริ่มจากช่วงที่เลือกก่อน: ในช่วงนั้นเริ่มจุดที่ใกล้ตำแหน่งปัจจุบันที่สุด แล้วจัดจุดที่เหลือต่อจากจุดสุดท้ายของช่วง
 async function surveyStartSeg(i) {
   const { ordered } = surveyOrdered(), { remain, segs } = surveySegments(ordered);
-  const first = segs[i]; if (!first) return;
+  const seg = segs[i]; if (!seg) return;
   toast('⏳ กำลังจัดเส้นทาง...');
-  const rest = remain.filter(x => !first.includes(x)), last = first[first.length - 1];
-  const pts = [last.ll, ...rest.map(x => x.ll)];
-  const { cost, source } = await surveyMatrix(pts, false);
+  let meta = {}; try { meta = JSON.parse(localStorage.getItem('acktion_survey_meta') || '{}'); } catch(e) {}
+  let origin = meta.gps ? (_surveyGps || meta.origin || null) : null;
+  if (surveyStart() === 'gps') {
+    try {
+      origin = await getGps(); _surveyGps = origin;
+      localStorage.setItem('acktion_survey_meta', JSON.stringify({ ...meta, at: Date.now(), gps: true, origin }));
+    } catch(e) {}
+  }
+  let first = seg;
+  if (origin) {
+    const { cost, source } = await surveyMatrix([origin, ...seg.map(x => x.ll)], true);
+    first = solveRoute(cost, source, true).slice(1).map(k => seg[k - 1]);
+  }
+  const rest = remain.filter(x => !seg.includes(x)), last = first[first.length - 1];
+  const { cost, source } = await surveyMatrix([last.ll, ...rest.map(x => x.ll)], false);
   const next = solveRoute(cost, source).slice(1).map(k => rest[k - 1]);
   const seq = [...first, ...next];
-  let meta = {}; try { meta = JSON.parse(localStorage.getItem('acktion_survey_meta') || '{}'); } catch(e) {}
-  const origin = meta.gps ? (_surveyGps || meta.origin || null) : null;
   const { legs, geom } = await surveyLegs([...(origin ? [origin] : []), ...seq.map(x => x.ll)], !!origin);
   _surveyGeom = ordered.length === seq.length ? geom : null;   // มีจุดที่ไปแล้วปนอยู่ เส้นถนนนี้ไม่ครบทั้งรอบ
   const done = ordered.filter(x => x.p.survey?.done);
