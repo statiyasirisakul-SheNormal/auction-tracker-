@@ -56,7 +56,7 @@ REVOKE ALL ON FUNCTION public.auction_set_pin(text, boolean) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.auction_set_pin(text, boolean) TO authenticated;
 
 -- ตั้ง PIN ครั้งแรก (เปลี่ยนเลขก่อนรัน)
--- SELECT public.auction_set_pin('418902', true);
+-- SELECT public.auction_set_pin('xxxxxx', true);
 
 -- 2) RLS — อ่าน/เขียนได้เฉพาะคนที่ล็อกอินแล้ว
 ALTER TABLE public.auction_props     ENABLE ROW LEVEL SECURITY;
@@ -102,3 +102,8 @@ CREATE TABLE IF NOT EXISTS public.auction_villages (
 CREATE INDEX IF NOT EXISTS auction_villages_user_key ON public.auction_villages(user_key);
 ALTER TABLE public.auction_villages ENABLE ROW LEVEL SECURITY;
 CREATE POLICY auction_villages_auth ON public.auction_villages FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- ภาพวาดหน้าบันทึกแยกตาราง (4 พ.ย. 2026) + เฉพาะบัญชีเจ้าของเท่านั้น (เดิม authenticated ทุกคน)
+CREATE TABLE IF NOT EXISTS public.auction_sketches (id text PRIMARY KEY, user_key text NOT NULL, data jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now());
+ALTER TABLE public.auction_sketches ENABLE ROW LEVEL SECURITY;
+-- ทุกตาราง + storage.objects: USING/WITH CHECK ((auth.jwt()->>'email') = 'owner@auction.local')

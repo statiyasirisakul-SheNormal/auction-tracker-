@@ -16,7 +16,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="icon" type="image/svg+xml" href="./icon.svg">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -1216,6 +1216,7 @@ input[style*="outline:none"]:focus, select[style*="outline:none"]:focus, textare
           <button class="btn btn-amber btn-sm" id="survey-dol-btn" onclick="openDolLL()" style="display:none">📍 ใส่พิกัดจากกรมที่ดิน</button>
           <button class="btn btn-ghost btn-sm" id="survey-regeo-btn" onclick="surveyRegeocode()" style="display:none">🔎 หาพิกัดใหม่ด้วย Google</button>
           <button class="btn btn-ghost btn-sm" onclick="surveyResetDone()">↺ ล้างสถานะ "ไปแล้ว"</button>
+          <button class="btn btn-ghost btn-sm" id="survey-rank-btn" onclick="surveyToggleRank()">💰 เรียงตามส่วนต่าง</button>
           <button class="btn btn-primary btn-sm" onclick="surveyPlan()">🧭 จัดเรียงเส้นทาง</button>
         </div>
       </div>
@@ -1941,7 +1942,7 @@ function isImageSrc(s) {
 function saveS() {
   S.lastModified = new Date().toISOString();
   stampChanged();  // ประทับเวลาต่อ record ที่เปลี่ยนจริง (item 14 — กัน sync ทับกัน)
-  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) { toast('⚠️ พื้นที่ในเครื่องเต็ม ข้อมูลล่าสุดอาจไม่ถูกเก็บในเครื่อง', 'error'); }
   // Sync to per-entity tables (clock-in pattern). Non-blocking; queued if a sync is in flight.
   scheduleSync();
 }
@@ -1970,22 +1971,69 @@ function stampChanged() {
   };
   doArr(S.props, 'p'); doArr(S.expenses, 'e'); doArr(S.pool, 'q');
 }
-// รวมข้อมูล cloud + local แบบไม่ทับของใหม่ทิ้ง:
-//  - record ที่มีทั้งสองฝั่ง → เก็บอันที่ _ts ใหม่กว่า
-//  - มีเฉพาะ cloud → เอาจาก cloud (เครื่องอื่นเพิ่ง/สร้าง)
-//  - มีเฉพาะ local → เก็บถ้าเพิ่งแก้หลัง pull ล่าสุด (ยังไม่ทันขึ้น cloud) ไม่งั้นถือว่าถูกลบจากเครื่องอื่น
-function mergeCloud(localArr, cloudArr, pulledAt) {
-  const seen = new Set(); const out = [];
-  (cloudArr||[]).forEach(r => {
-    const loc = (localArr||[]).find(x => x.id === r.id);
-    out.push(loc && (loc._ts||0) > (r._ts||0) ? loc : r);
-    seen.add(r.id);
+// สถานะ sync ต่อ record: SM.props/expenses = { id: updated_at (ms) ที่ cloud มีล่าสุดเท่าที่รู้ }
+//  · ขึ้น cloud เฉพาะ record ที่ _ts ใหม่กว่า (เดิมอัปทุกแถวทุกครั้ง) · ดึงลงเฉพาะแถวที่ updated_at เปลี่ยน
+//  · del = รายการที่ลบในเครื่องแล้วแต่ยังลบบน cloud ไม่สำเร็จ (ออฟไลน์) ลบซ้ำตอนออนไลน์ จะได้ไม่เด้งกลับมา
+const SYNC_KEY = 'acktion_sync_meta';
+const SM = (() => { let m = {}; try { m = JSON.parse(localStorage.getItem(SYNC_KEY)) || {}; } catch(e) {}
+  return { init: m.init || 0, dt: m.dt || '', props: m.props || {}, expenses: m.expenses || {}, del: { props: m.del?.props || [], expenses: m.del?.expenses || [] } }; })();
+const smSave = () => { try { localStorage.setItem(SYNC_KEY, JSON.stringify(SM)); } catch(e) {} };
+function smResetKnown() { SM.props = {}; SM.expenses = {}; SM.dt = ''; smSave(); }
+const dedupeById = arr => { const m = new Map(); (arr || []).forEach(r => { if (!r?.id) return; const o = m.get(r.id); if (!o || (r._ts || 0) >= (o._ts || 0)) m.set(r.id, r); }); return [...m.values()]; };
+
+// ดึงเฉพาะแถวที่เปลี่ยนจาก cloud แล้วรวมกับในเครื่อง (ใคร _ts ใหม่กว่าชนะ)
+// มีเฉพาะในเครื่อง: เคยขึ้น cloud แล้ว = เครื่องอื่นลบไป → ลบตาม · ไม่เคยขึ้น = ของใหม่ เก็บไว้รออัป
+async function pullTable(table, meta, local) {
+  const client = initSb(), uk = USER_KEY;
+  const { data: list, error } = await client.from(table).select('id,updated_at').eq('user_key', uk);
+  if (error) throw error;
+  const known = SM[meta], tomb = new Set(SM.del[meta]);
+  const locals = new Map(dedupeById(local).map(r => [r.id, r]));
+  // cloud ว่างทั้งตารางแต่ในเครื่องมีของ → ไม่ลบตาม (อาจล้างตาราง/สิทธิ์มีปัญหา) ให้อัปกลับขึ้นไปแทน
+  if (!list.length && locals.size) { SM[meta] = {}; smSave(); return [...locals.values()]; }
+  const inCloud = new Map(list.filter(r => !tomb.has(r.id)).map(r => [r.id, +new Date(r.updated_at)]));
+  const changed = [...inCloud].filter(([id, ms]) => known[id] !== ms || !locals.has(id)).map(([id]) => id);
+  const fetched = new Map();
+  for (let i = 0; i < changed.length; i += 100) {
+    const { data, error: e2 } = await client.from(table).select('id,data').eq('user_key', uk).in('id', changed.slice(i, i + 100));
+    if (e2) throw e2;
+    data.forEach(r => fetched.set(r.id, r.data));
+  }
+  const out = [];
+  locals.forEach((loc, id) => {
+    if (tomb.has(id)) return;
+    if (!inCloud.has(id)) {
+      // ครั้งแรกหลังอัปเดตยังไม่มีประวัติ known → ใช้กฎเดิม: เก็บเฉพาะที่แก้หลัง pull ล่าสุด
+      const keep = SM.init ? !(id in known) : (loc._ts || 0) > (S._pulledAt || 0);
+      if (keep) out.push(loc); else delete known[id];
+      return;
+    }
+    const c = fetched.get(id);
+    out.push(c && (c._ts || 0) >= (loc._ts || 0) ? c : loc);
   });
-  (localArr||[]).forEach(r => {
-    if (seen.has(r.id)) return;
-    if ((r._ts||0) > (pulledAt||0)) out.push(r);  // local ล้วนที่ยังไม่ sync → เก็บไว้
-  });
+  fetched.forEach((c, id) => { if (!locals.has(id)) out.push(c); });
+  SM[meta] = Object.fromEntries(inCloud);
   return out;
+}
+// ค่าใช้จ่ายของทรัพย์ที่ลบไปแล้ว (รอลบบน cloud) ห้ามดึงกลับมา
+const dropTombExpenses = arr => { const t = new Set(SM.del.props); return arr.filter(e => !t.has(e.propId)); };
+const hasPendingSync = () => SM.del.props.length || SM.del.expenses.length
+  || [...S.props, ...S.pool].some(p => (p._ts || 1) > (SM.props[p.id] || 0))
+  || S.expenses.some(e => (e._ts || 1) > (SM.expenses[e.id] || 0));
+async function flushDeletes() {
+  const client = initSb(), uk = USER_KEY;
+  for (const id of [...SM.del.props]) {
+    const a = await client.from('auction_expenses').delete().eq('prop_id', id).eq('user_key', uk);
+    const b = await client.from('auction_props').delete().eq('id', id).eq('user_key', uk);
+    const c = await client.from('auction_sketches').delete().eq('id', id).eq('user_key', uk);
+    if (a.error || b.error || c.error) throw (a.error || b.error || c.error);
+    SM.del.props = SM.del.props.filter(x => x !== id); delete SM.props[id]; skCacheDel(id); smSave();
+  }
+  for (const id of [...SM.del.expenses]) {
+    const { error } = await client.from('auction_expenses').delete().eq('id', id).eq('user_key', uk);
+    if (error) throw error;
+    SM.del.expenses = SM.del.expenses.filter(x => x !== id); delete SM.expenses[id]; smSave();
+  }
 }
 
 // ── Supabase client (per-entity tables, mirrors ระบบตอกบัตร pattern) ──
@@ -2093,7 +2141,7 @@ async function changePin() {
 }
 
 // Coalescing sync: if one is in flight, queue at most one re-run.
-let _syncing = false, _syncQueued = false;
+let _syncing = false, _syncQueued = false, _pullQueued = null;
 function scheduleSync() {
   if (_syncing) { _syncQueued = true; return; }
   _syncing = true;
@@ -2102,7 +2150,10 @@ function scheduleSync() {
     .finally(() => {
       _syncing = false;
       if (_syncQueued) { _syncQueued = false; scheduleSync(); }
-      else pushSoonAfterSync();
+      else {
+        pushSoonAfterSync();
+        if (_pullQueued) { const w = _pullQueued; _pullQueued = null; w.forEach(queueRefetch); }
+      }
     });
 }
 
@@ -2127,26 +2178,32 @@ async function syncToCloud() {
   setSyncStatus('syncing', '');
   const stamp = new Date().toISOString();
 
-  // Upsert all local entities (one row per entity, like clock_records / leaves / withdrawals)
-  const allProps = [...(S.props||[]), ...(S.pool||[])];
-  if (allProps.length) {
-    const { error } = await client.from('auction_props').upsert(
-      allProps.map(p => ({ id: p.id, user_key: uk, data: p, updated_at: new Date(p._ts||Date.now()).toISOString() }))
-    );
+  await flushDeletes();
+  // อัปเฉพาะแถวที่เปลี่ยน — เดิมอัปทุกแถวทุกครั้ง ทำให้ realtime ยิงทุกแถวและกิน egress
+  const pendProps = dedupeById([...(S.props||[]), ...(S.pool||[])]).filter(p => (p._ts || 1) > (SM.props[p.id] || 0));
+  if (pendProps.length) {
+    const rows = pendProps.map(p => ({ id: p.id, user_key: uk, data: p, updated_at: new Date(p._ts||Date.now()).toISOString() }));
+    const { error } = await client.from('auction_props').upsert(rows);
     if (error) throw error;
+    rows.forEach(r => { SM.props[r.id] = +new Date(r.updated_at); });
   }
-  if (S.expenses?.length) {
-    const { error } = await client.from('auction_expenses').upsert(
-      S.expenses.map(e => ({ id: e.id, user_key: uk, prop_id: e.propId || null, data: e, updated_at: new Date(e._ts||Date.now()).toISOString() }))
-    );
+  const pendExps = dedupeById(S.expenses).filter(e => (e._ts || 1) > (SM.expenses[e.id] || 0));
+  if (pendExps.length) {
+    const rows = pendExps.map(e => ({ id: e.id, user_key: uk, prop_id: e.propId || null, data: e, updated_at: new Date(e._ts||Date.now()).toISOString() }));
+    const { error } = await client.from('auction_expenses').upsert(rows);
     if (error) throw error;
+    rows.forEach(r => { SM.expenses[r.id] = +new Date(r.updated_at); });
   }
-  if (S.docTypes?.length) {
+  const dtKey = JSON.stringify(S.docTypes || []);
+  if (S.docTypes?.length && dtKey !== SM.dt) {
     const { error } = await client.from('auction_doc_types').upsert(
       S.docTypes.map(d => ({ id: d.id, user_key: uk, name: d.name }))
     );
     if (error) throw error;
+    SM.dt = dtKey;
   }
+  smSave();
+  await skFlush();
 
   setSyncStatus('ok', '');
 }
@@ -2171,43 +2228,23 @@ async function loadFromCloud() {
   }
   setSyncStatus('syncing', '');
   try {
-    const [propsRes, expRes, dtRes] = await Promise.all([
-      client.from('auction_props').select('*').eq('user_key', uk),
-      client.from('auction_expenses').select('*').eq('user_key', uk),
+    const [propsAll, expsAll, dtRes] = await Promise.all([
+      pullTable('auction_props', 'props', [...(S.props||[]), ...(S.pool||[])]),
+      pullTable('auction_expenses', 'expenses', S.expenses),
       client.from('auction_doc_types').select('*').eq('user_key', uk),
     ]);
-    const firstErr = propsRes.error || expRes.error || dtRes.error;
-    if (firstErr) {
-      // Likely cause: tables not yet created. Show actionable banner.
-      setSyncStatus('error', `❌ โหลด Cloud ไม่ได้: ${firstErr.message} — ${firstErr.code === '42P01' ? 'ตารางยังไม่ถูกสร้าง — รัน migration.sql ใน Supabase SQL Editor ก่อน' : 'ลองใหม่อีกครั้ง'} <button onclick="loadFromCloud().then(ok=>{if(ok){renderAll()}})" style="margin-left:8px;padding:3px 10px;border-radius:var(--r-sm);border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;font:inherit;font-weight:700">🔄 ลองใหม่</button>`);
-      return false;
-    }
-    const { props: cloudProps, pool: cloudPool } = splitPool((propsRes.data||[]).map(r => r.data));
-    const cloudExps  = (expRes.data ||[]).map(r => r.data);
-    const cloudDts   = (dtRes.data  ||[]).map(r => ({ id: r.id, name: r.name }));
-    const cloudHasData = cloudProps.length > 0 || cloudPool.length > 0 || cloudExps.length > 0;
-    const localHasData = (S.props?.length||0) + (S.pool?.length||0) + (S.expenses?.length||0) > 0;
-
-    if (cloudHasData) {
-      // Cloud has data → MERGE (ไม่ทับของ local ที่ใหม่กว่า/ยังไม่ sync) — item 14
-      const pulledAt = S._pulledAt || 0;
-      const mergedProps = mergeCloud(S.props, cloudProps, pulledAt);
-      const mergedPool  = mergeCloud(S.pool, cloudPool, pulledAt);
-      const mergedExps  = mergeCloud(S.expenses, cloudExps, pulledAt);
-      const localWon = mergedProps.length > cloudProps.length || mergedPool.length > cloudPool.length || mergedExps.length > cloudExps.length;
-      S.props    = mergedProps;
-      S.pool     = mergedPool;
-      S.expenses = mergedExps;
-      if (cloudDts.length) S.docTypes = cloudDts;
-      S._pulledAt = Date.now();
-      buildSnap();
-      try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
-      // ถ้ามี record local ที่ cloud ยังไม่มี → ดันขึ้น cloud ให้ครบ
-      if (localWon) syncToCloud().catch(()=>{});
-    } else if (localHasData) {
-      // Cloud empty, local has data → migrate up (first-time setup or recovery)
-      await syncToCloud();
-    }
+    if (dtRes.error) throw dtRes.error;
+    const { props, pool } = splitPool(propsAll);
+    S.props = props; S.pool = pool;
+    S.expenses = dropTombExpenses(expsAll);
+    if (dtRes.data?.length) { S.docTypes = dtRes.data.map(r => ({ id: r.id, name: r.name })); SM.dt = JSON.stringify(S.docTypes); }
+    SM.init = 1; smSave();
+    S._pulledAt = Date.now();
+    buildSnap();
+    try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
+    // มีของที่แก้ตอนออฟไลน์ / ยังลบบน cloud ไม่สำเร็จ → ดันขึ้นให้ครบ
+    if (hasPendingSync()) scheduleSync();
+    else skFlush().catch(() => {});
     setSyncStatus('ok', '');
     loadVillages();
     return true;
@@ -2246,31 +2283,33 @@ function setupRealtime() {
   if (!client || !uk) return;
   if (_rtChannel) { try { client.removeChannel(_rtChannel); } catch(e) {} }
   _rtChannel = client.channel('auction-sync-' + uk)
-    .on('postgres_changes', { event:'*', schema:'public', table:'auction_props',     filter:`user_key=eq.${uk}` }, () => queueRefetch('props'))
-    .on('postgres_changes', { event:'*', schema:'public', table:'auction_expenses',  filter:`user_key=eq.${uk}` }, () => queueRefetch('expenses'))
+    .on('postgres_changes', { event:'*', schema:'public', table:'auction_props',     filter:`user_key=eq.${uk}` }, pl => rtEvent('props', pl))
+    .on('postgres_changes', { event:'*', schema:'public', table:'auction_expenses',  filter:`user_key=eq.${uk}` }, pl => rtEvent('expenses', pl))
     .on('postgres_changes', { event:'*', schema:'public', table:'auction_doc_types', filter:`user_key=eq.${uk}` }, () => queueRefetch('docTypes'))
     .subscribe();
 }
 
+// เสียงสะท้อนจากการบันทึกของเครื่องนี้เอง (updated_at ตรงกับที่รู้แล้ว) → ไม่ต้องดึงซ้ำ
+function rtEvent(which, pl) {
+  const n = pl?.new;
+  if (n?.id && SM[which]?.[n.id] === +new Date(n.updated_at)) return;
+  queueRefetch(which);
+}
 async function refetchTable(which) {
   const client = initSb();
   const uk = USER_KEY;
-  if (!client || !uk || _syncing) return; // skip while our own sync is in flight
-  const pulledAt = S._pulledAt || 0;
+  if (!client || !uk) return;
+  if (_syncing) { (_pullQueued = _pullQueued || new Set()).add(which); return; }   // รอ sync ของเราจบก่อนแล้วค่อยดึง
   if (which === 'props') {
-    const { data } = await client.from('auction_props').select('*').eq('user_key', uk);
-    if (data) {   // item 14: merge ไม่ทับ
-      const { props, pool } = splitPool(data.map(r => r.data));
-      S.props = mergeCloud(S.props, props, pulledAt);
-      S.pool  = mergeCloud(S.pool,  pool,  pulledAt);
-    }
+    const { props, pool } = splitPool(await pullTable('auction_props', 'props', [...S.props, ...S.pool]));
+    S.props = props; S.pool = pool;
   } else if (which === 'expenses') {
-    const { data } = await client.from('auction_expenses').select('*').eq('user_key', uk);
-    if (data) S.expenses = mergeCloud(S.expenses, data.map(r => r.data), pulledAt);
+    S.expenses = dropTombExpenses(await pullTable('auction_expenses', 'expenses', S.expenses));
   } else if (which === 'docTypes') {
     const { data } = await client.from('auction_doc_types').select('*').eq('user_key', uk);
-    if (data) S.docTypes = data.map(r => ({ id: r.id, name: r.name }));
+    if (data) { S.docTypes = data.map(r => ({ id: r.id, name: r.name })); SM.dt = JSON.stringify(S.docTypes); }
   }
+  smSave();
   S._pulledAt = Date.now();
   buildSnap();
   try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
@@ -2583,7 +2622,9 @@ function fmtDateTime(iso) {
   if (!iso) return '';
   return new Date(iso).toLocaleString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
 }
-function todayISO()  { return new Date().toISOString().slice(0,10); }
+// วันที่ตามเครื่อง (ใช้ toISOString จะช้าไป 1 วันก่อน 07:00 ไทย)
+function localISO(d = new Date()) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+function todayISO()  { return localISO(); }
 function daysUntil(dateStr) {
   if (!dateStr) return null;
   const ms = new Date(dateStr) - new Date(todayISO());
@@ -2697,7 +2738,7 @@ function parcelBlockHtml(p) {
       ${parcelPending(p) ? `<span class="badge badge-amber">⏳ รอ${!parcelExact(p) ? 'พิกัด/' : ''}ภาพแปลง</span>` : ''}
     </div>
     ${parcelPending(p) ? `<div style="font-size:var(--fs-sm);color:var(--amber);margin:-4px 0 8px">รอพิกัดจากกรมที่ดิน — กด 🔎 เปิด LandsMaps แล้วกดปุ่มลัด 📍 (ตั้งค่าที่ ⚙️)</div>` : ''}
-    ${hasImg ? `<img src="${p.imgLand}" style="width:100%;max-height:320px;object-fit:contain;border-radius:var(--r-md);background:var(--white);border:1px solid var(--border);cursor:zoom-in;margin-bottom:8px" onclick="showLightbox('${p.imgLand}')" title="ภาพแผนที่แปลงจาก LandsMaps" alt="ภาพแผนที่แปลง ${escapeHtml(p.code||p.name||'')}">`
+    ${hasImg ? `<img loading="lazy" src="${p.imgLand}" style="width:100%;max-height:320px;object-fit:contain;border-radius:var(--r-md);background:var(--white);border:1px solid var(--border);cursor:zoom-in;margin-bottom:8px" onclick="showLightbox('${p.imgLand}')" title="ภาพแผนที่แปลงจาก LandsMaps" alt="ภาพแผนที่แปลง ${escapeHtml(p.code||p.name||'')}">`
       : exact ? `<div class="parcel-map" data-pmap="${p.id}" data-ll="${ll.lat},${ll.lng}"><div style="padding:90px 0;text-align:center;font-size:var(--fs-sm);color:var(--gray)">⏳ กำลังโหลดภาพดาวเทียม...</div></div>` : ''}
     ${!exact && p.pool ? `<div style="background:var(--amber-lt);border:1px solid var(--amber-300);border-radius:var(--r-md);padding:8px 10px;margin-bottom:8px;font-size:var(--fs-sm)">
         <div style="font-weight:700;color:var(--amber);margin-bottom:6px">ยังไม่มีพิกัดแปลงจริง — วางพิกัดจาก LandsMaps ที่นี่ (หรือบอก Claude ให้หาให้):</div>
@@ -2817,7 +2858,7 @@ function openLmImport(data) {
   ov.className = 'modal-overlay open'; ov.id = 'modal-lm';
   ov.innerHTML = `<div class="modal" style="max-width:520px">
     <h3>📍 รับแปลงจาก LandsMaps</h3>
-    ${data.img ? `<img src="${data.img}" alt="ภาพแผนที่แปลงจาก LandsMaps" style="width:100%;max-height:300px;object-fit:contain;border-radius:var(--r-md);border:1px solid var(--border);background:var(--white);margin-bottom:10px">` : `<div style="font-size:var(--fs-md);color:var(--amber);margin-bottom:10px">ไม่มีภาพแผนที่แปลง (ส่งมาแค่พิกัด)</div>`}
+    ${data.img ? `<img loading="lazy" src="${data.img}" alt="ภาพแผนที่แปลงจาก LandsMaps" style="width:100%;max-height:300px;object-fit:contain;border-radius:var(--r-md);border:1px solid var(--border);background:var(--white);margin-bottom:10px">` : `<div style="font-size:var(--fs-md);color:var(--amber);margin-bottom:10px">ไม่มีภาพแผนที่แปลง (ส่งมาแค่พิกัด)</div>`}
     <div style="background:var(--bg);border-radius:var(--r-md);padding:8px 12px;font-size:var(--fs-base);margin-bottom:12px">
       พิกัด <b>${data.lat.toFixed(6)}, ${data.lng.toFixed(6)}</b>${data.area?` · เนื้อที่ <b>${escapeHtml(data.area)}</b>`:''}${data.price?` · ราคาประเมิน <b>${escapeHtml(data.price)}</b> ฿/ตร.ว.`:''}
     </div>
@@ -3123,9 +3164,10 @@ function surveyAdopt(id) {
   S.pool = S.pool.filter(x => x.id !== id);
   delete p.pool;
   const sv = p.survey || {};
-  if (sv.note) {
-    const d = sv.doneAt ? isoToBE(sv.doneAt.slice(0, 10)) : isoToBE(new Date().toISOString().slice(0, 10));
-    p.notes = [p.notes, `[สำรวจ ${d}] ${sv.note}`].filter(Boolean).join('\n');
+  const quick = SURVEY_QUICK.filter(q => sv[q.k]).map(q => `${q.label}: ${sv[q.k]}`).join(' · ');
+  if (sv.note || quick) {
+    const d = isoToBE(localISO(sv.doneAt ? new Date(sv.doneAt) : new Date()));
+    p.notes = [p.notes, `[สำรวจ ${d}] ${[quick, sv.note].filter(Boolean).join(' · ')}`].filter(Boolean).join('\n');
   }
   p.status = sv.done ? 'inspecting' : (p.status || 'watching');
   delete p.survey;
@@ -3251,7 +3293,7 @@ function surveyOrdered() {
 }
 
 function nextRoundInfo(p) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   const rounds = p.rounds || [];
   for (let i = 0; i < rounds.length; i++) {
     const r = rounds[i];
@@ -3279,6 +3321,33 @@ const fmtMin = min => min < 60 ? `${Math.round(min)} นาที` : `${Math.flo
 
 // การ์ดทรัพย์สำรวจ — โครงเดียวกับการ์ดหน้าแรก (หัวการ์ดกดกาง/หุบ)
 // ช่องกรอกราคาขายที่คาดหวัง + ค่ารีโนเวท ในการ์ดสำรวจ (ติดไปหน้าแรกตอนกด 📥 เก็บทรัพย์ และไปหน้าคำนวณ)
+const SURVEY_QUICK = [
+  { k: 'occ',  label: 'คนอยู่',  opts: ['ไม่มี', 'มี', 'ไม่แน่ใจ'] },
+  { k: 'road', label: 'ทางเข้า', opts: ['ดี', 'แคบ', 'ลำบาก'] },
+  { k: 'cond', label: 'สภาพ',   opts: ['ดี', 'พอใช้', 'ซ่อมมาก', 'ทรุด'] },
+];
+function surveyQuickHtml(p) {
+  const sv = p.survey || {}, v = villageByName(p.village);
+  return `<div style="background:var(--gray-50);border:1px solid var(--border);border-radius:var(--r-md);padding:9px 12px;margin-bottom:12px;display:grid;gap:8px">
+    ${SURVEY_QUICK.map(q => `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <span style="font-size:var(--fs-sm);font-weight:700;color:var(--navy);min-width:52px">${q.label}</span>
+      ${q.opts.map(o => `<button class="btn btn-xs ${sv[q.k] === o ? 'btn-primary' : 'btn-ghost'}" onclick="event.stopPropagation();surveySetQuick('${p.id}','${q.k}','${o}')">${o}</button>`).join('')}
+    </div>`).join('')}
+    ${v ? `<div><button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();villageRowEdit('${v.id}')">+ เพิ่มราคา${escapeHtml(v.name)}</button></div>` : ''}
+  </div>`;
+}
+function surveySetQuick(id, k, val) {
+  const p = S.pool.find(x => x.id === id); if (!p) return;
+  const sv = surveyOf(p);
+  if (sv[k] === val) delete sv[k]; else sv[k] = val;
+  saveS();
+  const el = document.getElementById('svq-' + id); if (el) el.innerHTML = surveyQuickHtml(p);
+}
+const surveyRankOn = () => { try { return localStorage.getItem('acktion_survey_rank') === '1'; } catch(e) { return false; } };
+function surveyToggleRank() {
+  try { localStorage.setItem('acktion_survey_rank', surveyRankOn() ? '0' : '1'); } catch(e) {}
+  renderSurvey();
+}
 function surveyPriceInputs(p) {
   const field = (label, val, saveFn, ph, color) => `
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -3329,10 +3398,11 @@ function surveyCardHtml(x, total, open) {
     x.ll && p.llApprox ? `<span class="badge badge-amber" title="พิกัดประมาณจากตำบล — เปิด LandsMaps หาแปลงแล้ววางพิกัดจริง">≈ พิกัดประมาณ</span>` : '',
     nr ? `<span class="badge badge-blue">📅 นัด ${nr.i + 1} · ${fmtDate(nr.date)}</span>` : '',
     sv.done ? `<span class="badge badge-green">✓ ไปแล้ว</span>` : '',
+    (g => g === null || g === undefined ? '' : `<span class="badge ${g >= 0 ? 'badge-green' : 'badge-red'}">ส่วนต่าง ${g >= 0 ? '+' : ''}${fmtNum(g)}</span>`)(bidCeiling(p)?.gap),
     sv.note || hasSketch(p) ? `<span class="badge badge-gray" title="มีบันทึกรายละเอียด">📝 บันทึก</span>` : '',
     parcelPending(p) ? `<span class="badge badge-amber" title="ยังไม่มีพิกัดจากกรมที่ดิน/ภาพแผนที่แปลง — บอก Claude ว่า &quot;ทำต่อ&quot;">⏳ รอพิกัด/ภาพแปลง</span>` : '',
   ].join('');
-  const legTxt = inRoute && sv.leg ? `${sv.leg.est ? '≈ ' : ''}${fmtKm(sv.leg.km)} กม. · ${fmtMin(sv.leg.min)} ${idx === 0 ? 'จากจุดเริ่ม' : 'จากจุดก่อนหน้า'}${sv.leg.side ? ` · ${sv.leg.side === 'left' ? 'ซ้ายมือ' : 'ขวามือ'}` : ''}${sv.leg.uturn ? ` · กลับรถ ${sv.leg.uturn}` : ''}` : (inRoute && idx === 0 ? 'จุดแรก' : '');
+  const legTxt = x.noLeg ? '' : inRoute && sv.leg ? `${sv.leg.est ? '≈ ' : ''}${fmtKm(sv.leg.km)} กม. · ${fmtMin(sv.leg.min)} ${idx === 0 ? 'จากจุดเริ่ม' : 'จากจุดก่อนหน้า'}${sv.leg.side ? ` · ${sv.leg.side === 'left' ? 'ซ้ายมือ' : 'ขวามือ'}` : ''}${sv.leg.uturn ? ` · กลับรถ ${sv.leg.uturn}` : ''}` : (inRoute && idx === 0 ? 'จุดแรก' : '');
   const led = p.led || {};
   const rounds = (ROUNDS || []).map((r, ri) => {
     const rObj = (p.rounds || [])[ri] || {};
@@ -3362,7 +3432,7 @@ function surveyCardHtml(x, total, open) {
       <div class="prop-body">
         ${[p.imgProp, p.imgDetail].some(isImageSrc) ? `<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
           ${[[p.imgProp, 'รูปทรัพย์'], [p.imgDetail, 'รูปรายละเอียด']].filter(([s]) => isImageSrc(s)).map(([s, t]) =>
-            `<img src="${s}" style="height:90px;border-radius:var(--r-md);object-fit:cover;border:1.5px solid var(--border);cursor:zoom-in" onclick="showLightbox('${s}')" title="${t}">`).join('')}
+            `<img loading="lazy" src="${s}" style="height:90px;border-radius:var(--r-md);object-fit:cover;border:1.5px solid var(--border);cursor:zoom-in" onclick="showLightbox('${s}')" title="${t}">`).join('')}
         </div>` : ''}
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
           ${p.code ? `<span class="badge badge-blue">🔖 ${escapeHtml(p.code)}</span>` : ''}
@@ -3389,6 +3459,7 @@ function surveyCardHtml(x, total, open) {
           ${led.owner ? `<div>ผู้ถือกรรมสิทธิ์: ${escapeHtml(led.owner)}</div>` : ''}
           ${led.office ? `<div>🏛 สำนักงานบังคับคดี${escapeHtml(led.office)}${led.phone ? ' · ☎ ' + escapeHtml(led.phone) : ''}</div>` : ''}
         </div>` : ''}
+        <div id="svq-${p.id}">${surveyQuickHtml(p)}</div>
         ${surveyPriceInputs(p)}
         <div class="section-title" style="margin-bottom:6px">📅 ตารางนัด</div>
         <div class="rounds-grid">${rounds}</div>
@@ -3415,25 +3486,65 @@ function villageCache() {
   const types = document.getElementById('village-types');
   if (types) types.innerHTML = [...new Set(VILLAGES.flatMap(v => v.listings.map(r => r.type)).filter(Boolean))].sort().map(t => `<option value="${escapeHtml(t)}">`).join('');
 }
+const villageStrip = ({ _u, _dirty, ...d }) => d;
+// รวมระดับรายการ: ของใหม่จากอีกเครื่องไม่หาย · v.del = id ที่ถูกลบ · r.at = เวลาแก้ล่าสุด
+function villageMerge(v, c) {
+  const del = new Set([...(v.del || []), ...(c.del || [])]), map = new Map();
+  [...(c.listings || []), ...v.listings].forEach(r => {
+    if (del.has(r.id)) return;
+    const o = map.get(r.id);
+    if (!o || (r.at || 0) >= (o.at || 0)) map.set(r.id, r);
+  });
+  v.listings = [...map.values()];
+  if (del.size) v.del = [...del];
+}
 async function loadVillages(force) {
   villageCache();
   if (!force && Date.now() - _villagesAt < 300000) return;
   const client = initSb(); if (!client) return;
   const { data: sess } = await client.auth.getSession();
   if (!sess?.session) return;   // ยังไม่ล็อกอิน RLS คืนแถวว่าง → ห้ามเอาไปทับ cache
-  const { data, error } = await client.from('auction_villages').select('data').eq('user_key', USER_KEY);
-  if (error) { console.warn('[village]', error.message); return; }
+  const { data: list, error } = await client.from('auction_villages').select('id,updated_at').eq('user_key', USER_KEY);
+  if (error || !list.length) { if (error) console.warn('[village]', error.message); return; }
   _villagesAt = Date.now();
-  VILLAGES = data.map(r => r.data);
+  const locals = new Map(VILLAGES.map(v => [v.id, v]));
+  const changed = list.filter(r => locals.get(r.id)?._u !== +new Date(r.updated_at)).map(r => r.id);
+  const fetched = new Map();
+  for (let i = 0; i < changed.length; i += 100) {
+    const { data, error: e2 } = await client.from('auction_villages').select('id,data,updated_at').eq('user_key', USER_KEY).in('id', changed.slice(i, i + 100));
+    if (e2) return;
+    data.forEach(r => fetched.set(r.id, r));
+  }
+  const cloudIds = new Map(list.map(r => [r.id, +new Date(r.updated_at)]));
+  const next = [];
+  list.forEach(r => {
+    const loc = locals.get(r.id), f = fetched.get(r.id);
+    if (loc?._dirty) { if (f) villageMerge(loc, f.data); next.push(loc); return; }
+    next.push(f ? { ...f.data, _u: cloudIds.get(r.id) } : loc);
+  });
+  VILLAGES.forEach(v => { if (!cloudIds.has(v.id) && v._dirty) next.push(v); });   // สร้างตอนออฟไลน์ ยังไม่ขึ้น cloud
+  VILLAGES = next;
   villageCache();
+  VILLAGES.filter(v => v._dirty).forEach(v => villageSave(v));
   if (document.getElementById('tab-village')?.classList.contains('active')) renderVillages();
   S.props.concat(S.pool).forEach(villageFieldRefresh);
 }
 async function villageSave(v) {
-  villageCache();
-  const { error } = await initSb().from('auction_villages').upsert({ id: v.id, user_key: USER_KEY, data: v, updated_at: new Date().toISOString() });
-  if (error) toast('❌ บันทึกไม่สำเร็จ: ' + error.message, 'error');
-  return !error;
+  v._dirty = true; villageCache();
+  try {
+    const q = () => initSb().from('auction_villages');
+    const { data: row, error: e1 } = await q().select('data').eq('id', v.id).eq('user_key', USER_KEY).maybeSingle();
+    if (e1) throw e1;
+    if (row) villageMerge(v, row.data);
+    const ts = new Date().toISOString();
+    const { error } = await q().upsert({ id: v.id, user_key: USER_KEY, data: villageStrip(v), updated_at: ts });
+    if (error) throw error;
+    v._dirty = false; v._u = +new Date(ts); villageCache();
+    return true;
+  } catch(e) {
+    toast('📴 เก็บในเครื่องแล้ว จะส่งขึ้นเมื่อออนไลน์');
+    return false;
+  }
 }
 const villageByName = name => VILLAGES.find(v => v.name === String(name || '').trim());
 const median = a => { const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
@@ -3535,17 +3646,19 @@ function villageRowSave() {
   const old = v.listings.find(x => x.id === _vrEdit.rid);
   const r = { id: old?.id || 'r' + uid().slice(1), type: val('type'), size: num('size'), price: num('price'), rent: num('rent'),
               was: old?.was, contact: val('contact'), source: val('source'), note: val('note'), reno: document.getElementById('vr-reno').checked || undefined,
-              date: old ? old.date : todayISO() };
+              date: old ? old.date : todayISO(), at: Date.now() };
   if (r.price === undefined && r.rent === undefined && r.size === undefined) { toast('กรอกตร.ว. หรือราคา', 'error'); return; }
   if (old) v.listings[v.listings.indexOf(old)] = r; else v.listings.push(r);
-  villageSave(v); closeModal('modal-village-row');
+  closeModal('modal-village-row');
   _villageOpen.add(v.id); renderVillages();
   S.props.concat(S.pool).forEach(villageFieldRefresh);
+  villageSave(v).then(renderVillages);
 }
 function villageRowDel(vid, rid) {
   const v = VILLAGES.find(x => x.id === vid); if (!v || !confirm('ลบรายการนี้?')) return;
   v.listings = v.listings.filter(x => x.id !== rid);
-  villageSave(v); renderVillages();
+  v.del = [...(v.del || []), rid];
+  villageSave(v).then(renderVillages); renderVillages();
 }
 
 // ช่องหมู่บ้านในการ์ดทรัพย์ — PDF กรมฯ ไม่มีชื่อหมู่บ้าน: แนะนำจากทรัพย์ที่ผูกไว้แล้วในรัศมี 150 ม. (ต้องเป็นพิกัดจริง ไม่ใช่พิกัดตำบล)
@@ -3566,7 +3679,45 @@ function villageFieldInner(p) {
   return `<span style="font-size:var(--fs-sm);font-weight:700;color:var(--navy);white-space:nowrap">🏘 หมู่บ้าน</span>
     <input type="text" list="village-names" class="field-inline wide" aria-label="หมู่บ้าน" style="--fi-c:var(--border);font-weight:600" value="${escapeHtml(p.village || '')}" onclick="event.stopPropagation()" onchange="savePropVillage('${p.id}',this.value)">
     ${guess ? `<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();savePropVillage('${p.id}',this.dataset.v)" data-v="${escapeHtml(guess)}">${escapeHtml(guess)}?</button>` : ''}
-    ${v ? `<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();villageOpen('${v.id}')">${range || 'ดูราคา'}</button>` : ''}`;
+    ${v ? `<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();villageOpen('${v.id}')">${range || 'ดูราคา'}</button>` : ''}
+    ${bidCeilingHtml(p)}`;
+}
+// เพดานประมูล = คำนวณกลับจากราคาขาย โดยใช้อัตราเดียวกับหน้าคำนวณ (ขาเข้า 3.5% ของราคาประเมิน · ขาออก 6.3% ของราคาขาย)
+// ราคาขาย = ที่ตั้งไว้ในการ์ด ถ้าไม่มีใช้ราคากลางหมู่บ้าน (ขนาดใกล้เคียง ±30%)
+function marginTarget() { const n = parseFloat(localStorage.getItem('acktion_margin')); return isFinite(n) ? n : 15; }
+function setMarginTarget(val) {
+  const n = parseFloat(val); if (!isFinite(n) || n < 0) return;
+  try { localStorage.setItem('acktion_margin', String(n)); } catch(e) {}
+  S.props.concat(S.pool).forEach(villageFieldRefresh);
+}
+function villageSellPrice(p) {
+  const v = villageByName(p.village); if (!v) return 0;
+  const size = Number(p.size) || 0, all = v.listings.filter(r => r.price > 0 && !r.rent);
+  const near = size ? all.filter(r => r.size > 0 && Math.abs(r.size - size) / size <= 0.3) : [];
+  const use = near.length >= 2 ? near : all;
+  return use.length ? median(use.map(r => r.price)) * 1e6 : 0;
+}
+function bidCeiling(p) {
+  const own = Number(p.targetSell) || 0, sell = own || villageSellPrice(p);
+  if (!sell) return null;
+  const led = Number(p.ledAppraisal) || Number(p.appraisal) || 0;
+  const mort = Number(p.calcMortgage) || Number(p.led?.mortgage) || 0;
+  const cost = led * 0.035 + sell * 0.063 + (Number(p.renoBudget) || Number(p.calcRepair) || 0) + (Number(p.calcBroker) || 0);
+  const ceil = Math.floor((sell / (1 + marginTarget() / 100) - cost - mort) / 1000) * 1000;
+  const base = Number(p.appraisal) || 0;
+  const price = i => Math.floor(base * (1 - ROUNDS[i].disc));
+  const nr = nextRoundInfo(p);
+  const first = base ? ROUNDS.findIndex((_, i) => price(i) <= ceil) : -1;
+  return { ceil, sell, own: !!own, first, gap: base ? ceil - price(nr ? nr.i : 0) : null };
+}
+function bidCeilingHtml(p) {
+  const c = bidCeiling(p); if (!c) return '';
+  return `<div style="flex-basis:100%;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:var(--fs-sm)">
+    <b style="color:${c.ceil > 0 ? 'var(--navy)' : 'var(--red)'}">เพดานประมูล ${c.ceil > 0 ? fmtNum(c.ceil) + ' ฿' : 'ไม่คุ้ม'}</b>
+    ${c.first >= 0 ? `<span class="badge badge-green">เข้าได้ตั้งแต่นัด ${c.first + 1}</span>` : c.ceil > 0 ? '<span class="badge badge-red">ทุกนัดสูงกว่าเพดาน</span>' : ''}
+    <span style="color:var(--gray)">ขาย ${fmtNum(Math.round(c.sell))}${c.own ? '' : ' (กลางหมู่บ้าน)'} · กำไร</span>
+    <input type="number" inputmode="decimal" aria-label="กำไรเป้าหมาย" value="${marginTarget()}" onclick="event.stopPropagation()" onchange="setMarginTarget(this.value)" style="width:52px;padding:2px 4px;border:1px solid var(--border);border-radius:var(--r-sm);font-size:var(--fs-sm)">%
+  </div>`;
 }
 function villageFieldHtml(p) {
   return `<div id="vf-${p.id}" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">${villageFieldInner(p)}</div>`;
@@ -3689,7 +3840,39 @@ function loadExcalidraw() {
 // iOS: จีบนิ้วบนหัว/แถบเครื่องมือของหน้าบันทึก ห้ามซูมทั้งเว็บ (touch-action อย่างเดียวไม่พอบาง iOS)
 document.addEventListener('gesturestart', e => { if (SK) e.preventDefault(); }, { passive: false });
 let SK = null;
-function hasSketch(p) { return !!(p.sketchX?.elements?.length || p.sketch?.strokes?.length); }
+function hasSketch(p) { return !!(p.hasSk || p.sketchX?.elements?.length || p.sketch?.strokes?.length); }
+
+// ภาพวาดเก็บตาราง auction_sketches แยกจากแถวทรัพย์ (เดิมกิน 80% ของข้อมูลทรัพย์ ถูกโหลดทุกครั้ง) โหลดตอนเปิดหน้าบันทึกเท่านั้น
+// สำเนาในเครื่อง acktion_sk_<id> = { sx, dirty } · dirty = ยังไม่ขึ้น cloud (sx ว่าง = ลบ) → ส่งซ้ำตอนออนไลน์ แอปถูกปิดกลางคันงานก็ไม่หาย
+const skKey = id => 'acktion_sk_' + id;
+const skCacheGet = id => { try { return JSON.parse(localStorage.getItem(skKey(id))); } catch(e) { return null; } };
+function skCacheSet(id, sx, dirty) { try { localStorage.setItem(skKey(id), JSON.stringify({ sx, dirty })); } catch(e) {} }
+function skCacheDel(id) { try { localStorage.removeItem(skKey(id)); } catch(e) {} }
+async function skLoad(id) {
+  const c = skCacheGet(id);
+  if (c?.dirty) return c.sx || {};
+  const { data, error } = await initSb().from('auction_sketches').select('data').eq('id', id).eq('user_key', USER_KEY).maybeSingle();
+  if (error) { if (c) return c.sx || {}; throw error; }
+  if (!data) return c?.sx || {};
+  skCacheSet(id, data.data, false);
+  return data.data;
+}
+async function skUpload(id, sx) {
+  const q = initSb().from('auction_sketches');
+  const { error } = sx
+    ? await q.upsert({ id, user_key: USER_KEY, data: sx, updated_at: new Date().toISOString() })
+    : await q.delete().eq('id', id).eq('user_key', USER_KEY);
+  if (error) throw error;
+  if (sx) skCacheSet(id, sx, false); else skCacheDel(id);
+}
+async function skFlush() {
+  for (let i = localStorage.length - 1; i >= 0; i--) {
+    const k = localStorage.key(i);
+    if (!k?.startsWith('acktion_sk_')) continue;
+    const id = k.slice(11), c = skCacheGet(id);
+    if (c?.dirty) await skUpload(id, c.sx || null);
+  }
+}
 
 async function urlToDataURL(url) {
   if (String(url).startsWith('data:')) return url;
@@ -3735,7 +3918,13 @@ async function openSketch(id) {
   catch(e) { host.innerHTML = '<div style="padding:40px;text-align:center;color:var(--red)">โหลดหน้าวาดไม่สำเร็จ — ต้องต่ออินเทอร์เน็ตครั้งแรก แล้วลองใหม่</div>'; return; }
   if (SK !== mySK) return;   // ปิดไปก่อนโหลดเสร็จ
   skPropsInit();
-  const sx = p.sketchX || {};
+  let sx = p.sketchX || {};
+  if (!p.sketchX && p.hasSk) {
+    // โหลดไม่ได้ห้ามเปิดกระดาษเปล่า ไม่งั้นบันทึกแล้วทับของเดิมหาย
+    try { sx = await skLoad(id); }
+    catch(e) { host.innerHTML = '<div style="padding:40px;text-align:center;color:var(--red)">โหลดภาพวาดไม่ได้ ต้องต่ออินเทอร์เน็ต — ข้อความยังแก้ได้</div>'; return; }
+    if (SK !== mySK) return;
+  }
   const elements = sx.elements ? sx.elements : (p.sketch ? legacyToElements(p.sketch) : []);
   const files = [];
   for (const [fid, f] of Object.entries(sx.files || {})) {
@@ -3910,7 +4099,7 @@ function skDirty() {
   SK.dirty = SK.cloudDirty = true;
   const el = document.getElementById('sk-saved'); if (el) el.textContent = '● กำลังแก้ไข';
   clearTimeout(SK.timer); SK.timer = setTimeout(() => skSave('local'), 1500);
-  clearTimeout(SK.cloudTimer); SK.cloudTimer = setTimeout(() => skSave('cloud'), 20000);
+  clearTimeout(SK.cloudTimer); SK.cloudTimer = setTimeout(() => skSave('timer'), 20000);
 }
 function skWriteProp() {
   const p = findAnyProp(SK.id); if (!p) return null;
@@ -3924,19 +4113,21 @@ function skWriteProp() {
     const allFiles = SK.api.getFiles(), files = {};
     used.forEach(fid => { if (SK.fileUrls[fid]) files[fid] = { url: SK.fileUrls[fid], mimeType: allFiles[fid]?.mimeType || 'image/png' }; });
     // รูปที่ยังอัปโหลดไม่เสร็จ/ไม่สำเร็จ ยังไม่เก็บ (ไม่ยัด dataURL ลงฐานข้อมูล) — รอบบันทึกถัดไปจะตามเก็บให้
-    p.sketchX = { elements: JSON.parse(JSON.stringify(els)), files };
-  } else { delete p.sketchX; delete p.sketchThumb; }
-  delete p.sketch;   // รูปแบบเก่า — แปลงเป็นแบบใหม่แล้ว
+    SK.sx = { elements: JSON.parse(JSON.stringify(els)), files };
+    p.hasSk = true;
+  } else { SK.sx = null; delete p.hasSk; delete p.sketchThumb; }
+  skCacheSet(SK.id, SK.sx, true);
+  delete p.sketchX; delete p.sketch;   // รูปแบบเก่า — แปลงเป็นแบบใหม่แล้ว
   return p;
 }
-async function skMakeThumb(p) {
-  if (!SK?.api || !p.sketchX) return;
+async function skMakeThumb(id) {
+  if (!SK?.api || !findAnyProp(id)?.hasSk) return;
   try {
     const blob = await EXL.EX.exportToBlob({ elements: SK.api.getSceneElements().filter(e => !e.isDeleted), files: SK.api.getFiles(),
       appState: { exportBackground: true, viewBackgroundColor: '#ffffff' }, mimeType: 'image/png', maxWidthOrHeight: 640 });
-    const url = await uploadBlobToStorage(blob, 'sketch-thumb.png');
-    if (url) p.sketchThumb = url;
-    else p.sketchThumb = await urlToDataURL(URL.createObjectURL(blob));   // ออฟไลน์ — เก็บชั่วคราวไว้ก่อน
+    const url = (await uploadBlobToStorage(blob, 'sketch-thumb.png')) || await urlToDataURL(URL.createObjectURL(blob));   // ออฟไลน์ — เก็บชั่วคราวไว้ก่อน
+    // ระหว่างอัปรูป realtime อาจแทน object ทรัพย์ใหม่ไปแล้ว → หาใหม่ทุกครั้ง
+    const p = findAnyProp(id); if (p) p.sketchThumb = url;
   } catch(e) { console.warn('[sketch] ทำรูปย่อไม่ได้', e.message); }
 }
 async function skSave(mode) {
@@ -3946,19 +4137,24 @@ async function skSave(mode) {
     if (!SK.dirty) return;
     if (!skWriteProp()) return;
     SK.dirty = false;
+    stampChanged();   // ประทับเวลาด้วย ไม่งั้นข้อมูลบน cloud จะชนะตอนเปิดแอปใหม่
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
     if (el) el.textContent = '✓ บันทึกในเครื่องแล้ว';
     return;
   }
   if (!SK.dirty && !SK.cloudDirty) return;
-  const mySK = SK;
-  const p = skWriteProp(); if (!p) return;
+  const mySK = SK, id = SK.id;
+  if (!skWriteProp()) return;
   SK.dirty = SK.cloudDirty = false;
   clearTimeout(SK.timer); clearTimeout(SK.cloudTimer);
+  stampChanged();
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}   // เก็บก่อน await เผื่อแอปถูกปิดกลางคัน
   if (el) el.textContent = '⏳ กำลังบันทึก...';
-  await skMakeThumb(p);
+  let ok = true;
+  if (SK.api) { try { await skUpload(id, mySK.sx); } catch(e) { ok = false; } }
+  if (mode !== 'timer') await skMakeThumb(id);   // รูปย่อทำตอนปิด/สลับแอป ไม่ใช่ทุก 20 วิ
   saveS();
-  if (el && SK === mySK) el.textContent = '☁️ บันทึกขึ้น Cloud แล้ว';
+  if (el && SK === mySK) el.textContent = ok ? '☁️ บันทึกขึ้น Cloud แล้ว' : '📴 เก็บในเครื่องแล้ว จะส่งขึ้นเมื่อออนไลน์';
 }
 async function closeSketch() {
   if (!SK) return;
@@ -4014,7 +4210,7 @@ function skDrawStrokeLegacy(ctx, s, sc) {
 }
 const _skThumbCache = new Map();
 function sketchThumb(p, px = 260) {
-  if (p.sketchX?.elements?.length) return p.sketchThumb || '';
+  if (p.hasSk || p.sketchX?.elements?.length) return p.sketchThumb || '';
   if (!p.sketch?.strokes?.length) return '';
   const key = p.id + ':' + p.sketch.strokes.map(s => s.p.length + s.c).join(',');
   if (_skThumbCache.has(key)) return _skThumbCache.get(key);
@@ -4035,7 +4231,7 @@ function sketchCardBlock(p) {
       <span class="btn btn-primary btn-xs">${note || drawn ? '✏️ เปิดแก้ไข' : '+ เขียนบันทึก'}</span>
     </div>
     ${note ? `<div style="font-size:var(--fs-md);white-space:pre-wrap;color:var(--gray-700);margin-bottom:${drawn ? 8 : 0}px">${escapeHtml(note)}</div>` : ''}
-    ${thumb ? `<img src="${thumb}" style="max-width:100%;max-height:220px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--white)">`
+    ${thumb ? `<img loading="lazy" src="${thumb}" style="max-width:100%;max-height:220px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--white)">`
       : drawn ? `<div style="font-size:var(--fs-sm);color:var(--gray)">🖊 มีภาพวาด — แตะเพื่อเปิดดู</div>` : ''}
   </div>`;
 }
@@ -4078,7 +4274,7 @@ async function showPdf(url, title) {
 async function renderPdfInto(box, url) {
   try {
     await loadPdfJs();
-    const pdf = await pdfjsLib.getDocument(url).promise;
+    const pdf = await pdfjsLib.getDocument({ url, disableRange: true, disableStream: true }).promise;   // โหลดทั้งไฟล์ service worker จะได้เก็บไว้เปิดตอนไม่มีเน็ต
     box.innerHTML = '';
     const w = Math.min(box.clientWidth - 16, 820);
     for (let i = 1; i <= pdf.numPages; i++) {
@@ -4317,7 +4513,13 @@ async function renderSurvey() {
   const listEl = document.getElementById('survey-list');
   const openIds = new Set([...listEl.querySelectorAll('.prop-card.expanded')].map(e => e.id.replace('sv-', '')));
   const skipped = surveyCandidates().filter(p => p.survey?.skip).map(p => ({ p, ll: parseLatLng(p.mapUrl) }));
-  const cards = [...ordered.map((x, i) => ({ ...x, idx: i })), ...unplanned, ...approx, ...noLL, ...skipped];
+  let cards = [...ordered.map((x, i) => ({ ...x, idx: i })), ...unplanned, ...approx, ...noLL, ...skipped];
+  const rankBtn = document.getElementById('survey-rank-btn');
+  if (rankBtn) rankBtn.textContent = surveyRankOn() ? '🧭 เรียงตามเส้นทาง' : '💰 เรียงตามส่วนต่าง';
+  if (surveyRankOn()) {
+    const g = x => bidCeiling(x.p)?.gap ?? -Infinity;
+    cards = cards.map(x => ({ ...x, noLeg: true })).sort((a, b) => g(b) - g(a));
+  }
   listEl.innerHTML = cards.length ? cards.map(x => surveyCardHtml(x, ordered.length, openIds.has(x.p.id) || _svPdfOpen.has(x.p.id))).join('') : '';
   _svPdfOpen.forEach(id => { const box = document.getElementById('svpdf-' + id); const p = S.pool.find(x => x.id === id);
     if (box && p?.pdfUrl) renderPdfInto(box, p.pdfUrl); else _svPdfOpen.delete(id); });
@@ -4689,7 +4891,7 @@ function renderDocs() {
             <div class="img-grid" id="dimg_${p.id}_${d.typeId}">
               ${d.images.map((img,i)=>`
                 <div class="img-thumb">
-                  <img src="${img.data}" onclick="showLightbox('${img.data}')" />
+                  <img loading="lazy" src="${img.data}" onclick="showLightbox('${img.data}')" />
                   <button class="img-del" onclick="removeDocImg('${p.id}','${d.typeId}',${i})">✕</button>
                   <div class="img-label">${img.name}</div>
                 </div>`).join('')}
@@ -4709,8 +4911,8 @@ function renderDocs() {
       <div class="won-prop-section">
         <div class="won-prop-header">
           <div>
-            <h3>🏆 ${p.name}</h3>
-            <div style="font-size:var(--fs-sm);opacity:.85;">${p.loc||''}</div>
+            <h3>🏆 ${escapeHtml(p.name)}</h3>
+            <div style="font-size:var(--fs-sm);opacity:.85;">${escapeHtml(p.loc||'')}</div>
           </div>
           <div style="text-align:right;">
             <div style="font-size:var(--fs-md);font-weight:700;">${done}/${total} เอกสาร</div>
@@ -4807,7 +5009,7 @@ function printPropReport(id) {
   }).join('');
 
   const expRows = items.length ? items.map(e=>`<tr>
-    <td>${fmtDate(e.date)}</td><td>${e.desc||''}</td>
+    <td>${fmtDate(e.date)}</td><td>${escapeHtml(e.desc||'')}</td>
     <td>${e.payer==='partner'?'🤝 หุ้นส่วน':'👤 ฉัน'}${e.settled?' · ✓ตัด':''}</td>
     <td class="num">${money(e.amount)}</td></tr>`).join('')
     : `<tr><td colspan="4" style="text-align:center;color:var(--gray)">— ยังไม่มีรายการ —</td></tr>`;
@@ -4819,10 +5021,10 @@ function printPropReport(id) {
 
   const html = `
   <div class="rpt">
-    <h1>🏛️ รายงานทรัพย์ ${p.code?p.code+' — ':''}${p.name||''}</h1>
+    <h1>🏛️ รายงานทรัพย์ ${p.code?escapeHtml(p.code)+' — ':''}${escapeHtml(p.name||'')}</h1>
     <div class="rpt-sub">${[p.loc, p.size?p.size+' ตร.ว.':'', p.deed?'โฉนด '+p.deed:'', p.case?'คดี '+p.case:''].filter(Boolean).join('  ·  ')} &nbsp;|&nbsp; สถานะ: ${si.icon} ${si.label}</div>
 
-    ${(p.imgProp||p.imgDetail)?`<div class="rpt-imgs">${p.imgProp?`<img src="${p.imgProp}">`:''}${p.imgDetail?`<img src="${p.imgDetail}">`:''}</div>`:''}
+    ${(p.imgProp||p.imgDetail)?`<div class="rpt-imgs">${p.imgProp?`<img loading="lazy" src="${p.imgProp}">`:''}${p.imgDetail?`<img loading="lazy" src="${p.imgDetail}">`:''}</div>`:''}
 
     <div class="rpt-sec">💰 ราคา</div>
     <table>
@@ -4858,7 +5060,7 @@ function printPropReport(id) {
     <div class="rpt-sec">📋 เอกสาร (${(p.docs||[]).filter(d=>d.done).length}/${(p.docs||[]).length})</div>
     <table><thead><tr><th style="width:40px"></th><th>เอกสาร</th><th>สถานะ</th></tr></thead><tbody>${docRows}</tbody></table>`:''}
 
-    ${p.notes?`<div class="rpt-sec">📝 หมายเหตุ</div><div style="font-size:var(--fs-md)">${p.notes}</div>`:''}
+    ${p.notes?`<div class="rpt-sec">📝 หมายเหตุ</div><div style="font-size:var(--fs-md)">${escapeHtml(p.notes)}</div>`:''}
 
     <div class="rpt-foot">ระบบจัดการทรัพย์ กรมบังคับคดี · พิมพ์เมื่อ ${new Date().toLocaleString('th-TH',{dateStyle:'long',timeStyle:'short'})}</div>
   </div>`;
@@ -4987,7 +5189,7 @@ function savePropTargetSell(id, val) {
   const v = parseNumInput(val);
   if (v === (Number(p.targetSell)||0)) return;
   p.targetSell = v;
-  saveS(); if (!p.pool) renderProps();
+  saveS(); if (!p.pool) renderProps(); else villageFieldRefresh(p);
   const sel = document.getElementById('calc-prop-sel');
   if (sel && sel.value === id && document.getElementById('tab-calc')?.classList.contains('active')) calcFillFromProp();
   toast('✓ บันทึกราคาขายที่คาดหวังแล้ว');
@@ -4998,7 +5200,7 @@ function savePropRenoBudget(id, val) {
   if (v === (Number(p.renoBudget)||0)) return;
   p.renoBudget = v;
   p.calcRepair = v;   // ไหลไปเป็น "ค่าซ่อมแซม" ในหน้าคำนวณ
-  saveS(); if (p.pool) toast('✓ บันทึกค่ารีโนเวทแล้ว'); else renderProps();
+  saveS(); villageFieldRefresh(p); if (p.pool) toast('✓ บันทึกค่ารีโนเวทแล้ว'); else renderProps();
   // ถ้าหน้าคำนวณกำลังเปิดทรัพย์นี้อยู่ อัปเดตให้ทันที
   const sel = document.getElementById('calc-prop-sel');
   if (sel && sel.value === id && document.getElementById('tab-calc')?.classList.contains('active')) calcFillFromProp();
@@ -5339,12 +5541,12 @@ function renderProps() {
               </div>`}
           </div>
           ${(isImageSrc(p.imgProp)||isImageSrc(p.imgDetail))?`<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-            ${isImageSrc(p.imgProp)?`<img src="${p.imgProp}" style="height:90px;border-radius:var(--r-md);object-fit:cover;border:1.5px solid var(--border);cursor:zoom-in" onclick="showLightbox('${p.imgProp}')" title="รูปทรัพย์">`:'' }
-            ${isImageSrc(p.imgDetail)?`<img src="${p.imgDetail}" style="height:90px;border-radius:var(--r-md);object-fit:cover;border:1.5px solid var(--border);cursor:zoom-in" onclick="showLightbox('${p.imgDetail}')" title="รูปรายละเอียด">`:'' }
+            ${isImageSrc(p.imgProp)?`<img loading="lazy" src="${p.imgProp}" style="height:90px;border-radius:var(--r-md);object-fit:cover;border:1.5px solid var(--border);cursor:zoom-in" onclick="showLightbox('${p.imgProp}')" title="รูปทรัพย์">`:'' }
+            ${isImageSrc(p.imgDetail)?`<img loading="lazy" src="${p.imgDetail}" style="height:90px;border-radius:var(--r-md);object-fit:cover;border:1.5px solid var(--border);cursor:zoom-in" onclick="showLightbox('${p.imgDetail}')" title="รูปรายละเอียด">`:'' }
           </div>`:''}
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-            ${p.deed?`<span class="badge badge-gray">โฉนด ${p.deed}</span>`:''}
-            ${p.case?`<span class="badge badge-gray">คดี ${p.case}</span>`:''}
+            ${p.deed?`<span class="badge badge-gray">โฉนด ${escapeHtml(p.deed)}</span>`:''}
+            ${p.case?`<span class="badge badge-gray">คดี ${escapeHtml(p.case)}</span>`:''}
             ${p.led?.free==='ติดจำนอง'?`<span class="badge badge-amber" title="${escapeHtml(p.led.mortgagee||'')}">⚠️ ติดจำนอง${p.led.mortgage?' '+fmtNum(p.led.mortgage)+' ฿':''}</span>`:p.led?.free?`<span class="badge badge-green">${escapeHtml(p.led.free)}</span>`:''}
             ${Number(p.actualSell)>0?`<span class="badge badge-green">💵 ขายได้ ${fmtNum(Number(p.actualSell))} ฿</span>`:''}
             ${p.mapUrl?`<a href="${p.mapUrl.startsWith('http')?p.mapUrl:'https://maps.google.com/?q='+encodeURIComponent(p.mapUrl)}" target="_blank" class="btn btn-ghost btn-xs">📍 แผนที่</a>`:''}
@@ -5400,7 +5602,7 @@ function renderProps() {
                 return `
                 <div class="exp-row" onclick="event.stopPropagation();editExpense('${e.id}')" style="display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px dashed #C6E6D0;font-size:var(--fs-sm);cursor:pointer;border-radius:var(--r-sm);${isAcq?'opacity:.7':''}" onmouseover="this.style.background='rgba(0,0,0,.03)'" onmouseout="this.style.background=''">
                   <span style="color:var(--gray);min-width:62px;flex-shrink:0">${fmtDate(e.date)}</span>
-                  <span class="exp-desc" style="flex:1;font-weight:600;color:${e.settled?'var(--gray)':'var(--gray-800)'}">${e.desc}${isAcq?` <span style="font-size:var(--fs-xs);background:var(--amber-100);color:var(--amber-800);padding:1px 4px;border-radius:3px;font-weight:700" title="นับเป็นต้นทุนซื้อ/ค่าธรรมเนียม ไม่รวมในงบรีโนเวท">ต้นทุนซื้อ</span>`:''}</span>
+                  <span class="exp-desc" style="flex:1;font-weight:600;color:${e.settled?'var(--gray)':'var(--gray-800)'}">${escapeHtml(e.desc)}${isAcq?` <span style="font-size:var(--fs-xs);background:var(--amber-100);color:var(--amber-800);padding:1px 4px;border-radius:3px;font-weight:700" title="นับเป็นต้นทุนซื้อ/ค่าธรรมเนียม ไม่รวมในงบรีโนเวท">ต้นทุนซื้อ</span>`:''}</span>
                   ${payerBadge}
                   ${settledBadge}
                   <span style="font-weight:700;color:${isP?'var(--blue)':'var(--green)'};white-space:nowrap;flex-shrink:0">${fmtPrice(e.amount)}</span>
@@ -5435,7 +5637,7 @@ function renderProps() {
           ${p.notes?`
           <div style="margin-top:16px;">
             <div class="section-title">📝 หมายเหตุ</div>
-            <div style="font-size:var(--fs-md);color:var(--gray-700);background:var(--gray-50);padding:10px 14px;border-radius:var(--r-md);">${p.notes}</div>
+            <div style="font-size:var(--fs-md);color:var(--gray-700);background:var(--gray-50);padding:10px 14px;border-radius:var(--r-md);">${escapeHtml(p.notes)}</div>
           </div>`:''}
 
           <!-- BUY / SELL PRICE (ชนะประมูลขึ้นไป) -->
@@ -5704,20 +5906,15 @@ function savePropActualSell(propId, val) {
 }
 
 async function deleteCloudProp(id) {
-  const client = initSb();
-  const uk = USER_KEY;
-  if (!client || !uk) return;
-  try {
-    await client.from('auction_expenses').delete().eq('prop_id', id).eq('user_key', uk);
-    await client.from('auction_props').delete().eq('id', id).eq('user_key', uk);
-  } catch (e) {}
+  if (!SM.del.props.includes(id)) SM.del.props.push(id);
+  smSave();
+  try { await flushDeletes(); } catch (e) {}
 }
 
 async function deleteCloudExpense(id) {
-  const client = initSb();
-  const uk = USER_KEY;
-  if (!client || !uk) return;
-  try { await client.from('auction_expenses').delete().eq('id', id).eq('user_key', uk); } catch (e) {}
+  if (!SM.del.expenses.includes(id)) SM.del.expenses.push(id);
+  smSave();
+  try { await flushDeletes(); } catch (e) {}
 }
 
 async function deleteCloudDocType(id) {
@@ -5830,7 +6027,7 @@ async function openImgPick(type) {
     const kb = f.metadata?.size ? Math.round(f.metadata.size/1024) + ' KB' : '';
     return `<div style="border:1.5px solid ${isUsed?'var(--border)':'#FCD34D'};border-radius:var(--r-md);overflow:hidden;cursor:pointer;background:var(--neutral-50)"
                  onclick="applyPickedImg('${url}')" title="${isUsed?'ใช้อยู่กับทรัพย์บางรายการ':'ยังไม่ถูกใช้ที่ไหน'}">
-      <img src="${url}" loading="lazy" style="width:100%;height:88px;object-fit:cover;display:block">
+      <img loading="lazy" src="${url}" loading="lazy" style="width:100%;height:88px;object-fit:cover;display:block">
       <div style="font-size:var(--fs-sm);padding:3px 5px;color:var(--gray);display:flex;justify-content:space-between;gap:4px">
         <span>${isUsed ? '' : '🔸 ไม่ได้ใช้'}</span><span>${kb}</span>
       </div>
@@ -5917,6 +6114,7 @@ async function uploadBlobToStorage(blob, filename) {
     const up = await fetch(`${SB_URL}/storage/v1/object/auction-images/${path}`, {
       method: 'POST',
       headers: {
+        'cache-control': 'max-age=31536000, immutable',   // ชื่อไฟล์ไม่ซ้ำ เก็บยาวได้ ลดการโหลดซ้ำ
         'apikey': SB_KEY,
         'Authorization': 'Bearer ' + token,
         'Content-Type': blob.type || 'image/jpeg',
@@ -5967,12 +6165,18 @@ async function buildCloudData() {
 
 
 // ── Backup / Restore JSON (safety net) ──
-function exportToJson() {
-  const blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
+async function exportToJson() {
+  let sketches = [];
+  try {
+    const { data, error } = await initSb().from('auction_sketches').select('id,data').eq('user_key', USER_KEY);
+    if (error) throw error;
+    sketches = data;
+  } catch(e) { toast('⚠️ โหลดภาพวาดไม่ได้ — backup นี้ไม่มีภาพวาด', 'error'); }
+  const blob = new Blob([JSON.stringify({ ...S, _sketches: sketches, _villages: VILLAGES.map(villageStrip) }, null, 2)], { type: 'application/json' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = `auction-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.download = `auction-backup-${todayISO()}.json`;
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
   toast('💾 ดาวน์โหลด backup แล้ว', 'success');
@@ -5989,8 +6193,12 @@ function importFromJson(ev) {
     try {
       const imported = JSON.parse(e.target.result);
       if (!imported || typeof imported !== 'object') throw new Error('Invalid JSON');
-      const localSettings = S.settings;
+      const localSettings = S.settings, impSk = imported._sketches, impVl = imported._villages;
+      delete imported._sketches; delete imported._villages;
+      if (impSk?.length) await initSb().from('auction_sketches').upsert(impSk.map(r => ({ id: r.id, user_key: USER_KEY, data: r.data, updated_at: new Date().toISOString() })));
+      if (impVl?.length) await initSb().from('auction_villages').upsert(impVl.map(v => ({ id: v.id, user_key: USER_KEY, data: v, updated_at: new Date().toISOString() })));
       S = imported;
+      smResetKnown();   // นำเข้าแล้วต้องอัปทุกแถว
       S.settings = { ...(imported.settings||{}), ...localSettings };
       if (!Array.isArray(S.expenses)) S.expenses = [];
       if (!Array.isArray(S.props))    S.props    = [];
@@ -6092,6 +6300,8 @@ async function confirmClearProps() {
     try {
       await client.from('auction_expenses').delete().eq('user_key', uk);
       await client.from('auction_props').delete().eq('user_key', uk);
+      await client.from('auction_sketches').delete().eq('user_key', uk);
+      smResetKnown();
     } catch (e) {}
   }
 }
@@ -6128,7 +6338,7 @@ let renoActiveProp = '';   // บ้านที่ถูกเลือกอ�
 function populateRenoProps() {
   const sel    = document.getElementById('reno-prop-sel');
   const wonProps = S.props.filter(p => isAcquired(p));
-  const opts = wonProps.map(p=>`<option value="${p.id}">${p.code ? p.code+' — '+p.name : p.name}</option>`).join('');
+  const opts = wonProps.map(p=>`<option value="${p.id}">${p.code ? escapeHtml(p.code+' — '+p.name) : escapeHtml(p.name)}</option>`).join('');
   if (sel) sel.innerHTML = '<option value="">— เลือกทรัพย์ (ชนะประมูล) —</option>'+opts;
 }
 
@@ -6192,7 +6402,7 @@ function propDocsHtml(p) {
           <div class="img-grid" id="dimg_${p.id}_${d.typeId}">
             ${d.images.map((img,i)=>`
               <div class="img-thumb">
-                <img src="${img.data}" onclick="showLightbox('${img.data}')" />
+                <img loading="lazy" src="${img.data}" onclick="showLightbox('${img.data}')" />
                 <button class="img-del" onclick="removeDocImg('${p.id}','${d.typeId}',${i})">✕</button>
                 <div class="img-label">${img.name}</div>
               </div>`).join('')}
@@ -6228,7 +6438,7 @@ async function addRenoImages(files) {
     renoTmpImgs.push({ name, data: src });
     const d = document.createElement('div');
     d.className = 'img-thumb';
-    d.innerHTML = `<img src="${src}" onclick="showLightbox('${src}')" />
+    d.innerHTML = `<img loading="lazy" src="${src}" onclick="showLightbox('${src}')" />
                    <button class="img-del" onclick="renoTmpImgs.splice(${idx},1);this.parentNode.remove()">✕</button>
                    <div class="img-label">${escapeHtml(name)}</div>`;
     preview.appendChild(d);
@@ -6419,12 +6629,12 @@ function openSettle(propId) {
   document.getElementById('settle-amount').value = Math.abs(netOwe) >= 0.5
     ? Math.abs(Math.round(netOwe*100)/100).toLocaleString('th-TH', { minimumFractionDigits: (Math.abs(netOwe)%1?2:0), maximumFractionDigits: 2 })
     : '';
-  document.getElementById('settle-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('settle-date').value = todayISO();
   document.getElementById('settle-pay').value = 'โอนเงิน';
   document.getElementById('settle-note').value = '';
   document.getElementById('settle-info').innerHTML = Math.abs(netOwe) < 0.5
-    ? `🏠 <b>${prop.name}</b><br>✓ ยอดเคลียร์กันแล้ว — บันทึกเพิ่มได้ถ้ามีการโอนคืนรอบใหม่`
-    : `🏠 <b>${prop.name}</b><br>ยอดค้างสุทธิตอนนี้: <b style="color:${netOwe>0?'var(--green)':'var(--red)'}">${netOwe>0?'หุ้นส่วนติดฉัน ':'ฉันติดหุ้นส่วน '}${fmtPrice(Math.abs(netOwe))}</b>`;
+    ? `🏠 <b>${escapeHtml(prop.name)}</b><br>✓ ยอดเคลียร์กันแล้ว — บันทึกเพิ่มได้ถ้ามีการโอนคืนรอบใหม่`
+    : `🏠 <b>${escapeHtml(prop.name)}</b><br>ยอดค้างสุทธิตอนนี้: <b style="color:${netOwe>0?'var(--green)':'var(--red)'}">${netOwe>0?'หุ้นส่วนติดฉัน ':'ฉันติดหุ้นส่วน '}${fmtPrice(Math.abs(netOwe))}</b>`;
   openModal('modal-settle');
 }
 
@@ -6494,7 +6704,7 @@ function editExpense(id) {
     const prev = document.getElementById('reno-imgs-preview');
     prev.innerHTML = renoTmpImgs.map((img,idx)=>`
       <div class="img-item" style="position:relative;display:inline-block;">
-        <img src="${img.data}" style="width:60px;height:60px;object-fit:cover;border-radius:var(--r-sm);">
+        <img loading="lazy" src="${img.data}" style="width:60px;height:60px;object-fit:cover;border-radius:var(--r-sm);">
         <button class="img-del" onclick="renoTmpImgs.splice(${idx},1);this.parentNode.remove()">✕</button>
       </div>`).join('');
   }, 100);
@@ -6551,8 +6761,8 @@ function renderReno() {
         ${img
           ? `<img class="house-pick-img" src="${img}" alt="">`
           : `<div class="house-pick-img house-pick-noimg">🏠</div>`}
-        <div class="house-pick-name">🏠 ${p.name||'(ไม่มีชื่อ)'} ${sold?'<span class="badge badge-green" style="font-size:var(--fs-xs)">ขายแล้ว</span>':''}</div>
-        ${p.code?`<div class="house-pick-code">${p.code}</div>`:''}
+        <div class="house-pick-name">🏠 ${escapeHtml(p.name||'(ไม่มีชื่อ)')} ${sold?'<span class="badge badge-green" style="font-size:var(--fs-xs)">ขายแล้ว</span>':''}</div>
+        ${p.code?`<div class="house-pick-code">${escapeHtml(p.code)}</div>`:''}
         <div class="house-pick-total">${fmtNum(tot)} ฿</div>
         <div class="house-pick-meta">${items.length} รายการค่าใช้จ่าย</div>
         <button class="btn btn-success btn-xs house-pick-add" onclick="event.stopPropagation();openRenoForProp('${p.id}')">+ เพิ่มค่าใช้จ่าย</button>
@@ -6630,16 +6840,16 @@ function renderReno() {
       <div class="expense-row${e.settled?' reimbursed-row':''}">
         <div class="expense-date">${fmtDate(e.date)}</div>
         <div style="flex:1;min-width:0">
-          <div class="expense-title" style="${e.settled?'color:var(--gray)':''}">${e.desc}</div>
+          <div class="expense-title" style="${e.settled?'color:var(--gray)':''}">${escapeHtml(e.desc)}</div>
           <div class="expense-sub">
-            <span class="badge badge-gray" style="font-size:var(--fs-sm);">${e.cat||'อื่นๆ'}</span>
+            <span class="badge badge-gray" style="font-size:var(--fs-sm);">${escapeHtml(e.cat||'อื่นๆ')}</span>
             ${payerBadge}
             ${e.settled?`<span class="badge" style="font-size:var(--fs-sm);background:var(--gray-100);color:var(--gray);font-weight:700;">✓ ตัดบัญชีแล้ว</span>`:''}
-            ${e.vendor?' · '+e.vendor:''}${e.pay?' · '+e.pay:''}
+            ${e.vendor?' · '+escapeHtml(e.vendor):''}${e.pay?' · '+escapeHtml(e.pay):''}
           </div>
           ${e.images&&e.images.length?`
           <div class="expense-imgs">
-            ${e.images.map(img=>`<div class="bill-thumb"><img src="${img.data}" onclick="showLightbox('${img.data}')" /></div>`).join('')}
+            ${e.images.map(img=>`<div class="bill-thumb"><img loading="lazy" src="${img.data}" onclick="showLightbox('${img.data}')" /></div>`).join('')}
           </div>`:''}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
@@ -6799,7 +7009,7 @@ function renderSummary() {
   if (propSel) {
     const cur = propSel.value;
     propSel.innerHTML = '<option value="">— ภาพรวมทั้งหมด —</option>' +
-      S.props.map(p=>`<option value="${p.id}">${p.code?p.code+' — ':''}${p.name}</option>`).join('');
+      S.props.map(p=>`<option value="${p.id}">${p.code?escapeHtml(p.code)+' — ':''}${escapeHtml(p.name)}</option>`).join('');
     if (cur) propSel.value = cur;
   }
 
@@ -6851,7 +7061,7 @@ function renderSummary() {
         <thead><tr><th>ทรัพย์</th><th class="num">ราคาที่ขายได้</th><th class="num">ค่าใช้จ่ายรวม</th><th class="num">กำไรรวม</th><th class="num">กำไรส่วนตัว (÷2)</th></tr></thead>
         <tbody>
           ${profitProps.map(({p,allExp,gross,net})=>`<tr>
-            <td style="font-weight:700">${p.code?`<span style="font-size:var(--fs-sm);background:var(--blue-lt);color:var(--blue);padding:1px 6px;border-radius:var(--r-sm);margin-right:4px">${p.code}</span>`:''}${p.name}</td>
+            <td style="font-weight:700">${p.code?`<span style="font-size:var(--fs-sm);background:var(--blue-lt);color:var(--blue);padding:1px 6px;border-radius:var(--r-sm);margin-right:4px">${escapeHtml(p.code)}</span>`:''}${escapeHtml(p.name)}</td>
             <td class="num" style="color:var(--green);font-weight:800">${fmtNum(Number(p.actualSell))}</td>
             <td class="num" style="color:var(--red)">${fmtNum(allExp)}</td>
             <td class="num" style="font-weight:800;color:${gross>=0?'var(--green)':'var(--red)'}">${gross>=0?'+':''}${fmtNum(gross)}</td>
@@ -6883,8 +7093,8 @@ function renderSummary() {
             const sb=_si.badge, sl=_si.icon+' '+_si.label;
             return `<tr>
               <td style="font-weight:700;color:var(--blue)">${i+1}</td>
-              <td style="font-weight:700">${p.code?`<span style="font-size:var(--fs-sm);background:var(--blue-lt);color:var(--blue);padding:1px 6px;border-radius:var(--r-sm);margin-right:4px">${p.code}</span>`:''}${p.name}</td>
-              <td style="color:var(--gray);font-size:var(--fs-sm)">${p.loc||'—'}</td>
+              <td style="font-weight:700">${p.code?`<span style="font-size:var(--fs-sm);background:var(--blue-lt);color:var(--blue);padding:1px 6px;border-radius:var(--r-sm);margin-right:4px">${escapeHtml(p.code)}</span>`:''}${escapeHtml(p.name)}</td>
+              <td style="color:var(--gray);font-size:var(--fs-sm)">${escapeHtml(p.loc||'—')}</td>
               <td class="num">${base?fmtNum(base):'—'}</td>
               <td class="num" style="color:var(--navy);font-weight:800">${bidPrice?fmtNum(bidPrice):'—'}</td>
               <td class="num" style="color:var(--green)">${Number(p.targetSell)?fmtNum(Number(p.targetSell)):'—'}</td>
@@ -6906,7 +7116,7 @@ function renderSummary() {
             const items=S.expenses.filter(e=>e.propId===p.id);
             const ps   = expenseStats(items);
             return `<tr>
-              <td style="font-weight:700">${p.name}</td>
+              <td style="font-weight:700">${escapeHtml(p.name)}</td>
               <td class="num" style="font-weight:800">${fmtNum(ps.total)}</td>
               <td class="num" style="color:var(--green)">${ps.myPaid?fmtNum(ps.myPaid):'—'}</td>
               <td class="num" style="color:var(--blue)">${ps.partnerPaid?fmtNum(ps.partnerPaid):'—'}</td>
@@ -6948,7 +7158,7 @@ function renderSummaryProp(pid) {
   document.getElementById('summary-content').innerHTML = `
     <div class="card">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
-        <div style="font-size:var(--fs-xl);font-weight:800;color:var(--navy);">${p.code?`<span style="font-size:var(--fs-md);background:var(--blue-lt);color:var(--blue);padding:2px 8px;border-radius:var(--r-sm);margin-right:8px">${p.code}</span>`:''}${p.name}</div>
+        <div style="font-size:var(--fs-xl);font-weight:800;color:var(--navy);">${p.code?`<span style="font-size:var(--fs-md);background:var(--blue-lt);color:var(--blue);padding:2px 8px;border-radius:var(--r-sm);margin-right:8px">${escapeHtml(p.code)}</span>`:''}${escapeHtml(p.name)}</div>
         <span class="badge ${sb}">${sl}</span>
       </div>
       <div class="stat-grid">
@@ -6989,8 +7199,8 @@ function renderSummaryProp(pid) {
             const isP = e.payer === 'partner';
             return `<tr>
             <td style="font-size:var(--fs-sm);color:var(--gray);white-space:nowrap">${fmtDate(e.date)}</td>
-            <td style="font-weight:600;${e.settled?'color:var(--gray)':''}">${e.desc}</td>
-            <td><span class="badge badge-gray" style="font-size:var(--fs-sm)">${e.cat||'อื่นๆ'}</span></td>
+            <td style="font-weight:600;${e.settled?'color:var(--gray)':''}">${escapeHtml(e.desc)}</td>
+            <td><span class="badge badge-gray" style="font-size:var(--fs-sm)">${escapeHtml(e.cat||'อื่นๆ')}</span></td>
             <td class="num" style="color:${isP?'var(--blue)':'var(--navy)'};font-weight:700">${fmtNum(e.amount)}</td>
             <td>${isP?`<span class="badge" style="background:var(--blue-lt);color:var(--blue);font-size:var(--fs-sm)">🤝 หุ้นส่วน</span>`:`<span class="badge" style="background:var(--green-50);color:var(--green);font-size:var(--fs-sm)">👤 ฉัน</span>`}</td>
             <td>${e.settled?`<span class="badge" style="background:var(--gray-100);color:var(--gray);font-size:var(--fs-sm)">✓ ตัดแล้ว</span>`:'<span class="badge badge-amber" style="font-size:var(--fs-sm)">ค้าง</span>'}</td>
@@ -7116,8 +7326,8 @@ function pnlDetailHTML({ p, costs, sold, gross, net, isP }) {
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px">
       <button onclick="window._pnlSelectedId='';window._pnlSearch='';document.getElementById('pnl-search').value='';pnlFilterList()"
         style="background:none;border:1.5px solid var(--border);border-radius:var(--r-sm);padding:3px 8px;cursor:pointer;font-size:var(--fs-sm);color:var(--gray)">← กลับ</button>
-      ${p.code?`<span style="font-size:var(--fs-sm);background:var(--blue-lt);color:var(--blue);padding:1px 7px;border-radius:var(--r-sm);font-weight:700">${p.code}</span>`:''}
-      <span style="font-size:var(--fs-lg);font-weight:800;color:var(--navy)">${p.name}</span>
+      ${p.code?`<span style="font-size:var(--fs-sm);background:var(--blue-lt);color:var(--blue);padding:1px 7px;border-radius:var(--r-sm);font-weight:700">${escapeHtml(p.code)}</span>`:''}
+      <span style="font-size:var(--fs-lg);font-weight:800;color:var(--navy)">${escapeHtml(p.name)}</span>
       ${!sold?`<span style="font-size:var(--fs-sm);background:var(--amber-100);color:var(--amber-800);padding:1px 8px;border-radius:var(--r-sm);font-weight:700">⏳ รอกรอกราคาขาย</span>`:''}
     </div>
     <div class="pnl-stat-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;text-align:center;margin-bottom:14px">
@@ -7195,8 +7405,8 @@ function soldCardHTML({ p, sold, costs, net, isP }) {
     <div class="house-pick-card sold" style="cursor:default">
       ${img ? `<img class="house-pick-img" src="${img}" alt="" onclick="showLightbox('${img}')">`
             : `<div class="house-pick-img house-pick-noimg">🏠</div>`}
-      <div class="house-pick-name">🏠 ${p.name||'(ไม่มีชื่อ)'} <span class="badge badge-green" style="font-size:var(--fs-xs)">ขายแล้ว</span></div>
-      ${p.code?`<div class="house-pick-code">${p.code}</div>`:''}
+      <div class="house-pick-name">🏠 ${escapeHtml(p.name||'(ไม่มีชื่อ)')} <span class="badge badge-green" style="font-size:var(--fs-xs)">ขายแล้ว</span></div>
+      ${p.code?`<div class="house-pick-code">${escapeHtml(p.code)}</div>`:''}
       <div style="margin-top:8px;font-size:var(--fs-sm);color:var(--gray);line-height:1.8">
         💵 ราคาขาย <b style="color:var(--navy)">${fmtNum(sold)}</b><br>
         🔨 ค่าใช้จ่ายรวม <b style="color:var(--red)">${fmtNum(Math.round(costs.expTotal))}</b>
@@ -7231,7 +7441,7 @@ function showSoldDetail(id) {
   el.innerHTML = `
     <div class="card" style="border:2px solid var(--green-300)">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-        <span style="font-size:var(--fs-lg);font-weight:800;color:var(--navy)">🏠 ${p.name} — รายละเอียดย้อนหลัง</span>
+        <span style="font-size:var(--fs-lg);font-weight:800;color:var(--navy)">🏠 ${escapeHtml(p.name)} — รายละเอียดย้อนหลัง</span>
         <button class="mini-tap" onclick="closeSoldDetail()" style="margin-left:auto;background:none;border:1.5px solid var(--border);border-radius:var(--r-sm);padding:3px 10px;cursor:pointer;font-size:var(--fs-sm);color:var(--gray)">✕ ปิด</button>
       </div>
 
@@ -7251,7 +7461,7 @@ function showSoldDetail(id) {
         <tbody>
           ${items.map(e=>`<tr style="border-bottom:1px solid var(--gray-100)">
             <td style="padding:7px 8px;white-space:nowrap;color:var(--gray)">${fmtDate(e.date)}</td>
-            <td style="padding:7px 8px">${e.desc} ${e.cat?`<span style="font-size:var(--fs-sm);color:var(--gray)">· ${e.cat}</span>`:''}</td>
+            <td style="padding:7px 8px">${escapeHtml(e.desc)} ${e.cat?`<span style="font-size:var(--fs-sm);color:var(--gray)">· ${escapeHtml(e.cat)}</span>`:''}</td>
             <td style="padding:7px 8px;white-space:nowrap">${e.payer==='partner'?'🤝 หุ้นส่วน':'👤 ฉัน'}${e.settled?' <span style="color:var(--gray);font-size:var(--fs-sm)">✓ตัด</span>':''}</td>
             <td style="padding:7px 8px;text-align:right;font-weight:700">${fmtNum(e.amount)}</td>
           </tr>`).join('')}
@@ -7489,8 +7699,10 @@ document.addEventListener('keydown', e => {
 });
 
 // Re-pull on tab focus / online — covers cases where the realtime socket dropped.
-window.addEventListener('focus',  () => { if (AUTHED) loadFromCloud().then(ok => ok && renderAll()); });
-window.addEventListener('online', () => { if (AUTHED) loadFromCloud().then(ok => ok && renderAll()); });
+// สลับกลับมาที่แอปบ่อยตอนใช้ Maps → เช็คไม่เกินทุก 30 วิ (ดึงเฉพาะแถวที่เปลี่ยนอยู่แล้ว)
+let _focusPullAt = 0;
+window.addEventListener('focus',  () => { if (AUTHED && Date.now() - _focusPullAt > 30000) { _focusPullAt = Date.now(); loadFromCloud().then(ok => ok && renderAll()); } });
+window.addEventListener('online', () => { if (AUTHED) { _villagesAt = 0; loadFromCloud().then(ok => ok && renderAll()); } });
 
 
 // ═══════════════════════════════════════════════
@@ -7502,7 +7714,7 @@ function calcPopulatePropSel() {
   const prev = sel.value;
   const opt = p => {
     const appr = p.appraisal || p.price;
-    return `<option value="${p.id}">${p.code ? '['+p.code+'] ' : ''}${escapeHtml(p.name||'')}${appr ? ' — เริ่ม ' + fmtPrice(appr) : ''}</option>`;
+    return `<option value="${p.id}">${p.code ? '['+escapeHtml(p.code)+'] ' : ''}${escapeHtml(p.name||'')}${appr ? ' — เริ่ม ' + fmtPrice(appr) : ''}</option>`;
   };
   sel.innerHTML = '<option value="">— กรอกเองด้านล่าง —</option>' +
     `<optgroup label="🏠 ทรัพย์ที่ต้องการ">${S.props.map(opt).join('')}</optgroup>` +
@@ -7644,6 +7856,7 @@ function calcUpdate(skipFeeRows) {
   const totalCost = fees.filter(f=>!f.isHeader).reduce((s,f)=>s+f.val, 0);
   window._calcSell = sell;
   window._calcTotalCost = totalCost;
+  window._calcMortgage = mortgage;
 
   const td = (txt, style='') => `<td style="padding:7px 10px;${style}">${txt}</td>`;
   if (!skipFeeRows) {
@@ -7731,7 +7944,7 @@ function calcRefreshCustomRow() {
   document.getElementById('calc-custom-bid-store').value = String(customBid || '');
   const sell      = window._calcSell      || 0;
   const totalCost = window._calcTotalCost || 0;
-  const totalInvest = customBid + totalCost;
+  const totalInvest = customBid + totalCost + (window._calcMortgage || 0);   // ต้องตรงกับแถวในตารางหลัก
   const profit    = sell - totalInvest;
   const profitPct = totalInvest > 0 ? profit / totalInvest : 0;
   const isP       = profit >= 0;
@@ -7760,7 +7973,7 @@ function calcSaveToProperty() {
   p.calcMortgage  = parseNumInput(document.getElementById('calc-mortgage').value);
   p.calcMarket    = parseNumInput(document.getElementById('calc-market')?.value);
   p.calcCustomBid = parseNumInput(document.getElementById('calc-custom-bid')?.value);
-  if (p.calcCustomBid) p.actualBuy = p.calcCustomBid;
+  if (p.calcCustomBid && !Number(p.actualBuy)) p.actualBuy = p.calcCustomBid;   // ลองราคาเล่นต้องไม่ทับราคาที่ซื้อจริง
   saveS(); renderProps(); if (p.pool && typeof renderSurvey === 'function') renderSurvey();
   toast('✓ บันทึกข้อมูลการคำนวณกลับทรัพย์แล้ว');
 }

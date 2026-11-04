@@ -1,7 +1,8 @@
 // Service Worker — ระบบจัดการทรัพย์ กรมบังคับคดี (PWA + แจ้งเตือน Web Push)
 // เปิดแอปแบบ offline ได้: cache ตัวแอป (app shell) + รูปที่โหลดแล้ว
 // ข้อมูลจริงอยู่ใน localStorage + sync Supabase เมื่อออนไลน์
-const CACHE = 'auction-tracker-v7';
+const CACHE = 'auction-tracker-v8';
+const FILES = 'auction-files-v1';   // รูป/PDF ใน Storage ชื่อไฟล์ไม่ซ้ำ เก็บข้ามเวอร์ชันได้
 const SHELL = [
   './',
   './index.html',
@@ -23,7 +24,7 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+      Promise.all(keys.filter((k) => k !== CACHE && k !== FILES).map((k) => caches.delete(k)))
     ).then(() => self.clients.claim())
   );
 });
@@ -33,6 +34,17 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
 
+  // รูป/PDF ที่อัปแล้ว: เปิดจากเครื่องก่อน ลด egress และใช้ได้ตอนไม่มีสัญญาณ
+  // โหลดแบบ cors เสมอ ถ้าเก็บแบบ opaque จากแท็ก img แล้ว fetch() ในแอป (ภาพในหน้าบันทึก/PDF) จะอ่านไม่ได้
+  if (/supabase\.co$/.test(url.host) && url.pathname.includes('/storage/v1/object/public/') && !req.headers.has('range')) {
+    e.respondWith(
+      caches.open(FILES).then((c) => c.match(url.href).then((hit) => hit || fetch(url.href, { mode: 'cors', credentials: 'omit' }).then((res) => {
+        if (res.ok) c.put(url.href, res.clone()).catch(() => {});
+        return res;
+      })))
+    );
+    return;
+  }
   // Supabase / API — เอาสด ๆ เสมอ (อย่า cache ข้อมูล) ; ออฟไลน์ก็ปล่อยพัง (แอปมี localStorage)
   if (/supabase\.co/.test(url.host)) return;
   // จัดเส้นทาง (OSRM) / หาพิกัด (Nominatim) — ต้องสดทุกครั้ง ไม่เก็บ cache

@@ -11,7 +11,7 @@ for f in ["index.html", "sw.js", "manifest.webmanifest", "landsmaps-bookmarklet.
     shutil.copy(os.path.join(here, f), os.path.join(dist, f))
 # หน้าเว็บ/sw/ปุ่มลัด ห้าม cache นาน จะได้เห็นเวอร์ชันใหม่ทันทีหลัง deploy · กันฝังในเว็บอื่น
 with open(os.path.join(dist, "_headers"), "w", encoding="utf-8") as f:
-    f.write("/*\n  X-Frame-Options: DENY\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n"
+    f.write("/*\n  X-Frame-Options: DENY\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Content-Security-Policy: object-src 'none'; base-uri 'self'; form-action 'none'\n"
             "/\n  Cache-Control: no-cache\n/index.html\n  Cache-Control: no-cache\n/sw.js\n  Cache-Control: no-cache\n"
             "/landsmaps-bookmarklet.js\n  Cache-Control: no-cache\n"
             "/manifest.webmanifest\n  Content-Type: application/manifest+json\n")
