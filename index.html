@@ -2986,30 +2986,49 @@ async function surveyMatrix(pts, hasOrigin) {
       const j = await fetchTimeout(`${OSRM}/table/v1/driving/${coords}?annotations=duration${extra}`, 12000);
       if (j.code !== 'Ok') throw new Error(j.code);
       // ช่องที่ OSRM หาเส้นทางไม่ได้ (null) → ประมาณจากเส้นตรงที่ 50 กม./ชม.
-      const m = j.durations.map((row, i) => row.map((v, k) => v == null ? straight[i][k] / 50 * 3600 : v));
-      return { cost: m, source: 'road' };
+      const fill = (rows) => rows.map((row, i) => row.map((v, k) => v == null ? straight[i][k] / 50 * 3600 : v));
+      const m = fill(j.durations);
+      // เวลาแบบไม่บังคับฝั่ง = ใกล้กันจริงแค่ไหน (เวลาบังคับฝั่งบวกทางอ้อมไปกลับรถ ทำให้บ้านติดกันดูไกล)
+      let near = m;
+      if (extra) { try { const f = await fetchTimeout(`${OSRM}/table/v1/driving/${coords}?annotations=duration`, 12000); if (f.code === 'Ok') near = fill(f.durations); } catch(e) {} }
+      return { cost: m, near, source: 'road' };
     } catch(e) {}
   }
-  return { cost: straight, source: 'straight' };
+  return { cost: straight, near: straight, source: 'straight' };
 }
 
 // จับกลุ่มจุดที่ขับถึงกันได้ใน thr → ออกจากกลุ่มเสียค่าเพิ่ม เส้นทางจะเก็บกลุ่มเดิมให้ครบก่อนค่อยไปกลุ่มถัดไป
-function surveyGroupCost(D, thr, pen) {
+// ช่วงยาวคิดแพงกว่าสัดส่วน (ยกกำลัง 1.25) จะได้ไล่จากใกล้ไปไกล ไม่กระโดดข้ามเมืองเมื่อมีทางเลือกที่ระยะรวมเท่ากัน
+function surveyGroupCost(D, N, thr, pen) {
   const n = D.length, g = [...Array(n).keys()];
   const find = x => { while (g[x] !== x) x = g[x] = g[g[x]]; return x; };
-  for (let i = 0; i < n; i++) for (let k = 0; k < i; k++) if (Math.min(D[i][k], D[k][i]) <= thr) g[find(i)] = find(k);
-  return D.map((row, i) => row.map((v, k) => v + (find(i) === find(k) ? 0 : pen)));
+  for (let i = 1; i < n; i++) for (let k = 1; k < i; k++) if (Math.min(N[i][k], N[k][i]) <= thr) g[find(i)] = find(k);
+  return D.map((row, i) => row.map((v, k) => (v > 0 ? thr * (v / thr) ** 1.25 : 0) + (find(i) === find(k) ? 0 : pen)));
+}
+// สองจุดติดกัน: แวะจุดที่ถึงก่อนตามทางก่อน ถ้าสลับแล้วระยะรวมเพิ่มนิดเดียว (ไม่ขับเลยไปแล้วย้อนกลับมา)
+function surveyNearFirst(o, D, N, C, source) {
+  const road = source === 'road', tol = road ? 120 : 1, gap = road ? 30 : 0.2, adj = road ? 240 : 2;
+  for (let i = 1; i < o.length - 1; i++) {
+    const a = o[i - 1], x = o[i], y = o[i + 1], b = o[i + 2];
+    if (C[a][y] >= 1e6 || N[a][y] >= N[a][x] - gap || Math.min(N[x][y], N[y][x]) > adj) continue;
+    const before = D[a][x] + D[x][y] + (b === undefined ? 0 : D[y][b]);
+    const after  = D[a][y] + D[y][x] + (b === undefined ? 0 : D[x][b]);
+    if (after - before <= tol) { o[i] = y; o[i + 1] = x; }
+  }
+  return o;
 }
 // หาลำดับไปครบทุกจุด เริ่มที่จุด 0 เสมอ ไม่ต้องวนกลับ (open path)
 // ≤9 จุด → ลองทุกแบบ · มากกว่านั้น → หลายจุดเริ่มต้น + กลับช่วง (2-opt) + ย้ายจุด (or-opt) จนหมดเวลา ใช้ seed คงที่
-function solveRoute(D, source, fromHere) {
+// N = เวลาแบบไม่บังคับฝั่ง (ใกล้กันจริง) · fromHere = เริ่มจากตำแหน่งที่อยู่ หรือรายการจุดที่เริ่มได้
+function solveRoute(D, source, fromHere, N = D) {
   const n = D.length;
   if (n <= 2) return [...Array(n).keys()];
-  const C = source === 'road' ? surveyGroupCost(D, 180, 120) : surveyGroupCost(D, 1.5, 1);
-  // เริ่มจากตำแหน่งที่อยู่: จุดแรกต้องเป็นกลุ่มที่ใกล้ที่สุด แม้ระยะรวมจะยาวขึ้นเล็กน้อย (ไม่งั้นระบบอาจขับไปสุดอีกฝั่งก่อนแล้วไล่กลับ)
+  const C = source === 'road' ? surveyGroupCost(D, N, 240, 300) : surveyGroupCost(D, N, 1.5, 1.5);
+  // จุดแรกต้องเป็นกลุ่มที่ใกล้ที่สุด แม้ระยะรวมจะยาวขึ้นเล็กน้อย (ไม่งั้นระบบอาจขับไปสุดอีกฝั่งก่อนแล้วไล่กลับ)
   if (fromHere) {
-    const nearest = Math.min(...D[0].slice(1)), limit = nearest * 1.15 + (source === 'road' ? 60 : 0.5);
-    for (let k = 1; k < n; k++) if (D[0][k] > limit) C[0][k] += 1e6;
+    const allowed = Array.isArray(fromHere) ? fromHere : [...Array(n).keys()].slice(1);
+    const nearest = Math.min(...allowed.map(k => D[0][k])), limit = nearest * 1.15 + (source === 'road' ? 60 : 0.5);
+    for (let k = 1; k < n; k++) if (!allowed.includes(k) || D[0][k] > limit) C[0][k] += 1e6;
   }
   if (n <= 9) {
     let best = Infinity, bestPath = null;
@@ -3025,7 +3044,7 @@ function solveRoute(D, source, fromHere) {
       }
     };
     dfs(0);
-    return bestPath;
+    return surveyNearFirst(bestPath, D, N, C, source);
   }
   const costOf = o => { let t = 0; for (let i = 0; i < n - 1; i++) t += C[o[i]][o[i + 1]]; return t; };
   const deadline = performance.now() + 1500;
@@ -3060,7 +3079,7 @@ function solveRoute(D, source, fromHere) {
     const r = polish([0, ...o]);
     if (costOf(r) < costOf(best)) best = r;
   }
-  return best;
+  return surveyNearFirst(best, D, N, C, source);
 }
 
 // ระยะ/เวลาแต่ละช่วงตามลำดับจริง + เส้นทางสำหรับวาดบนแผนที่
@@ -3113,18 +3132,18 @@ async function surveyPlan() {
     stops = [first, ...located.filter(x => x !== first)];
   }
   const pts = origin ? [origin, ...stops.map(x => x.ll)] : stops.map(x => x.ll);
-  const { cost, source } = await surveyMatrix(pts, !!origin);
+  const { cost, near, source } = await surveyMatrix(pts, !!origin);
   let order;
   if (mode === 'city') {
     // ในเมืองก่อน: จุดที่อยู่ในรัศมี CITY_KM จากตัวเมืองไปให้ครบก่อน แล้วค่อยไล่ออกนอกเมือง
     const CITY_KM = 8;
     const inner = pts.map((p, i) => i).filter(i => i === 0 || haversineKm(pts[0], pts[i]) <= CITY_KM);
     const outer = pts.map((p, i) => i).filter(i => !inner.includes(i));
-    const solveSub = idxs => solveRoute(idxs.map(a => idxs.map(b => cost[a][b])), source).map(k => idxs[k]);
+    const solveSub = idxs => solveRoute(idxs.map(a => idxs.map(b => cost[a][b])), source, false, idxs.map(a => idxs.map(b => near[a][b]))).map(k => idxs[k]);
     const o1 = solveSub(inner);
     order = outer.length ? [...o1, ...solveSub([o1[o1.length - 1], ...outer]).slice(1)] : o1;
   } else {
-    order = solveRoute(cost, source, !!origin);
+    order = solveRoute(cost, source, !!origin, near);
   }
   const seq = order.map(i => pts[i]);
   const ordered = (origin ? order.slice(1).map(i => stops[i - 1]) : order.map(i => stops[i]));
@@ -3311,9 +3330,19 @@ function nextRoundInfo(p) {
 // แต่ละช่วงคือ 1 ลิงก์ Google Maps (ได้ไม่เกิน 10 จุด) · ใช้สีเดียวกันทั้งปุ่ม หมุด และเลขในการ์ด
 const SEG_COLORS = ['#1F3A5F', '#7C3AED', '#0E7490', '#BE185D', '#4D7C0F'];
 const segColor = i => SEG_COLORS[i % SEG_COLORS.length];
+// ตัดช่วงตรงที่ระยะห่างมากสุดในจุดที่ 7–10 ของช่วง จะได้ไม่ผ่ากลางกลุ่มบ้านที่อยู่ติดกัน (ลิงก์หนึ่งได้ไม่เกิน 10 จุด)
 function surveySegments(ordered) {
   const remain = ordered.filter(x => !x.p.survey?.done), segs = [], of = new Map();
-  for (let i = 0; i < remain.length; i += 10) segs.push(remain.slice(i, i + 10));
+  for (let i = 0; i < remain.length;) {
+    const left = remain.length - i;
+    let size = left;
+    if (left > 10) {
+      let far = -1;
+      // เหลือท้ายอย่างน้อย 3 จุด ไม่ให้เกิดช่วงจุดเดียว
+      for (let z = 7; z <= Math.min(10, left - 3); z++) { const km = remain[i + z].p.survey?.leg?.km || 0; if (km >= far) { far = km; size = z; } }
+    }
+    segs.push(remain.slice(i, i + size)); i += size;
+  }
   segs.forEach((g, i) => g.forEach(x => of.set(x.p.id, i)));
   return { remain, segs, of };
 }
@@ -3322,7 +3351,8 @@ function surveyJump(id) {
   c.classList.add('expanded'); initParcelMaps();
   c.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
-// เริ่มจากช่วงที่เลือกก่อน: ในช่วงนั้นเริ่มจุดที่ใกล้ตำแหน่งปัจจุบันที่สุด แล้วจัดจุดที่เหลือต่อจากจุดสุดท้ายของช่วง
+// เริ่มจากช่วงที่เลือก: จุดแรกคือจุดในช่วงนั้นที่ใกล้ตำแหน่งปัจจุบันที่สุด แล้วจัดทุกจุดที่เหลือใหม่จากตรงนั้น
+// ห้ามยึดสมาชิกช่วงเดิม ช่วงตัดทุก 10 จุด จุดที่อยู่ติดกันแต่คนละช่วงจะถูกแยกไปไกล
 async function surveyStartSeg(i) {
   const { ordered } = surveyOrdered(), { remain, segs } = surveySegments(ordered);
   const seg = segs[i]; if (!seg) return;
@@ -3335,15 +3365,13 @@ async function surveyStartSeg(i) {
       localStorage.setItem('acktion_survey_meta', JSON.stringify({ ...meta, at: Date.now(), gps: true, origin }));
     } catch(e) {}
   }
-  let first = seg;
-  if (origin) {
-    const { cost, source } = await surveyMatrix([origin, ...seg.map(x => x.ll)], true);
-    first = solveRoute(cost, source, true).slice(1).map(k => seg[k - 1]);
-  }
-  const rest = remain.filter(x => !seg.includes(x)), last = first[first.length - 1];
-  const { cost, source } = await surveyMatrix([last.ll, ...rest.map(x => x.ll)], false);
-  const next = solveRoute(cost, source).slice(1).map(k => rest[k - 1]);
-  const seq = [...first, ...next];
+  // ไม่มีตำแหน่งปัจจุบัน → เริ่มที่จุดแรกของช่วง
+  const stops = origin ? remain : [seg[0], ...remain.filter(x => x !== seg[0])];
+  const pts = [...(origin ? [origin] : []), ...stops.map(x => x.ll)];
+  const { cost, near, source } = await surveyMatrix(pts, !!origin);
+  const off = origin ? 1 : 0;
+  const order = solveRoute(cost, source, origin ? seg.map(x => stops.indexOf(x) + off) : false, near);
+  const seq = (origin ? order.slice(1) : order).map(k => stops[k - off]);
   const { legs, geom } = await surveyLegs([...(origin ? [origin] : []), ...seq.map(x => x.ll)], !!origin);
   _surveyGeom = ordered.length === seq.length ? geom : null;   // มีจุดที่ไปแล้วปนอยู่ เส้นถนนนี้ไม่ครบทั้งรอบ
   const done = ordered.filter(x => x.p.survey?.done);
@@ -3356,17 +3384,16 @@ async function surveyStartSeg(i) {
   saveS(); renderSurvey();
   toast(`✓ เริ่มจากช่วง ${i + 1} แล้ว`, 'success');
 }
-function surveyNavLinks(stops, fromGps) {
-  const out = []; let origin = fromGps ? null : stops[0], rest = fromGps ? stops : stops.slice(1);
-  while (rest.length) {
-    const chunk = rest.slice(0, 10); rest = rest.slice(10);
+function surveyNavLinks(segs) {
+  const out = []; let origin = null;   // ช่วงแรกให้ Google เริ่มจากตำแหน่งปัจจุบัน
+  segs.forEach(chunk => {
     const dest = chunk[chunk.length - 1], way = chunk.slice(0, -1);
     const q = new URLSearchParams({ api: '1', travelmode: 'driving', destination: `${dest.lat},${dest.lng}` });
     if (origin) q.set('origin', `${origin.lat},${origin.lng}`);
     if (way.length) q.set('waypoints', way.map(w => `${w.lat},${w.lng}`).join('|'));
     out.push('https://www.google.com/maps/dir/?' + q.toString());
     origin = dest;
-  }
+  });
   return out;
 }
 const fmtKm  = km  => km < 10 ? km.toFixed(1) : Math.round(km).toString();
@@ -4544,7 +4571,7 @@ async function renderSurvey() {
     const anyEst = ordered.some(x => x.p.survey.leg?.est);
     const { remain, segs } = surveySegments(ordered);
     const doneN  = ordered.length - remain.length;
-    const links  = remain.length ? surveyNavLinks(remain.map(x => x.ll), true) : [];
+    const links  = surveyNavLinks(segs.map(g => g.map(x => x.ll)));
     const segRows = segs.length > 1 ? segs.map((g, i) => {
       const km = g.reduce((t, x) => t + (x.p.survey.leg?.km || 0), 0), min = g.reduce((t, x) => t + (x.p.survey.leg?.min || 0), 0);
       return `<div style="display:flex;gap:6px 8px;align-items:center;flex-wrap:wrap;padding:9px 0;border-top:1px solid var(--blue-200)">
