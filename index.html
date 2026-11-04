@@ -92,6 +92,11 @@ body { min-height:100vh; font-size:var(--fs-body); }
 }
 /* ปุ่ม +/− ของ Leaflet ตั้ง z-index 1000 มาเอง → ลอยทับหน้าต่าง popup ต้องกดให้ต่ำกว่า modal */
 .leaflet-top, .leaflet-bottom { z-index:450 !important; }
+/* กันไอแพดซูมทั้งหน้าเว็บตอนจีบนิ้วบนแถบเครื่องมือ (หน้าจะล้นจอ) — บนกระดาษ Excalidraw จัดการจีบนิ้วเอง */
+#sketch-overlay { touch-action:pan-x pan-y; overscroll-behavior:none; overflow:hidden; }
+/* เส้นตารางอยู่ชั้นหลังกระดาษ (Excalidraw พื้นโปร่ง) ไม่ใช้ grid ของ Excalidraw เพราะมันดูดเส้นปากกาเข้าตาราง · ไม่ติดไปกับรูปย่อ */
+#ex-root { background-color:#fff; background-image:linear-gradient(to right,#e9ecef 1px,transparent 1px),linear-gradient(to bottom,#e9ecef 1px,transparent 1px); }
+#ex-root .zoom-out-button { display:none !important; }
 .sk-hbtn { background:rgba(255,255,255,.15) !important; color:var(--white) !important; white-space:nowrap; flex-shrink:0; min-height:32px !important; }
 @media (max-width:640px) { .sk-lbl { display:none; } #sk-saved { display:none; } }
 .sk-hbtn.on { background:rgba(255,255,255,.38) !important; }
@@ -535,7 +540,7 @@ html { -webkit-text-size-adjust:100%; }
 body {
   font-family:var(--font);
   background:var(--bg); color:var(--ink); line-height:1.5;
-  overflow-x:clip; -webkit-tap-highlight-color:transparent;
+  overflow-x:hidden; overflow-x:clip; -webkit-tap-highlight-color:transparent;   /* hidden = สำรองให้ iPad รุ่นเก่า (iOS ต่ำกว่า 16) ที่ไม่รู้จัก clip */
 }
 img, svg, video, canvas { max-width:100%; }
 .muted { color:var(--gray); }
@@ -2926,28 +2931,40 @@ function getGps() {
   });
 }
 
-// ตารางต้นทุนระหว่างทุกจุด: ใช้เวลาขับจริงจาก OSRM ถ้าได้ ไม่งั้นใช้ระยะเส้นตรง
-async function surveyMatrix(pts) {
-  const n = pts.length;
+// เข้าบ้านฝั่งซ้ายมือ (ไทยขับชิดซ้าย) จะได้ไม่ต้องจอดฝั่งตรงข้ามแล้วกลับรถ
+// OSRM สาธารณะไม่รู้ว่าไทยขับซ้าย (driving_side ตอบ right) → curb จะได้ฝั่งขวา ต้องใช้ opposite ถึงได้ฝั่งซ้าย
+// จุดเริ่มจาก GPS ไม่รู้ว่ารถหันทางไหน → ไม่บังคับฝั่ง
+const surveyApproaches = (n, hasOrigin) => Array.from({ length: n }, (_, i) => i === 0 && hasOrigin ? 'unrestricted' : 'opposite').join(';');
+
+// ตารางต้นทุนระหว่างทุกจุด: ใช้เวลาขับจริงตามทิศทาง (ไป-กลับไม่เท่ากันเพราะถนนเดินรถทางเดียว/เกาะกลาง) ไม่ได้ก็ใช้ระยะเส้นตรง
+async function surveyMatrix(pts, hasOrigin) {
   const straight = pts.map(a => pts.map(b => haversineKm(a, b)));
-  try {
-    const coords = pts.map(p => `${p.lng},${p.lat}`).join(';');
-    const j = await fetchTimeout(`${OSRM}/table/v1/driving/${coords}?annotations=duration`, 9000);
-    if (j.code !== 'Ok') throw new Error(j.code);
-    // ช่องที่ OSRM หาเส้นทางไม่ได้ (null) → ประมาณจากเส้นตรงที่ 50 กม./ชม.
-    const m = j.durations.map((row, i) => row.map((v, k) => v == null ? straight[i][k] / 50 * 3600 : v));
-    return { cost: m, source: 'road' };
-  } catch(e) {
-    return { cost: straight, source: 'straight' };
+  const coords = pts.map(p => `${p.lng},${p.lat}`).join(';');
+  for (const extra of [`&approaches=${surveyApproaches(pts.length, hasOrigin)}`, '']) {
+    try {
+      const j = await fetchTimeout(`${OSRM}/table/v1/driving/${coords}?annotations=duration${extra}`, 12000);
+      if (j.code !== 'Ok') throw new Error(j.code);
+      // ช่องที่ OSRM หาเส้นทางไม่ได้ (null) → ประมาณจากเส้นตรงที่ 50 กม./ชม.
+      const m = j.durations.map((row, i) => row.map((v, k) => v == null ? straight[i][k] / 50 * 3600 : v));
+      return { cost: m, source: 'road' };
+    } catch(e) {}
   }
+  return { cost: straight, source: 'straight' };
 }
 
+// จับกลุ่มจุดที่ขับถึงกันได้ใน thr → ออกจากกลุ่มเสียค่าเพิ่ม เส้นทางจะเก็บกลุ่มเดิมให้ครบก่อนค่อยไปกลุ่มถัดไป
+function surveyGroupCost(D, thr, pen) {
+  const n = D.length, g = [...Array(n).keys()];
+  const find = x => { while (g[x] !== x) x = g[x] = g[g[x]]; return x; };
+  for (let i = 0; i < n; i++) for (let k = 0; k < i; k++) if (Math.min(D[i][k], D[k][i]) <= thr) g[find(i)] = find(k);
+  return D.map((row, i) => row.map((v, k) => v + (find(i) === find(k) ? 0 : pen)));
+}
 // หาลำดับไปครบทุกจุด เริ่มที่จุด 0 เสมอ ไม่ต้องวนกลับ (open path)
-// ≤9 จุด → ลองทุกแบบ (ได้คำตอบดีที่สุดจริง) · มากกว่านั้น → ใกล้สุดก่อน แล้วเกลาด้วย 2-opt
-function solveRoute(D) {
+// ≤9 จุด → ลองทุกแบบ · มากกว่านั้น → หลายจุดเริ่มต้น + กลับช่วง (2-opt) + ย้ายจุด (or-opt) จนหมดเวลา ใช้ seed คงที่
+function solveRoute(D, source) {
   const n = D.length;
   if (n <= 2) return [...Array(n).keys()];
-  const C = D.map((row, i) => row.map((v, k) => (v + D[k][i]) / 2));   // ทำให้สมมาตร (ไป-กลับใช้เวลาไม่เท่ากันนิดหน่อย)
+  const C = source === 'road' ? surveyGroupCost(D, 180, 120) : surveyGroupCost(D, 1.5, 1);
   if (n <= 9) {
     let best = Infinity, bestPath = null;
     const path = [0], used = new Array(n).fill(false); used[0] = true;
@@ -2964,44 +2981,66 @@ function solveRoute(D) {
     dfs(0);
     return bestPath;
   }
-  const route = [0], left = new Set([...Array(n).keys()].slice(1));
+  const costOf = o => { let t = 0; for (let i = 0; i < n - 1; i++) t += C[o[i]][o[i + 1]]; return t; };
+  const deadline = performance.now() + 1500;
+  const polish = o => {
+    let cur = costOf(o), imp = true;
+    const take = m => { const v = costOf(m); if (v < cur - 1e-9) { o = m; cur = v; imp = true; return true; } return false; };
+    while (imp && performance.now() < deadline) {
+      imp = false;
+      for (let i = 1; i < n - 1; i++) for (let k = i + 1; k < n; k++)
+        take([...o.slice(0, i), ...o.slice(i, k + 1).reverse(), ...o.slice(k + 1)]);
+      for (let L = 1; L <= 3; L++) for (let i = 1; i + L <= n; i++) {
+        const seg = o.slice(i, i + L), rest = [...o.slice(0, i), ...o.slice(i + L)];
+        moved: for (let k = 1; k <= rest.length; k++) for (const s of [seg, [...seg].reverse()])
+          if (take([...rest.slice(0, k), ...s, ...rest.slice(k)])) break moved;
+      }
+    }
+    return o;
+  };
+  // เริ่มรอบแรกจาก "ใกล้สุดก่อน" รอบต่อไปสุ่ม
+  const near = [0], left = new Set([...Array(n).keys()].slice(1));
   while (left.size) {
-    const last = route[route.length - 1];
+    const last = near[near.length - 1];
     let pick = null;
     left.forEach(k => { if (pick === null || C[last][k] < C[last][pick]) pick = k; });
-    route.push(pick); left.delete(pick);
+    near.push(pick); left.delete(pick);
   }
-  let improved = true;
-  while (improved) {
-    improved = false;
-    for (let i = 1; i < n - 1; i++) for (let k = i + 1; k < n; k++) {
-      const a = route[i-1], b = route[i], c = route[k], d = route[k+1];
-      const before = C[a][b] + (d !== undefined ? C[c][d] : 0);
-      const after  = C[a][c] + (d !== undefined ? C[b][d] : 0);
-      if (after < before - 1e-9) { route.splice(i, k - i + 1, ...route.slice(i, k + 1).reverse()); improved = true; }
-    }
+  let best = polish(near), seed = 12345;
+  const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  while (performance.now() < deadline) {
+    const o = [...Array(n).keys()].slice(1);
+    for (let i = o.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [o[i], o[j]] = [o[j], o[i]]; }
+    const r = polish([0, ...o]);
+    if (costOf(r) < costOf(best)) best = r;
   }
-  return route;
+  return best;
 }
 
 // ระยะ/เวลาแต่ละช่วงตามลำดับจริง + เส้นทางสำหรับวาดบนแผนที่
-async function surveyLegs(pts) {
-  try {
-    const coords = pts.map(p => `${p.lng},${p.lat}`).join(';');
-    const j = await fetchTimeout(`${OSRM}/route/v1/driving/${coords}?overview=full&geometries=geojson`, 12000);
-    if (j.code !== 'Ok') throw new Error(j.code);
-    return { legs: j.routes[0].legs.map(l => ({ km: l.distance / 1000, min: l.duration / 60 })),
-             geom: j.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]) };
-  } catch(e) {
-    // ไม่มีเส้นทางถนน → ระยะเส้นตรง ×1.3 (ถนนจริงมักอ้อมกว่าราว 30%) ที่ 50 กม./ชม.
-    return { legs: pts.slice(1).map((p, i) => { const km = haversineKm(pts[i], p) * 1.3; return { km, min: km / 50 * 60, est: true }; }),
-             geom: null };
+async function surveyLegs(pts, hasOrigin) {
+  const coords = pts.map(p => `${p.lng},${p.lat}`).join(';');
+  for (const extra of [`&approaches=${surveyApproaches(pts.length, hasOrigin)}`, '']) {
+    try {
+      const j = await fetchTimeout(`${OSRM}/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=true${extra}`, 15000);
+      if (j.code !== 'Ok') throw new Error(j.code);
+      return { legs: j.routes[0].legs.map(l => {
+                 const arrive = l.steps[l.steps.length - 1]?.maneuver?.modifier;
+                 return { km: l.distance / 1000, min: l.duration / 60, side: arrive === 'left' || arrive === 'right' ? arrive : '',
+                          uturn: l.steps.filter(s => s.maneuver?.modifier === 'uturn').length };
+               }),
+               geom: j.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]) };
+    } catch(e) {}
   }
+  // ไม่มีเส้นทางถนน → ระยะเส้นตรง ×1.3 (ถนนจริงมักอ้อมกว่าราว 30%) ที่ 50 กม./ชม.
+  return { legs: pts.slice(1).map((p, i) => { const km = haversineKm(pts[i], p) * 1.3; return { km, min: km / 50 * 60, est: true }; }),
+           geom: null };
 }
 
 async function surveyPlan() {
-  const located = surveyActive().map(p => ({ p, ll: parseLatLng(p.mapUrl) })).filter(x => x.ll);
-  if (!located.length) { toast('⚠️ ยังไม่มีทรัพย์ที่มีพิกัดในรอบสำรวจ', 'error'); return; }
+  // พิกัดประมาณ (กลางตำบล) ไม่ใช่ที่ตั้งบ้านจริง → ไม่เอามาเรียง จะพาขับไปผิดที่
+  const located = surveyActive().map(p => ({ p, ll: parseLatLng(p.mapUrl) })).filter(x => x.ll && !x.p.llApprox);
+  if (!located.length) { toast('⚠️ ยังไม่มีทรัพย์ที่มีพิกัดจริงในรอบสำรวจ', 'error'); return; }
   const startSel = surveyStart();
   let origin = null, stops = located;
   toast('⏳ กำลังจัดเส้นทาง...');
@@ -3028,22 +3067,22 @@ async function surveyPlan() {
     stops = [first, ...located.filter(x => x !== first)];
   }
   const pts = origin ? [origin, ...stops.map(x => x.ll)] : stops.map(x => x.ll);
-  const { cost, source } = await surveyMatrix(pts);
+  const { cost, source } = await surveyMatrix(pts, !!origin);
   let order;
   if (mode === 'city') {
     // ในเมืองก่อน: จุดที่อยู่ในรัศมี CITY_KM จากตัวเมืองไปให้ครบก่อน แล้วค่อยไล่ออกนอกเมือง
     const CITY_KM = 8;
     const inner = pts.map((p, i) => i).filter(i => i === 0 || haversineKm(pts[0], pts[i]) <= CITY_KM);
     const outer = pts.map((p, i) => i).filter(i => !inner.includes(i));
-    const solveSub = idxs => solveRoute(idxs.map(a => idxs.map(b => cost[a][b]))).map(k => idxs[k]);
+    const solveSub = idxs => solveRoute(idxs.map(a => idxs.map(b => cost[a][b])), source).map(k => idxs[k]);
     const o1 = solveSub(inner);
     order = outer.length ? [...o1, ...solveSub([o1[o1.length - 1], ...outer]).slice(1)] : o1;
   } else {
-    order = solveRoute(cost);
+    order = solveRoute(cost, source);
   }
   const seq = order.map(i => pts[i]);
   const ordered = (origin ? order.slice(1).map(i => stops[i - 1]) : order.map(i => stops[i]));
-  const { legs, geom } = await surveyLegs(seq);
+  const { legs, geom } = await surveyLegs(seq, !!origin);
   _surveyGeom = geom;
   // origin = GPS → ขาแรกคือ "จากตำแหน่งปัจจุบันไปจุด 1" · origin = ทรัพย์ → จุด 1 ไม่มีขาก่อนหน้า
   ordered.forEach((x, i) => {
@@ -3205,9 +3244,10 @@ function surveyOrdered() {
   const act = surveyActive().map(p => ({ p, ll: parseLatLng(p.mapUrl) }));
   const located = act.filter(x => x.ll);
   const ordered = located.filter(x => x.p.survey?.order).sort((a, b) => a.p.survey.order - b.p.survey.order);
-  const unplanned = located.filter(x => !x.p.survey?.order);
+  const unplanned = located.filter(x => !x.p.survey?.order && !x.p.llApprox);
+  const approx = located.filter(x => !x.p.survey?.order && x.p.llApprox);
   const noLL = act.filter(x => !x.ll);
-  return { ordered, unplanned, noLL };
+  return { ordered, unplanned, approx, noLL };
 }
 
 function nextRoundInfo(p) {
@@ -3292,7 +3332,7 @@ function surveyCardHtml(x, total, open) {
     sv.note || hasSketch(p) ? `<span class="badge badge-gray" title="มีบันทึกรายละเอียด">📝 บันทึก</span>` : '',
     parcelPending(p) ? `<span class="badge badge-amber" title="ยังไม่มีพิกัดจากกรมที่ดิน/ภาพแผนที่แปลง — บอก Claude ว่า &quot;ทำต่อ&quot;">⏳ รอพิกัด/ภาพแปลง</span>` : '',
   ].join('');
-  const legTxt = inRoute && sv.leg ? `${sv.leg.est ? '≈ ' : ''}${fmtKm(sv.leg.km)} กม. · ${fmtMin(sv.leg.min)} ${idx === 0 ? 'จากจุดเริ่ม' : 'จากจุดก่อนหน้า'}` : (inRoute && idx === 0 ? 'จุดแรก' : '');
+  const legTxt = inRoute && sv.leg ? `${sv.leg.est ? '≈ ' : ''}${fmtKm(sv.leg.km)} กม. · ${fmtMin(sv.leg.min)} ${idx === 0 ? 'จากจุดเริ่ม' : 'จากจุดก่อนหน้า'}${sv.leg.side ? ` · ${sv.leg.side === 'left' ? 'ซ้ายมือ' : 'ขวามือ'}` : ''}${sv.leg.uturn ? ` · กลับรถ ${sv.leg.uturn}` : ''}` : (inRoute && idx === 0 ? 'จุดแรก' : '');
   const led = p.led || {};
   const rounds = (ROUNDS || []).map((r, ri) => {
     const rObj = (p.rounds || [])[ri] || {};
@@ -3646,6 +3686,8 @@ function loadExcalidraw() {
   return _exLoading;
 }
 
+// iOS: จีบนิ้วบนหัว/แถบเครื่องมือของหน้าบันทึก ห้ามซูมทั้งเว็บ (touch-action อย่างเดียวไม่พอบาง iOS)
+document.addEventListener('gesturestart', e => { if (SK) e.preventDefault(); }, { passive: false });
 let SK = null;
 function hasSketch(p) { return !!(p.sketchX?.elements?.length || p.sketch?.strokes?.length); }
 
@@ -3708,13 +3750,30 @@ async function openSketch(id) {
   SK.root = RD.createRoot(host);
   SK.root.render(React.createElement(EX.Excalidraw, {
     initialData: { elements, files, scrollToContent: true,
-      appState: { viewBackgroundColor: '#ffffff', currentItemRoughness: 0, currentItemStrokeWidth: 1,
+      appState: { viewBackgroundColor: 'transparent', currentItemRoughness: 0, currentItemStrokeWidth: 1,
                   currentItemFontFamily: EX.FONT_FAMILY?.Helvetica || 2, currentItemStrokeColor: '#1e1e1e' } },
     excalidrawAPI: api => { if (SK === mySK) { SK.api = api; setTimeout(() => { try { api.setActiveTool({ type: 'freedraw' }); } catch(e) {} }, 50); } },
-    onChange: (els, st, fl) => { if (SK === mySK) { skSyncProps(st); skOnChange(els, fl); } },
-    UIOptions: { canvasActions: { loadScene: false, saveToActiveFile: false, toggleTheme: false, export: false, saveAsImage: true, clearCanvas: true, changeViewBackgroundColor: true } },
+    onChange: (els, st, fl) => { if (SK === mySK) { skView(st); skSyncProps(st); skOnChange(els, fl); } },
+    UIOptions: { canvasActions: { loadScene: false, saveToActiveFile: false, toggleTheme: false, export: false, saveAsImage: true, clearCanvas: true, changeViewBackgroundColor: false } },
     name: p.code || 'บันทึก',
   }));
+}
+
+// ซูมได้แค่ขยาย (ต่ำสุด 100%) — Excalidraw ไม่มีค่าตั้งซูมขั้นต่ำ เลยดึงกลับเมื่อย่อเกิน โดยคงจุดกลางจอเดิมไว้ · เส้นตารางเลื่อน/ซูมตามกระดาษ
+const SK_GRID = 24;
+function skView(st) {
+  const z = st.zoom?.value || 1;
+  if (z < 1) {
+    const cx = (st.width || 0) / 2, cy = (st.height || 0) / 2;
+    SK.api?.updateScene({ appState: { zoom: { value: 1 }, scrollX: st.scrollX + cx - cx / z, scrollY: st.scrollY + cy - cy / z } });
+    return;
+  }
+  const key = `${z}:${st.scrollX}:${st.scrollY}`;
+  if (key === SK.gridKey) return;
+  SK.gridKey = key;
+  const box = document.getElementById('ex-root'), g = SK_GRID * z;
+  box.style.backgroundSize = `${g}px ${g}px`;
+  box.style.backgroundPosition = `${st.scrollX * z}px ${st.scrollY * z}px`;
 }
 
 // Excalidraw เรียก onChange ถี่มาก (ทุกการขยับ) → เทียบเวอร์ชันฉาก เปลี่ยนจริงค่อยนับว่าแก้
@@ -4199,14 +4258,14 @@ async function geocodeTambon(led) {
 }
 
 async function renderSurvey() {
-  const { ordered, unplanned, noLL } = surveyOrdered();
+  const { ordered, unplanned, approx, noLL } = surveyOrdered();
   const startSel = surveyStart();
 
   // ตัวเลือกจุดเริ่ม: ในเมืองก่อน (ค่าเริ่มต้น) / GPS / ทรัพย์ที่เลือกเอง
   const startEl = document.getElementById('survey-start');
   const startable = [...ordered, ...unplanned];
-  startEl.innerHTML = `<option value="city">🏙 เริ่มจากในเมืองก่อน แล้วไล่ออกไปทีละจุดที่ใกล้สุด</option>
-    <option value="gps">📍 เริ่มจากตำแหน่งปัจจุบัน (GPS)</option>
+  startEl.innerHTML = `<option value="gps">📍 เริ่มจากตำแหน่งปัจจุบัน (GPS)</option>
+    <option value="city">🏙 เริ่มจากในเมืองก่อน แล้วไล่ออกไปทีละจุดที่ใกล้สุด</option>
     <option value="custom">✏️ เริ่มจากจุดที่กำหนดเอง (พิกัด/ลิงก์)</option>` +
     startable.map(x => `<option value="${x.p.id}">🏠 เริ่มที่ ${escapeHtml((x.p.code ? x.p.code + ' — ' : '') + x.p.name)}</option>`).join('');
   startEl.value = ['city', 'gps', 'custom'].includes(startSel) || startable.some(x => x.p.id === startSel) ? startSel : 'gps';
@@ -4258,7 +4317,7 @@ async function renderSurvey() {
   const listEl = document.getElementById('survey-list');
   const openIds = new Set([...listEl.querySelectorAll('.prop-card.expanded')].map(e => e.id.replace('sv-', '')));
   const skipped = surveyCandidates().filter(p => p.survey?.skip).map(p => ({ p, ll: parseLatLng(p.mapUrl) }));
-  const cards = [...ordered.map((x, i) => ({ ...x, idx: i })), ...unplanned, ...noLL, ...skipped];
+  const cards = [...ordered.map((x, i) => ({ ...x, idx: i })), ...unplanned, ...approx, ...noLL, ...skipped];
   listEl.innerHTML = cards.length ? cards.map(x => surveyCardHtml(x, ordered.length, openIds.has(x.p.id) || _svPdfOpen.has(x.p.id))).join('') : '';
   _svPdfOpen.forEach(id => { const box = document.getElementById('svpdf-' + id); const p = S.pool.find(x => x.id === id);
     if (box && p?.pdfUrl) renderPdfInto(box, p.pdfUrl); else _svPdfOpen.delete(id); });
